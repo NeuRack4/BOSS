@@ -149,8 +149,14 @@
 |------|------|
 | FastAPI | API 서버 |
 | APScheduler | Proactive 트리거 스케줄러 |
-| PostgreSQL | 창업자 프로파일 + 상태 저장 |
-| Redis | 세션 / 캐시 |
+
+### 데이터베이스
+| 기술 | 용도 |
+|------|------|
+| Supabase (PostgreSQL) | 창업자 프로파일 + 상태 저장 + 인증 |
+| Supabase Realtime | 트리거 알림 실시간 스트리밍 |
+| Supabase Storage | 생성된 서류 초안 파일 저장 |
+| Supabase Auth | 사용자 인증 / 세션 관리 |
 
 ### 프론트엔드
 | 기술 | 용도 |
@@ -257,6 +263,7 @@ BOSS/
 ├── backtest/
 │   └── evaluate.py          # 백테스트 평가
 ├── docker-compose.yml
+├── CLAUDE.md
 └── README.md
 ```
 
