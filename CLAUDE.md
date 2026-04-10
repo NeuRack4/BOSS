@@ -34,11 +34,13 @@ Claude Code가 이 레포지토리에서 작업할 때 참고하는 가이드입
 - **RAG 파이프라인**: LangChain + LlamaIndex
 
 ### RAG / 임베딩
-- **벡터 DB**: ChromaDB (로컬)
-- **임베딩 모델**: OpenAI `text-embedding-3-small`
+- **벡터 DB**: Supabase pgvector (유료 플랜 내장 — ChromaDB 사용 안 함)
+- **임베딩 모델**: OpenAI `text-embedding-3-small` (1536차원)
+- **이점**: 관계형 데이터(창업자 프로파일)와 벡터 검색을 단일 DB에서 처리 가능
 
-### 데이터베이스 (Supabase)
+### 데이터베이스 (Supabase 유료)
 - **Supabase PostgreSQL**: 창업자 프로파일, 상태머신 데이터, 트리거 로그
+- **Supabase pgvector**: 법령·공고 문서 벡터 저장 및 유사도 검색 (별도 벡터DB 불필요)
 - **Supabase Realtime**: 트리거 알림 실시간 스트리밍
 - **Supabase Storage**: 생성된 서류 초안 파일 저장
 - **Supabase Auth**: 사용자 인증 / 세션 관리
@@ -77,9 +79,9 @@ BOSS/
 │   │   ├── location.py      # 입지분석 에이전트
 │   │   └── hiring.py        # 채용/서류 에이전트
 │   ├── rag/
+│   │   ├── ingest.py        # 문서 수집 → 청킹 → 임베딩 → Supabase 저장
 │   │   ├── embeddings/      # 임베딩 생성 로직
-│   │   ├── vectordb/        # ChromaDB 저장소
-│   │   └── retriever/       # 검색 로직
+│   │   └── retriever/       # pgvector 유사도 검색
 │   ├── triggers/
 │   │   ├── scheduler.py     # 시간 기반 트리거 (APScheduler)
 │   │   ├── state.py         # 상태 전이 트리거
@@ -138,6 +140,13 @@ BOSS/
 
 ## Supabase 테이블 설계 (예정)
 
+### pgvector 활성화
+```sql
+-- Supabase SQL Editor에서 최초 1회 실행
+create extension if not exists vector;
+```
+
+### 관계형 테이블
 ```sql
 -- 창업자 프로파일
 users (id, email, business_type, region, stage, created_at)
@@ -153,6 +162,57 @@ subsidy_matches (id, user_id, program_id, score, deadline, status)
 
 -- 생성된 서류 초안
 drafts (id, user_id, type, storage_path, created_at)
+```
+
+### 벡터 테이블 (pgvector)
+```sql
+-- RAG 문서 저장
+create table documents (
+  id          bigserial primary key,
+  category    text,        -- 'license' | 'tax' | 'labor' | 'lease' | 'subsidy'
+  source      text,        -- '식품위생법 시행규칙', '근로기준법' 등
+  chunk_index int,
+  content     text,        -- 원문 청크
+  embedding   vector(1536),-- text-embedding-3-small 기준
+  metadata    jsonb,       -- 업종·조항 등 필터용
+  created_at  timestamptz default now()
+);
+
+-- 벡터 검색 인덱스
+create index on documents
+using ivfflat (embedding vector_cosine_ops)
+with (lists = 100);
+```
+
+### 유사도 검색 함수
+```sql
+create or replace function match_documents (
+  query_embedding  vector(1536),
+  match_threshold  float,
+  match_count      int,
+  filter_category  text default null
+)
+returns table (id bigint, content text, metadata jsonb, similarity float)
+language sql stable as $$
+  select
+    id, content, metadata,
+    1 - (embedding <=> query_embedding) as similarity
+  from documents
+  where
+    (filter_category is null or category = filter_category)
+    and 1 - (embedding <=> query_embedding) > match_threshold
+  order by embedding <=> query_embedding
+  limit match_count;
+$$;
+```
+
+### 청킹 전략
+```
+법령 문서   → 조항(Article) 단위 청킹 — 의미 완결 단위
+절차 안내   → 단계(Step) 단위 청킹
+공고 문서   → 공고 1건 = 1청크
+metadata 예시:
+  { "law": "식품위생법", "article": "제36조", "business_type": ["카페"] }
 ```
 
 ---

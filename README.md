@@ -97,9 +97,10 @@
     └──────────┴──────────┴──────────┘
                      │
          ┌───────────▼──────────────┐
-         │          RAG DB          │
+         │   Supabase pgvector      │
+         │  (관계형 DB + 벡터 통합) │
          │  기업마당 공고            │
-         │  세금 법령 / 기한         │
+         │  식품위생법 / 세금 법령   │
          │  골목상권 서울            │
          │  표준서식 (계약서 등)     │
          └───────────┬──────────────┘
@@ -133,9 +134,9 @@
 ### RAG / 임베딩
 | 기술 | 용도 |
 |------|------|
-| ChromaDB | 벡터 DB (로컬, 무료) |
-| OpenAI text-embedding-3-small | 문서 임베딩 |
-| LlamaIndex | 문서 파싱 + 인덱싱 |
+| Supabase pgvector | 벡터 DB — Supabase 내장, 별도 DB 불필요 |
+| OpenAI text-embedding-3-small | 문서 임베딩 (1536차원) |
+| LlamaIndex | 문서 파싱 + 청킹 + 인덱싱 |
 
 ### 데이터 수집
 | 기술 | 용도 |
@@ -150,10 +151,11 @@
 | FastAPI | API 서버 |
 | APScheduler | Proactive 트리거 스케줄러 |
 
-### 데이터베이스
+### 데이터베이스 (Supabase 유료)
 | 기술 | 용도 |
 |------|------|
-| Supabase (PostgreSQL) | 창업자 프로파일 + 상태 저장 + 인증 |
+| Supabase PostgreSQL | 창업자 프로파일 + 상태 저장 |
+| Supabase pgvector | 법령·공고 문서 벡터 저장 및 유사도 검색 |
 | Supabase Realtime | 트리거 알림 실시간 스트리밍 |
 | Supabase Storage | 생성된 서류 초안 파일 저장 |
 | Supabase Auth | 사용자 인증 / 세션 관리 |
@@ -249,9 +251,9 @@ BOSS/
 │   │   ├── location.py      # 입지분석 에이전트
 │   │   └── hiring.py        # 채용/서류 에이전트
 │   ├── rag/
-│   │   ├── embeddings/      # 임베딩 생성
-│   │   ├── vectordb/        # ChromaDB 저장소
-│   │   └── retriever/       # 검색 로직
+│   │   ├── ingest.py        # 문서 수집 → 청킹 → 임베딩 → Supabase 저장
+│   │   ├── embeddings/      # 임베딩 생성 로직
+│   │   └── retriever/       # pgvector 유사도 검색
 │   ├── triggers/
 │   │   ├── scheduler.py     # 시간 기반 트리거
 │   │   ├── state.py         # 상태 전이 트리거
