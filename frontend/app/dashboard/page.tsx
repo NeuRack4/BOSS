@@ -40,7 +40,8 @@ export default function DashboardPage() {
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL;
       const res = await fetch(
-        `${apiUrl}/sales/summary?user_id=${user.id}&year=${today.getFullYear()}&month=${today.getMonth() + 1}`
+        `${apiUrl}/sales/summary?year=${today.getFullYear()}&month=${today.getMonth() + 1}`,
+        { headers: { "X-User-Id": user.id } }
       );
       if (res.ok) {
         const data = await res.json();
