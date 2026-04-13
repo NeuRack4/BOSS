@@ -13,7 +13,7 @@ async def retrieve(
     match_threshold: float = 0.7,
 ) -> list[dict]:
     """쿼리를 임베딩하여 관련 문서 청크를 반환"""
-    embedding = embed_single(query)
+    embedding = await embed_single(query)
     supabase = get_supabase()
 
     result = supabase.rpc(
