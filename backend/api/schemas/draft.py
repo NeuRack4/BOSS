@@ -43,4 +43,5 @@ class GenerateDraftResponse(BaseModel):
     doc_type: str
     title: str
     content: str
+    fields: dict = {}   # 구조화 필드 (표 렌더링용)
     disclaimer: str
