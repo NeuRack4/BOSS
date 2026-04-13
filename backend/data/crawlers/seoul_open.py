@@ -1,133 +1,182 @@
 """
-서울 열린데이터광장 API 크롤러
-- 마포구 행정동별 유동인구 데이터
-- 마포구 상가업소 현황 (업종별 개폐업 수)
+서울 열린데이터광장 API 크롤러 (마포구 카페 입지 데이터)
+
+데이터셋:
+  - VwsmAdstrdStorW  : 행정동별 상가업소 현황 → 카페 수, 개폐업, 생존율
+  - VwsmAdstrdFlpopW : 행정동별 유동인구       → 일일 유동인구
 
 데이터 출처: 서울특별시 공공데이터 (data.seoul.go.kr)
-API 이용약관 확인 완료 — 공공데이터 개방 데이터셋 (CC BY 4.0)
+이용약관 확인 완료 — CC BY 4.0
 """
+import asyncio
 import httpx
 from backend.core.config import get_settings
 
 _BASE_URL = "http://openapi.seoul.go.kr:8088"
+_DS_STORE  = "VwsmAdstrdStorW"
+_DS_FLPOP  = "VwsmAdstrdFlpopW"
+_CAFE_CODE  = "커피-음료"
 
-# 서울 열린데이터 데이터셋 코드
-_DATASET_FLOATING_POP = "1000"  # 서울시 생활인구 (유동인구)
-_DATASET_STORE_STATUS = "1000"  # 서울시 상가업소 현황
-
-# 마포구 행정동 코드 매핑
-_MAPO_DONG_MAP = {
-    "홍대입구": "서교동",
-    "합정": "합정동",
-    "연남동": "연남동",
-    "망원동": "망원동",
-    "공덕": "공덕동",
-    "성산동": "성산동",
-    "마포대로": "마포동",
-    "아현동": "아현동",
-    "신수동": "신수동",
+# 상권명 → 행정동 정보
+# start/end: VwsmAdstrdStorW에서 해당 동 데이터가 있는 오프셋 범위 (실측)
+_MAPO_DONG_MAP: dict[str, dict] = {
+    "홍대입구": {"dong": "서교동",  "code": "11440660", "store_start": 200001, "store_end": 201000},
+    "합정":     {"dong": "합정동",  "code": "11440680", "store_start": 200001, "store_end": 202000},
+    "연남동":   {"dong": "연남동",  "code": "11440710", "store_start": 200001, "store_end": 201000},
+    "망원동":   {"dong": "망원1동", "code": "11440690", "store_start": 200001, "store_end": 201000},
+    "공덕":     {"dong": "공덕동",  "code": "11440565", "store_start": 204001, "store_end": 205000},
+    "성산동":   {"dong": "성산1동", "code": "11440720", "store_start": 200001, "store_end": 201000},
+    "마포대로": {"dong": "용강동",  "code": "11440590", "store_start": 204001, "store_end": 205000},
+    "아현동":   {"dong": "아현동",  "code": "11440555", "store_start": 204001, "store_end": 205000},
+    "신수동":   {"dong": "신수동",  "code": "11440630", "store_start": 200001, "store_end": 201000},
 }
 
-
-async def fetch_floating_population(district_name: str) -> dict:
-    """마포구 특정 상권의 시간대별 유동인구 수집"""
-    settings = get_settings()
-    dong_name = _MAPO_DONG_MAP.get(district_name, district_name)
-
-    url = f"{_BASE_URL}/{settings.seoul_open_api_key}/json/VwsmAdstrdSflpopD/1/5/"
-
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        try:
-            response = await client.get(url, params={"ADSTRD_CD_NM": dong_name})
-            response.raise_for_status()
-            data = response.json()
-            rows = data.get("VwsmAdstrdSflpopD", {}).get("row", [])
-            return _parse_floating_pop(rows, district_name)
-        except Exception:
-            return _fallback_floating_pop(district_name)
+# VwsmAdstrdFlpopW: 마포구 동 전체가 오프셋 1~4000 사이에 분포(실측)
+_FLPOP_PAGES = [(1, 1000), (1001, 2000), (2001, 3000), (3001, 4000)]
 
 
-async def fetch_store_status(district_name: str) -> dict:
-    """마포구 특정 상권의 상가업소 개폐업 현황 수집"""
-    settings = get_settings()
-    dong_name = _MAPO_DONG_MAP.get(district_name, district_name)
-
-    url = f"{_BASE_URL}/{settings.seoul_open_api_key}/json/VwsmSignguStorW/1/5/"
-
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        try:
-            response = await client.get(url, params={"ADSTRD_CD_NM": dong_name})
-            response.raise_for_status()
-            data = response.json()
-            rows = data.get("VwsmSignguStorW", {}).get("row", [])
-            return _parse_store_status(rows, district_name)
-        except Exception:
-            return _fallback_store_status(district_name)
-
+# ──────────────────────────────────────────────────────────
+# Public API
+# ──────────────────────────────────────────────────────────
 
 async def fetch_all_mapo_enriched() -> dict[str, dict]:
-    """마포구 전 상권 enriched 데이터 일괄 수집"""
-    import asyncio
-    districts = list(_MAPO_DONG_MAP.keys())
-    pop_tasks = [fetch_floating_population(d) for d in districts]
-    store_tasks = [fetch_store_status(d) for d in districts]
-    pop_results, store_results = await asyncio.gather(
-        asyncio.gather(*pop_tasks),
-        asyncio.gather(*store_tasks),
+    """마포구 9개 상권 enriched 데이터 일괄 수집"""
+    store_data, flpop_data = await asyncio.gather(
+        _fetch_all_store_data(),
+        _fetch_all_flpop_data(),
     )
-    return {
-        d: {**pop_results[i], **store_results[i]}
-        for i, d in enumerate(districts)
-    }
+    result = {}
+    for name, info in _MAPO_DONG_MAP.items():
+        dong = info["dong"]
+        store = store_data.get(dong, {})
+        flpop = flpop_data.get(dong, {})
+        if not store and not flpop:
+            result[name] = _fallback(name)
+        else:
+            result[name] = {
+                "district":         name,
+                "cafe_count":       store.get("cafe_count", _FALLBACK[name]["cafe_count"]),
+                "new_stores_1y":    store.get("new_stores_1y", _FALLBACK[name]["new_stores_1y"]),
+                "closed_stores_1y": store.get("closed_stores_1y", _FALLBACK[name]["closed_stores_1y"]),
+                "survival_rate":    store.get("survival_rate", _FALLBACK[name]["survival_rate"]),
+                "daily_floating_pop": flpop.get("daily_floating_pop", _FALLBACK[name]["daily_floating_pop"]),
+            }
+    return result
 
 
-def _parse_floating_pop(rows: list[dict], district_name: str) -> dict:
-    if not rows:
-        return _fallback_floating_pop(district_name)
-    total = sum(int(r.get("TOT_SFLPOP_CO", 0)) for r in rows)
-    return {
-        "district": district_name,
-        "daily_floating_pop": total // max(len(rows), 1),
-    }
+# ──────────────────────────────────────────────────────────
+# Internal fetchers
+# ──────────────────────────────────────────────────────────
+
+async def _fetch_all_store_data() -> dict[str, dict]:
+    """VwsmAdstrdStorW에서 마포구 카페 현황 수집"""
+    settings = get_settings()
+    # 두 오프셋 범위를 병렬 호출
+    ranges = [(200001, 201000), (204001, 205000)]
+    tasks = [_fetch_store_range(settings.seoul_open_api_key, s, e) for s, e in ranges]
+    pages = await asyncio.gather(*tasks, return_exceptions=True)
+
+    rows: list[dict] = []
+    for page in pages:
+        if isinstance(page, list):
+            rows.extend(page)
+
+    # 동별로 최신 분기(STDR_YYQU_CD 내림차순) 커피-음료 행 추출
+    dong_rows: dict[str, dict] = {}
+    for row in rows:
+        if row.get("SVC_INDUTY_CD_NM") != _CAFE_CODE:
+            continue
+        dong = row.get("ADSTRD_CD_NM", "")
+        if not dong:
+            continue
+        existing = dong_rows.get(dong)
+        if existing is None or row["STDR_YYQU_CD"] > existing["STDR_YYQU_CD"]:
+            dong_rows[dong] = row
+
+    result = {}
+    for dong, row in dong_rows.items():
+        clsbiz_rt = float(row.get("CLSBIZ_RT") or 0)
+        result[dong] = {
+            "cafe_count":       int(row.get("STOR_CO") or 0),
+            "new_stores_1y":    int(row.get("OPBIZ_STOR_CO") or 0),
+            "closed_stores_1y": int(row.get("CLSBIZ_STOR_CO") or 0),
+            "survival_rate":    round(max(0.0, 1 - clsbiz_rt / 100), 3),
+        }
+    return result
 
 
-def _parse_store_status(rows: list[dict], district_name: str) -> dict:
-    if not rows:
-        return _fallback_store_status(district_name)
-    row = rows[0]
-    return {
-        "district": district_name,
-        "new_stores_1y": int(row.get("OPBIZ_CO", 0)),
-        "closed_stores_1y": int(row.get("CLSBIZ_CO", 0)),
-    }
+async def _fetch_store_range(key: str, start: int, end: int) -> list[dict]:
+    url = f"{_BASE_URL}/{key}/json/{_DS_STORE}/{start}/{end}/"
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        try:
+            resp = await client.get(url)
+            resp.raise_for_status()
+            return resp.json().get(_DS_STORE, {}).get("row", [])
+        except Exception:
+            return []
 
 
-# ──────────────────────────────────────────────
-# Fallback: API 장애 시 사용하는 마포구 기본값
-# ──────────────────────────────────────────────
+async def _fetch_all_flpop_data() -> dict[str, dict]:
+    """VwsmAdstrdFlpopW에서 마포구 유동인구 수집"""
+    settings = get_settings()
+    tasks = [
+        _fetch_flpop_range(settings.seoul_open_api_key, s, e)
+        for s, e in _FLPOP_PAGES
+    ]
+    pages = await asyncio.gather(*tasks, return_exceptions=True)
 
-_FALLBACK_DATA = {
-    "홍대입구": {"daily_floating_pop": 95000, "new_stores_1y": 42, "closed_stores_1y": 31},
-    "합정":     {"daily_floating_pop": 72000, "new_stores_1y": 28, "closed_stores_1y": 22},
-    "연남동":   {"daily_floating_pop": 68000, "new_stores_1y": 35, "closed_stores_1y": 18},
-    "망원동":   {"daily_floating_pop": 54000, "new_stores_1y": 22, "closed_stores_1y": 12},
-    "공덕":     {"daily_floating_pop": 61000, "new_stores_1y": 19, "closed_stores_1y": 17},
-    "성산동":   {"daily_floating_pop": 38000, "new_stores_1y": 14, "closed_stores_1y": 10},
-    "마포대로": {"daily_floating_pop": 45000, "new_stores_1y": 11, "closed_stores_1y": 9},
-    "아현동":   {"daily_floating_pop": 32000, "new_stores_1y": 9,  "closed_stores_1y": 8},
-    "신수동":   {"daily_floating_pop": 28000, "new_stores_1y": 7,  "closed_stores_1y": 6},
+    rows: list[dict] = []
+    for page in pages:
+        if isinstance(page, list):
+            rows.extend(page)
+
+    # 마포구 동(11440)만 필터, 동별 최신 분기
+    target_codes = {info["code"] for info in _MAPO_DONG_MAP.values()}
+    dong_rows: dict[str, dict] = {}
+    for row in rows:
+        if row.get("ADSTRD_CD") not in target_codes:
+            continue
+        dong = row.get("ADSTRD_CD_NM", "")
+        existing = dong_rows.get(dong)
+        if existing is None or row["STDR_YYQU_CD"] > existing["STDR_YYQU_CD"]:
+            dong_rows[dong] = row
+
+    result = {}
+    for dong, row in dong_rows.items():
+        tot = float(row.get("TOT_FLPOP_CO") or 0)
+        result[dong] = {
+            "daily_floating_pop": int(tot / 91),  # 분기(91일) → 일평균
+        }
+    return result
+
+
+async def _fetch_flpop_range(key: str, start: int, end: int) -> list[dict]:
+    url = f"{_BASE_URL}/{key}/json/{_DS_FLPOP}/{start}/{end}/"
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        try:
+            resp = await client.get(url)
+            resp.raise_for_status()
+            return resp.json().get(_DS_FLPOP, {}).get("row", [])
+        except Exception:
+            return []
+
+
+# ──────────────────────────────────────────────────────────
+# Fallback
+# ──────────────────────────────────────────────────────────
+
+_FALLBACK: dict[str, dict] = {
+    "홍대입구": {"cafe_count": 648, "new_stores_1y": 27, "closed_stores_1y": 34, "survival_rate": 0.62, "daily_floating_pop": 190535},
+    "합정":     {"cafe_count": 210, "new_stores_1y": 18, "closed_stores_1y": 14, "survival_rate": 0.58, "daily_floating_pop": 145000},
+    "연남동":   {"cafe_count": 185, "new_stores_1y": 22, "closed_stores_1y": 13, "survival_rate": 0.71, "daily_floating_pop": 130000},
+    "망원동":   {"cafe_count": 130, "new_stores_1y": 15, "closed_stores_1y":  9, "survival_rate": 0.74, "daily_floating_pop": 100000},
+    "공덕":     {"cafe_count": 110, "new_stores_1y": 12, "closed_stores_1y": 11, "survival_rate": 0.55, "daily_floating_pop": 115000},
+    "성산동":   {"cafe_count":  75, "new_stores_1y":  9, "closed_stores_1y":  7, "survival_rate": 0.68, "daily_floating_pop":  70000},
+    "마포대로": {"cafe_count":  60, "new_stores_1y":  7, "closed_stores_1y":  6, "survival_rate": 0.52, "daily_floating_pop":  85000},
+    "아현동":   {"cafe_count":  55, "new_stores_1y":  6, "closed_stores_1y":  5, "survival_rate": 0.61, "daily_floating_pop":  60000},
+    "신수동":   {"cafe_count":  40, "new_stores_1y":  5, "closed_stores_1y":  4, "survival_rate": 0.66, "daily_floating_pop":  52000},
 }
 
 
-def _fallback_floating_pop(district_name: str) -> dict:
-    base = _FALLBACK_DATA.get(district_name, {"daily_floating_pop": 30000})
-    return {"district": district_name, "daily_floating_pop": base["daily_floating_pop"]}
-
-
-def _fallback_store_status(district_name: str) -> dict:
-    base = _FALLBACK_DATA.get(district_name, {"new_stores_1y": 10, "closed_stores_1y": 8})
-    return {
-        "district": district_name,
-        "new_stores_1y": base["new_stores_1y"],
-        "closed_stores_1y": base["closed_stores_1y"],
-    }
+def _fallback(name: str) -> dict:
+    return {"district": name, **_FALLBACK[name]}

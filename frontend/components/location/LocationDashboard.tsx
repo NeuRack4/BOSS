@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DistrictSelector from "./DistrictSelector";
 import TopPickCards from "./TopPickCards";
 import ScoreRadarChart from "./ScoreRadarChart";
@@ -28,11 +28,39 @@ export interface AnalyzeResult {
   analyzed_at: string;
 }
 
+interface HistoryRecord {
+  id: number;
+  districts: string[];
+  top_pick: string | null;
+  searched_at: string;
+}
+
 export default function LocationDashboard() {
   const [selected, setSelected] = useState<string[]>([]);
   const [result, setResult] = useState<AnalyzeResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [history, setHistory] = useState<HistoryRecord[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+
+  const fetchHistory = async () => {
+    setHistoryLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/location/history`);
+      if (res.ok) {
+        const data: HistoryRecord[] = await res.json();
+        setHistory(data);
+      }
+    } catch {
+      // 이력 로딩 실패는 조용히 처리
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchHistory();
+  }, []);
 
   const handleAnalyze = async () => {
     setLoading(true);
@@ -51,6 +79,7 @@ export default function LocationDashboard() {
       }
       const data: AnalyzeResult = await res.json();
       setResult(data);
+      fetchHistory();
     } catch (e) {
       setError(e instanceof Error ? e.message : "알 수 없는 오류");
     } finally {
@@ -139,6 +168,66 @@ export default function LocationDashboard() {
           <LlmReportPanel report={result.llm_report} />
         </>
       )}
+
+      {/* 검색 이력 */}
+      <section className="mt-4">
+        <h2 className="text-sm font-semibold text-slate-400 mb-3">
+          최근 검색 이력
+        </h2>
+        {historyLoading ? (
+          <div className="space-y-2">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="h-12 rounded-xl bg-white/5 animate-pulse"
+              />
+            ))}
+          </div>
+        ) : history.length === 0 ? (
+          <p className="text-slate-600 text-sm">아직 검색 이력이 없습니다.</p>
+        ) : (
+          <ul className="space-y-2">
+            {history.map((rec) => (
+              <li
+                key={rec.id}
+                className="flex items-center justify-between gap-4
+                           bg-white/5 border border-white/10 rounded-xl px-4 py-3
+                           hover:border-brand-500/40 transition-colors cursor-pointer group"
+                onClick={() => setSelected(rec.districts)}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="text-slate-500 text-xs shrink-0">
+                    {new Date(rec.searched_at).toLocaleDateString("ko-KR", {
+                      month: "short",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                  <div className="flex flex-wrap gap-1 min-w-0">
+                    {rec.districts.map((d) => (
+                      <span
+                        key={d}
+                        className="px-2 py-0.5 rounded-md bg-white/10 text-slate-300 text-xs"
+                      >
+                        {d}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                {rec.top_pick && (
+                  <span className="shrink-0 text-xs text-brand-400 font-medium">
+                    1위: {rec.top_pick}
+                  </span>
+                )}
+                <span className="shrink-0 text-slate-600 text-xs group-hover:text-slate-400 transition-colors">
+                  다시 선택 →
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }
