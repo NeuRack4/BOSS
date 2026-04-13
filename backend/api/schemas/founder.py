@@ -38,6 +38,13 @@ class FounderStateUpdate(BaseModel):
     metadata: dict = {}
 
 
+class FounderStateResponse(BaseModel):
+    stage: FounderStage
+    sub_stage: FounderSubStage
+    metadata: dict = {}
+    updated_at: datetime | None = None
+
+
 class FounderResponse(BaseModel):
     id: str
     email: str

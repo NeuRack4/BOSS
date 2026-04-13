@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from datetime import date, datetime
+from datetime import date as date_type, datetime
 from typing import Literal
 
 
@@ -8,7 +8,7 @@ TimeSlot = Literal["오전", "오후", "저녁"]
 
 
 class SaleCreate(BaseModel):
-    date: date
+    date: date_type
     amount: int
     category: SaleCategory
     time_slot: TimeSlot
@@ -18,7 +18,7 @@ class SaleCreate(BaseModel):
 class SaleResponse(BaseModel):
     id: str
     user_id: str
-    date: date
+    date: date_type
     amount: int
     category: str
     time_slot: str
@@ -27,7 +27,7 @@ class SaleResponse(BaseModel):
 
 
 class SaleUpdate(BaseModel):
-    date: date | None = None
+    date: date_type | None = None
     amount: int | None = None
     category: SaleCategory | None = None
     time_slot: TimeSlot | None = None

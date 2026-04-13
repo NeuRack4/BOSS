@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from backend.core.constants import FounderStage, FounderSubStage, BusinessType
 from backend.agents import subsidy, tax, location, hiring
+from backend.db.client import get_supabase
 
 
 # ── 상태 정의 ──────────────────────────────────────────────────────────────
@@ -72,7 +73,28 @@ def build_graph() -> StateGraph:
 _graph = build_graph()
 
 
+def _load_founder_state(user_id: str) -> tuple[FounderStage, FounderSubStage]:
+    """DB에서 창업자 현재 단계를 읽어 반환. 없으면 기본값(setup/location_search)."""
+    result = (
+        get_supabase()
+        .table("founder_state")
+        .select("stage, sub_stage")
+        .eq("user_id", user_id)
+        .execute()
+    )
+    if not result.data:
+        return FounderStage.SETUP, FounderSubStage.LOCATION_SEARCH
+    row = result.data[0]
+    return FounderStage(row["stage"]), FounderSubStage(row["sub_stage"])
+
+
 async def run(user_id: str, stage: FounderStage, sub_stage: FounderSubStage) -> dict:
     ctx = FounderContext(user_id=user_id, stage=stage, sub_stage=sub_stage)
     result = await _graph.ainvoke(ctx)
     return result
+
+
+async def run_for_user(user_id: str) -> dict:
+    """DB에서 창업자 단계를 자동 로드해 실행."""
+    stage, sub_stage = _load_founder_state(user_id)
+    return await run(user_id=user_id, stage=stage, sub_stage=sub_stage)
