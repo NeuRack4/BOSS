@@ -10,14 +10,17 @@ class Settings(BaseSettings):
     supabase_anon_key: str
     supabase_service_role_key: str
 
-    # OpenAI
-    openai_api_key: str
+    # OpenAI (임베딩을 BGE-M3로 교체하여 현재 미사용)
+    openai_api_key: str = ""
 
     # Anthropic
     anthropic_api_key: str
 
     # 기업마당 API
     bizinfo_api_key: str = ""
+
+    # 공공데이터포털 API (세금 기한 등)
+    public_data_api_key: str = ""
 
     # App
     app_env: str = "development"

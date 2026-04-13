@@ -9,7 +9,7 @@
 import asyncio
 from pathlib import Path
 from backend.core.constants import DocumentCategory
-from backend.rag.embeddings.openai_embeddings import embed
+from backend.rag.embeddings.bge_m3_embeddings import embed
 from backend.db.client import get_supabase
 
 
@@ -44,7 +44,6 @@ async def ingest_documents(
 
         supabase.table("documents").insert(rows).execute()
         total += len(rows)
-        await asyncio.sleep(0.1)  # rate limit 방지
 
     return total
 
