@@ -50,14 +50,15 @@ export default function Step3Location({ data, onChange }: Props) {
       <div>
         <h2 className="text-2xl font-black text-gray-900">사업장 상세 정보</h2>
         <p className="text-sm text-gray-500 mt-1">
-          영업신고서 및 입지 분석 리포트 생성에 사용됩니다.
+          아직 장소가 없어도 괜찮아요. 나중에 마이페이지에서 입력할 수 있습니다.
         </p>
       </div>
 
       <div className="space-y-4">
         <div className="space-y-1.5">
           <label className="block text-sm font-semibold text-gray-700">
-            사업장 도로명 주소 <span className="text-brand-500">*</span>
+            사업장 도로명 주소
+            <span className="text-gray-400 font-normal text-xs ml-1">선택</span>
           </label>
           <div className="flex gap-2">
             <input
@@ -94,7 +95,8 @@ export default function Step3Location({ data, onChange }: Props) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
         <div className="space-y-1.5">
           <label className="block text-sm font-semibold text-gray-700">
-            영업장 면적 <span className="text-brand-500">*</span>
+            영업장 면적
+            <span className="text-gray-400 font-normal text-xs ml-1">선택</span>
           </label>
           <div className="relative">
             <input
@@ -116,7 +118,8 @@ export default function Step3Location({ data, onChange }: Props) {
 
         <div className="space-y-1.5">
           <label className="block text-sm font-semibold text-gray-700">
-            과세 유형 <span className="text-brand-500">*</span>
+            과세 유형
+            <span className="text-gray-400 font-normal text-xs ml-1">선택</span>
           </label>
           <div className="flex gap-3 h-[50px]">
             {[

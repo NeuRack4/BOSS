@@ -125,7 +125,8 @@ export default function Step2Business({ data, onChange }: Props) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
         <div className="space-y-1.5">
           <label className="block text-sm font-semibold text-gray-700">
-            상호명 (예정) <span className="text-brand-500">*</span>
+            상호명 (예정)
+            <span className="text-gray-400 font-normal text-xs ml-1">선택</span>
           </label>
           <input
             type="text"
@@ -138,7 +139,8 @@ export default function Step2Business({ data, onChange }: Props) {
 
         <div className="space-y-1.5">
           <label className="block text-sm font-semibold text-gray-700">
-            예정 지역 (서울) <span className="text-brand-500">*</span>
+            예정 지역 (서울)
+            <span className="text-gray-400 font-normal text-xs ml-1">선택</span>
           </label>
           <select
             value={data.district}
@@ -168,7 +170,8 @@ export default function Step2Business({ data, onChange }: Props) {
 
         <div className="space-y-1.5">
           <label className="block text-sm font-semibold text-gray-700">
-            사업자 유형 <span className="text-brand-500">*</span>
+            사업자 유형
+            <span className="text-gray-400 font-normal text-xs ml-1">선택</span>
           </label>
           <div className="flex gap-3">
             {[

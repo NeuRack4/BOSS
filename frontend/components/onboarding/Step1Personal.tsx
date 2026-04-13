@@ -66,7 +66,7 @@ export default function Step1Personal({ data, onChange }: Props) {
           />
         </Field>
 
-        <Field label="생년월일" required>
+        <Field label="생년월일" hint="서류 초안 자동 입력에 사용됩니다.">
           <input
             type="date"
             value={data.birthDate}
@@ -98,8 +98,7 @@ export default function Step1Personal({ data, onChange }: Props) {
 
       <Field
         label="주민등록번호 앞 7자리"
-        required
-        hint="사업자등록 서류 생성에만 사용됩니다. 뒷 6자리는 수집하지 않습니다."
+        hint="사업자등록 서류 초안 생성 시 사용됩니다. 나중에 입력해도 됩니다."
       >
         <div className="flex items-center gap-2">
           {/* 앞 6자리 */}

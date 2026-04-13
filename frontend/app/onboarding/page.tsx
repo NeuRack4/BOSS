@@ -14,22 +14,16 @@ import { apiFetch, formDataToProfile } from "@/lib/api";
 const TOTAL_STEPS = 4;
 
 function isStep1Valid(d: FormData) {
-  return (
-    d.name &&
-    d.birthDate &&
-    d.phone &&
-    d.email &&
-    d.residentIdFront.length === 6 &&
-    d.residentIdGender.length === 1
-  );
+  // 필수: 이름, 연락처, 이메일
+  return !!(d.name && d.phone && d.email);
 }
 function isStep2Valid(d: FormData) {
-  return (
-    d.businessType && d.businessName && d.district && d.stage && d.entityType
-  );
+  // 필수: 업종, 창업 단계
+  return !!(d.businessType && d.stage);
 }
-function isStep3Valid(d: FormData) {
-  return d.address && d.floorArea;
+function isStep3Valid(_d: FormData) {
+  // 사업장 정보는 모두 선택사항 (창업 구상 단계엔 없을 수 있음)
+  return true;
 }
 function isStep4Valid(d: FormData) {
   return d.selectedDocuments.length > 0;
