@@ -4,7 +4,7 @@
 
 > 서울 F&B 소상공인을 위한 Proactive AI 비서
 
-[![version](https://img.shields.io/badge/version-0.3.1-blue.svg)](https://semver.org)
+[![version](https://img.shields.io/badge/version-0.4.0-blue.svg)](https://semver.org)
 [![license](https://img.shields.io/badge/license-MIT-green.svg)]()
 
 창업자가 요청하지 않아도 에이전트가 먼저 챙깁니다.  
@@ -66,7 +66,7 @@
 - Claude LLM 기반 종합 해석 리포트
 - 분석 결과 7일 캐시 (Supabase `location_reports`)
 - 레이더 차트·생존율 바 차트 시각화
-- 검색 이력 자동 저장 및 원클릭 재실행 (`GET /location/history`, 인증 불필요)
+- 검색 이력 자동 저장 및 원클릭 재실행
 
 ### 3. 지원사업 모니터링
 
@@ -78,7 +78,11 @@
 
 - 부가세(1/25, 7/25) · 종합소득세(5월) · 원천세(매월 10일) 기한 관리
 - APScheduler 기반 D-14/D-7/D-1 선제 알림
-- 신고서 초안 자동 생성 (면책 고지 포함)
+- **부가가치세 신고서 자동 생성** — 간이/일반과세자 자동 분기
+  - 국세청 공식 서식 PDF (별지 제44호·제21호) PyMuPDF 좌표 오버레이
+  - 매출 데이터 자동 집계 → 세액 계산 → PDF 채우기 → Supabase Storage 저장
+  - 홈택스 단계별 입력 가이드 자동 생성
+  - 공식 서식 없을 경우 ReportLab 한글 CID 폰트 폴백
 
 ### 5. 채용 자동화
 
@@ -87,11 +91,19 @@
 - 잡코리아·알바천국·당근알바 형식 공고 초안 자동 생성
 - 고용노동부 표준 근로계약서 초안 + 주휴수당 자동 계산
 
-### 6. 매출 관리
+### 6. 매출 관리 & AI 인사이트
 
 - 일별 매출 입력 (카테고리: 음료/디저트/기타 · 시간대: 오전/오후/저녁)
-- 매출 합계 / 카테고리별·시간대별 분석 API
+- 매출 합계 / 카테고리별·시간대별 분석
 - 피크 시간대 자동 감지 → 채용 추론 신호로 활용
+- **마포구 카페 벤치마크 비교** — 실데이터 기반 RAG 인사이트 (전년 동월 대비, 상권 평균 대비)
+- 서울 열린데이터 기반 상권 통계 자동 업데이트
+
+### 7. 법령 RAG 검색
+
+- 법제처 Open API → 식품위생법 등 규제법령 계층적 청킹 (조문·항 2단계)
+- BGE-M3 (1024차원) 하이브리드 임베딩 → Supabase pgvector 저장
+- Claude LLM 기반 검색 결과 요약
 
 ---
 
@@ -171,20 +183,22 @@
 
 ### 데이터 수집
 
-| 기술                            | 용도                      |
-| ------------------------------- | ------------------------- |
-| Python requests / BeautifulSoup | 기업마당 API 연동, 크롤링 |
-| Selenium                        | 동적 페이지 크롤링        |
-| PyMuPDF                         | 정부 표준서식 PDF 파싱    |
-| 법제처 Open API                 | 규제법령 RAG 문서 수집    |
+| 기술                            | 용도                                   |
+| ------------------------------- | -------------------------------------- |
+| Python requests / BeautifulSoup | 기업마당 API 연동, 크롤링              |
+| 법제처 Open API                 | 규제법령 RAG 문서 수집 (계층 청킹)     |
+| 서울 열린데이터 API             | 상가업소·유동인구·골목상권 통계        |
+| PyMuPDF (fitz)                  | 정부 표준서식 PDF 파싱 + 좌표 오버레이 |
 
 ### 백엔드
 
-| 기술        | 용도                      |
-| ----------- | ------------------------- |
-| FastAPI     | REST API 서버             |
-| APScheduler | Proactive 트리거 스케줄러 |
-| Pydantic v2 | 스키마 + 환경변수 설정    |
+| 기술        | 용도                                        |
+| ----------- | ------------------------------------------- |
+| FastAPI     | REST API 서버                               |
+| APScheduler | Proactive 트리거 스케줄러                   |
+| Pydantic v2 | 스키마 + 환경변수 설정                      |
+| PyMuPDF     | 국세청 공식 서식 PDF 좌표 오버레이 (부가세) |
+| ReportLab   | 공식 서식 없을 때 폴백 PDF 생성 (한글 CID)  |
 
 ### 데이터베이스 (Supabase 유료)
 
@@ -218,21 +232,33 @@
 
 ## API 엔드포인트
 
-| 메서드 | 경로                  | 설명                           |
-| ------ | --------------------- | ------------------------------ |
-| GET    | `/health`             | 서버 상태 확인                 |
-| POST   | `/founders`           | 창업자 프로파일 생성           |
-| GET    | `/founders/{id}`      | 창업자 정보 조회               |
-| GET    | `/location/districts` | 마포구 분석 가능 상권 목록     |
-| POST   | `/location/analyze`   | 상권 비교 분석 실행 (7일 캐시) |
-| GET    | `/location/history`   | 창업자 입지 검색 이력          |
-| POST   | `/sales`              | 매출 데이터 입력               |
-| GET    | `/sales`              | 매출 내역 조회                 |
-| GET    | `/sales/summary`      | 매출 요약 (카테고리·시간대별)  |
-| GET    | `/subsidies`          | 지원사업 목록                  |
-| GET    | `/tax/deadlines`      | 세금 기한 조회                 |
-| POST   | `/triggers/run`       | 트리거 수동 실행               |
-| GET    | `/drafts`             | 생성된 서류 초안 목록          |
+| 메서드 | 경로                                | 설명                                        |
+| ------ | ----------------------------------- | ------------------------------------------- |
+| GET    | `/health`                           | 서버 상태 확인                              |
+| POST   | `/founders`                         | 창업자 프로파일 생성                        |
+| GET    | `/founders/{id}`                    | 창업자 정보 조회                            |
+| GET    | `/location/districts`               | 마포구 분석 가능 상권 목록                  |
+| POST   | `/location/analyze`                 | 상권 비교 분석 실행 (7일 캐시)              |
+| GET    | `/location/history`                 | 창업자 입지 검색 이력                       |
+| POST   | `/sales`                            | 매출 데이터 입력                            |
+| GET    | `/sales`                            | 매출 내역 조회                              |
+| GET    | `/sales/summary`                    | 매출 요약 (카테고리·시간대별)               |
+| GET    | `/insights`                         | AI 인사이트 (전년 동월 대비·상권 평균 대비) |
+| GET    | `/subsidies`                        | 지원사업 목록                               |
+| GET    | `/tax/deadlines`                    | 세금 기한 조회                              |
+| POST   | `/tax/deadlines/sync`               | 세금 기한 공공데이터 동기화                 |
+| POST   | `/tax/draft`                        | 세금 신고서 초안 생성 (체크리스트)          |
+| POST   | `/tax/vat-draft`                    | 부가가치세 신고서 PDF 생성 (국세청 서식)    |
+| GET    | `/tax/vat-draft/{id}/download`      | 부가가치세 신고서 PDF 다운로드              |
+| GET    | `/tax/vat-draft/{id}/hometax-guide` | 홈택스 단계별 입력 가이드 조회              |
+| POST   | `/triggers/run`                     | 트리거 수동 실행                            |
+| GET    | `/drafts`                           | 생성된 서류 초안 목록                       |
+| GET    | `/drafts/{id}/download`             | 초안 PDF 다운로드                           |
+| POST   | `/rag/ingest/all`                   | docs/ 전체 문서 pgvector 수집               |
+| POST   | `/rag/ingest/file`                  | 특정 파일 pgvector 수집                     |
+| POST   | `/rag/search`                       | 법령 유사도 검색                            |
+| POST   | `/rag/summarize`                    | 검색 결과 Claude 요약                       |
+| GET    | `/rag/stats`                        | 카테고리별 저장 문서 수                     |
 
 ---
 
@@ -252,15 +278,19 @@
 
 ## 프론트엔드 화면 구성
 
-| 경로               | 설명                                                             |
-| ------------------ | ---------------------------------------------------------------- |
-| `/`                | 랜딩 페이지 (Hero / Features / Scenario / Trigger / Stack / CTA) |
-| `/auth/login`      | 로그인 (Supabase Auth)                                           |
-| `/auth/signup`     | 회원가입 (Supabase Auth)                                         |
-| `/onboarding`      | 4단계 창업자 등록 위저드                                         |
-| `/dashboard`       | 매출 통계 + AI 인사이트 대시보드                                 |
-| `/dashboard/sales` | 일별 매출 입력 및 내역 조회                                      |
-| `/location`        | 마포구 입지분석 (상권 비교·차트·LLM 리포트)                      |
+| 경로                       | 설명                                                             |
+| -------------------------- | ---------------------------------------------------------------- |
+| `/`                        | 랜딩 페이지 (Hero / Features / Scenario / Trigger / Stack / CTA) |
+| `/auth/login`              | 로그인 (Supabase Auth)                                           |
+| `/auth/signup`             | 회원가입 (Supabase Auth)                                         |
+| `/onboarding`              | 4단계 창업자 등록 위저드                                         |
+| `/dashboard`               | 매출 통계 + AI 인사이트 대시보드                                 |
+| `/dashboard/sales`         | 일별 매출 입력 및 내역 조회                                      |
+| `/dashboard/insights`      | 전년 동월 대비·상권 평균 대비 AI 인사이트                        |
+| `/dashboard/tax`           | 세금 기한 목록 + 부가세 신고서 초안 생성                         |
+| `/dashboard/rag`           | 법령 검색 (RAG) + Claude 요약                                    |
+| `/dashboard/notifications` | 알림 이력                                                        |
+| `/location`                | 마포구 입지분석 (상권 비교·차트·LLM 리포트)                      |
 
 ---
 
@@ -268,29 +298,32 @@
 
 [SemVer](https://semver.org) 형식을 따릅니다: `MAJOR.MINOR.PATCH`
 
-| 버전   | 내용                                                                                               |
-| ------ | -------------------------------------------------------------------------------------------------- |
-| v0.1.0 | 백엔드 초기 구조, 메인 페이지, 대시보드/로그인/회원가입                                            |
-| v0.2.0 | 규제법령 RAG (법제처 + BGE-M3), 입지분석 시뮬레이션, 세금 스케줄링, 채용 자동화, Sales API         |
-| v0.3.0 | 창업자 온보딩 위저드 (4단계), 입지분석 UI (차트·리포트), 매출 입력 페이지, Supabase Auth 연동 완성 |
-| v0.3.1 | 입지분석 9개 상권 확대, 서울 열린데이터 API 전환, 검색 이력 UI, 인증 없이 분석 허용                |
+| 버전   | 내용                                                                                                                          |
+| ------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| v0.1.0 | 백엔드 초기 구조, 메인 페이지, 대시보드/로그인/회원가입                                                                       |
+| v0.2.0 | 규제법령 RAG (법제처 + BGE-M3), 입지분석 시뮬레이션, 세금 스케줄링, 채용 자동화, Sales API                                    |
+| v0.3.0 | 창업자 온보딩 위저드 (4단계), 입지분석 UI (차트·리포트), 매출 입력 페이지, Supabase Auth 연동 완성                            |
+| v0.3.1 | 입지분석 9개 상권 확대, 서울 열린데이터 API 전환, 검색 이력 UI, 인증 없이 분석 허용                                           |
+| v0.3.2 | RAG API 라우터 추가 (ingest/search/summarize/stats), 세금 초안 PDF 다운로드 (ReportLab)                                       |
+| v0.4.0 | 부가가치세 신고서 국세청 공식 서식 PDF (PyMuPDF 좌표 오버레이), 매출 인사이트 강화, 법령 계층적 청킹, DB 마이그레이션 004·005 |
 
-현재 버전: **`v0.3.1`**
+현재 버전: **`v0.4.0`**
 
 ---
 
 ## 데이터 소스
 
-| 데이터                  | 출처                                                 | 수집 방법                |
-| ----------------------- | ---------------------------------------------------- | ------------------------ |
-| 지원사업 공고           | 기업마당 공공API                                     | API 호출                 |
-| 세금 신고 기한          | 국세청 홈택스                                        | 하드코딩 + 크롤링        |
-| 창업 입지 데이터        | 서울 열린데이터 (VwsmAdstrdStorW · VwsmAdstrdFlpopW) | 서울 열린데이터 API      |
-| 식품위생 인허가 절차    | 식품안전나라, 정부24                                 | 크롤링 + RAG 문서화      |
-| 규제법령                | 법제처 Open API                                      | API 호출 + BGE-M3 임베딩 |
-| 표준 근로계약서         | 고용노동부                                           | PDF 파싱                 |
-| 표준 임대차계약서       | 법제처                                               | PDF 파싱                 |
-| 최저임금 / 4대보험 요율 | 고용노동부, 건강보험공단                             | 하드코딩 (연 1회 갱신)   |
+| 데이터                  | 출처                                                 | 수집 방법                       |
+| ----------------------- | ---------------------------------------------------- | ------------------------------- |
+| 지원사업 공고           | 기업마당 공공API                                     | API 호출                        |
+| 세금 신고 기한          | 국세청 홈택스                                        | 하드코딩 + 크롤링               |
+| 창업 입지 데이터        | 서울 열린데이터 (VwsmAdstrdStorW · VwsmAdstrdFlpopW) | 서울 열린데이터 API             |
+| 골목상권 통계           | 서울 열린데이터 골목상권 분석 서비스                 | 서울 열린데이터 API             |
+| 식품위생 인허가 절차    | 식품안전나라, 정부24                                 | 크롤링 + RAG 문서화             |
+| 규제법령                | 법제처 Open API                                      | API 호출 + BGE-M3 임베딩 (계층) |
+| 표준 근로계약서         | 고용노동부                                           | PDF 파싱                        |
+| 표준 임대차계약서       | 법제처                                               | PDF 파싱                        |
+| 최저임금 / 4대보험 요율 | 고용노동부, 건강보험공단                             | 하드코딩 (연 1회 갱신)          |
 
 ---
 
@@ -322,6 +355,8 @@ cp .env.example .env
 # backend/db/migrations/002_location.sql
 # backend/db/migrations/002_tax_deadlines.sql
 # backend/db/migrations/003_bge_m3_dimension.sql
+# backend/db/migrations/004_hybrid_law_chunks.sql
+# backend/db/migrations/005_financials.sql
 
 # 3. 컨테이너 실행
 docker-compose up --build
@@ -343,19 +378,27 @@ BOSS/
 ├── frontend/                # Next.js 14 (웹/앱 공용)
 │   ├── app/
 │   │   ├── auth/            # 로그인 / 회원가입
-│   │   ├── dashboard/       # 대시보드 + 매출 관리
+│   │   ├── dashboard/       # 대시보드
+│   │   │   ├── page.tsx     # 메인 대시보드
+│   │   │   ├── sales/       # 매출 입력·조회
+│   │   │   ├── insights/    # AI 인사이트
+│   │   │   ├── tax/         # 세금 기한 + 부가세 신고서
+│   │   │   ├── rag/         # 법령 검색
+│   │   │   └── notifications/ # 알림 이력
 │   │   ├── location/        # 입지분석 페이지
 │   │   ├── onboarding/      # 4단계 창업자 등록 위저드
 │   │   └── page.tsx         # 랜딩 페이지
 │   ├── components/
 │   │   ├── location/        # DistrictSelector / LlmReportPanel / 차트 컴포넌트
-│   │   └── onboarding/      # Step1~4 / StepIndicator
+│   │   ├── onboarding/      # Step1~4 / StepIndicator
+│   │   ├── rag/             # ResultCard / LlmSummaryPanel
+│   │   └── tax/             # TaxDeadlineList
 │   └── lib/
 │       └── supabase.ts      # Supabase 클라이언트
 ├── backend/
 │   ├── api/                 # FastAPI 서버
-│   │   ├── main.py          # 앱 엔트리포인트 + 라우터 등록
-│   │   ├── routers/         # founders / triggers / drafts / subsidies / tax / location / sales
+│   │   ├── main.py
+│   │   ├── routers/         # founders / triggers / drafts / subsidies / tax / location / sales / insights / rag
 │   │   └── schemas/         # Pydantic 스키마
 │   ├── agents/
 │   │   ├── orchestrator.py  # LangGraph 오케스트레이터 + 상태머신
@@ -370,32 +413,33 @@ BOSS/
 │   │   └── constants.py     # 업종·단계·마포구 상수
 │   ├── db/
 │   │   ├── client.py        # Supabase 클라이언트
-│   │   └── migrations/      # SQL 마이그레이션 (001~003)
+│   │   └── migrations/      # SQL 마이그레이션 001~005
 │   ├── notifications/
 │   │   ├── email.py         # 이메일 알림
 │   │   ├── kakao.py         # 카카오톡 알림
 │   │   └── realtime.py      # Supabase Realtime 알림
 │   ├── rag/
-│   │   ├── ingest.py        # 문서 수집 → 청킹 → 임베딩 → Supabase
+│   │   ├── ingest.py        # 문서·법령 청킹 → 임베딩 → Supabase
 │   │   ├── embeddings/      # BGE-M3 (로컬) + OpenAI 임베딩
 │   │   └── retriever/       # pgvector 유사도 검색
+│   ├── tax/
+│   │   ├── vat_calculator.py  # 간이/일반과세자 부가세 계산 엔진
+│   │   ├── pdf_generator.py   # 국세청 서식 PDF 좌표 오버레이 (PyMuPDF)
+│   │   ├── hometax_guide.py   # 홈택스 단계별 입력 가이드 생성
+│   │   └── forms/             # 국세청 공식 서식 PDF 저장소
 │   ├── triggers/
 │   │   ├── scheduler.py     # APScheduler 시간 기반 트리거
 │   │   ├── state.py         # 상태 전이 트리거
 │   │   ├── inference.py     # LLM 추론 기반 트리거
 │   │   └── hiring_inference.py  # 채용 전용 추론 트리거
 │   ├── data/
-│   │   ├── crawlers/        # 기업마당 / 골목상권 / 법제처 / 세금달력
+│   │   ├── crawlers/        # 기업마당 / 골목상권 / 법제처 / 세금달력 / 서울 열린데이터
 │   │   ├── parsers/         # PDF 파싱
-│   │   └── seeds/           # 세금 기한 초기 데이터
-│   ├── Dockerfile
-│   └── requirements.txt
+│   │   └── seeds/           # 세금 기한 / 재무 mock / 마포 카페 통계
+│   └── scripts/             # 규제법령 임베딩 / 마포 통계 시드 스크립트
 ├── backtest/
 │   └── evaluate.py          # Precision/Recall 백테스트
-├── scripts/
-│   └── ingest_regulations.py  # 규제법령 일괄 임베딩 스크립트
-├── docs/
-│   └── 사업자등록_필요서류_템플릿.md
+├── docs/                    # 창업/운영/채용/폐업 표준서식 PDF
 ├── docker-compose.yml
 ├── .env.example
 ├── CLAUDE.md

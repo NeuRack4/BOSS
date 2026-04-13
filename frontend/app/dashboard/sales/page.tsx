@@ -9,29 +9,32 @@ type SaleEntry = {
   amount: number;
   category: string;
   time_slot: string;
-  memo: string;
+  memo: string | null;
   created_at: string;
 };
 
 const CATEGORIES = ["음료", "디저트", "기타"];
 const TIME_SLOTS = ["오전", "오후", "저녁"];
 
+const EMPTY_FORM = {
+  date: new Date().toISOString().split("T")[0],
+  amount: "",
+  category: "음료",
+  time_slot: "오전",
+  memo: "",
+};
+
 export default function SalesPage() {
-  const [form, setForm] = useState({
-    date: new Date().toISOString().split("T")[0],
-    amount: "",
-    category: "음료",
-    time_slot: "오전",
-    memo: "",
-  });
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const [entries, setEntries] = useState<SaleEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // 매출 내역 불러오기
   useEffect(() => {
     fetchEntries();
   }, []);
@@ -43,7 +46,7 @@ export default function SalesPage() {
       .select("*")
       .order("date", { ascending: false })
       .order("created_at", { ascending: false })
-      .limit(20);
+      .limit(50);
 
     if (error) {
       setError("데이터를 불러오지 못했습니다.");
@@ -60,28 +63,90 @@ export default function SalesPage() {
     setLoading(true);
     setError(null);
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    if (editingId) {
+      // 수정 모드
+      const { error: updateError } = await supabase
+        .from("sales")
+        .update({
+          date: form.date,
+          amount: Number(form.amount),
+          category: form.category,
+          time_slot: form.time_slot,
+          memo: form.memo || null,
+        })
+        .eq("id", editingId);
 
-    const { error: insertError } = await supabase.from("sales").insert({
-      user_id: user?.id,
-      date: form.date,
-      amount: Number(form.amount),
-      category: form.category,
-      time_slot: form.time_slot,
-      memo: form.memo || null,
-    });
-
-    if (insertError) {
-      setError("저장에 실패했습니다. 다시 시도해주세요.");
+      if (updateError) {
+        setError("수정에 실패했습니다. 다시 시도해주세요.");
+      } else {
+        setForm(EMPTY_FORM);
+        setEditingId(null);
+        setSuccess(true);
+        setTimeout(() => setSuccess(false), 2000);
+        await fetchEntries();
+      }
     } else {
-      setForm((prev) => ({ ...prev, amount: "", memo: "" }));
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 2000);
-      await fetchEntries();
+      // 신규 입력 모드
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      const { error: insertError } = await supabase.from("sales").insert({
+        user_id: user?.id,
+        date: form.date,
+        amount: Number(form.amount),
+        category: form.category,
+        time_slot: form.time_slot,
+        memo: form.memo || null,
+      });
+
+      if (insertError) {
+        setError("저장에 실패했습니다. 다시 시도해주세요.");
+      } else {
+        setForm((prev) => ({ ...prev, amount: "", memo: "" }));
+        setSuccess(true);
+        setTimeout(() => setSuccess(false), 2000);
+        await fetchEntries();
+      }
     }
     setLoading(false);
+  };
+
+  const handleEdit = (entry: SaleEntry) => {
+    setForm({
+      date: entry.date,
+      amount: String(entry.amount),
+      category: entry.category,
+      time_slot: entry.time_slot,
+      memo: entry.memo ?? "",
+    });
+    setEditingId(entry.id);
+    setError(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleCancelEdit = () => {
+    setForm(EMPTY_FORM);
+    setEditingId(null);
+    setError(null);
+  };
+
+  const handleDelete = async (id: string) => {
+    setDeletingId(id);
+    const { error: deleteError } = await supabase
+      .from("sales")
+      .delete()
+      .eq("id", id);
+
+    if (deleteError) {
+      setError("삭제에 실패했습니다. 다시 시도해주세요.");
+    } else {
+      if (editingId === id) {
+        setForm(EMPTY_FORM);
+        setEditingId(null);
+      }
+      await fetchEntries();
+    }
+    setDeletingId(null);
   };
 
   const totalAmount = entries.reduce((sum, e) => sum + e.amount, 0);
@@ -96,9 +161,23 @@ export default function SalesPage() {
         </p>
       </div>
 
-      {/* 입력 폼 */}
-      <div className="glass-card rounded-xl p-6">
-        <h2 className="text-base font-bold text-gray-900 mb-5">매출 입력</h2>
+      {/* 입력/수정 폼 */}
+      <div
+        className={`glass-card rounded-xl p-6 ${editingId ? "border-brand-500/40 glow-blue" : ""}`}
+      >
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-base font-bold text-gray-900">
+            {editingId ? "매출 수정" : "매출 입력"}
+          </h2>
+          {editingId && (
+            <button
+              onClick={handleCancelEdit}
+              className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              취소
+            </button>
+          )}
+        </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* 날짜 + 금액 */}
           <div className="grid grid-cols-2 gap-4">
@@ -210,7 +289,15 @@ export default function SalesPage() {
                   : "bg-brand-500 hover:bg-brand-600 text-white glow-blue disabled:opacity-50 disabled:cursor-not-allowed"
               }`}
           >
-            {success ? "✓ 저장 완료" : loading ? "저장 중..." : "매출 저장"}
+            {success
+              ? "✓ 완료"
+              : loading
+                ? editingId
+                  ? "수정 중..."
+                  : "저장 중..."
+                : editingId
+                  ? "수정 저장"
+                  : "매출 저장"}
           </button>
         </form>
       </div>
@@ -243,25 +330,96 @@ export default function SalesPage() {
             {entries.map((entry) => (
               <div
                 key={entry.id}
-                className="flex items-center justify-between p-3 rounded-lg bg-surface-100 border border-surface-300"
+                className={`flex items-center justify-between p-3 rounded-lg border transition-colors
+                  ${
+                    editingId === entry.id
+                      ? "bg-brand-50/50 border-brand-500/30"
+                      : "bg-surface-100 border-surface-300"
+                  }`}
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-brand-50 flex items-center justify-center text-brand-500 text-xs font-bold">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-brand-50 flex items-center justify-center text-brand-500 text-xs font-bold flex-shrink-0">
                     {entry.category[0]}
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-sm font-medium text-gray-800">
                       {entry.date} · {entry.time_slot}
                     </p>
-                    <p className="text-xs text-gray-400">
+                    <p className="text-xs text-gray-400 truncate">
                       {entry.category}
                       {entry.memo && ` · ${entry.memo}`}
                     </p>
                   </div>
                 </div>
-                <p className="text-sm font-bold text-gray-900">
-                  {entry.amount.toLocaleString()}원
-                </p>
+
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <p className="text-sm font-bold text-gray-900">
+                    {entry.amount.toLocaleString()}원
+                  </p>
+                  {/* 수정 버튼 */}
+                  <button
+                    onClick={() => handleEdit(entry)}
+                    className="text-gray-400 hover:text-brand-500 transition-colors p-1"
+                    title="수정"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                      />
+                    </svg>
+                  </button>
+                  {/* 삭제 버튼 */}
+                  <button
+                    onClick={() => handleDelete(entry.id)}
+                    disabled={deletingId === entry.id}
+                    className="text-gray-400 hover:text-red-500 transition-colors p-1 disabled:opacity-40"
+                    title="삭제"
+                  >
+                    {deletingId === entry.id ? (
+                      <svg
+                        className="w-4 h-4 animate-spin"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8v8H4z"
+                        />
+                      </svg>
+                    ) : (
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        />
+                      </svg>
+                    )}
+                  </button>
+                </div>
               </div>
             ))}
           </div>

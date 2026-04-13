@@ -1,68 +1,110 @@
-from fastapi import APIRouter, Depends, Query
+import calendar
+from fastapi import APIRouter, Depends, HTTPException, Query
 from supabase import Client
 from datetime import date
-import calendar
 
 from backend.api.dependencies import db, get_current_user_id
-from backend.api.schemas.sale import SaleCreate, SaleResponse, SalesSummary
+from backend.api.schemas.sale import SaleCreate, SaleResponse, SaleUpdate, SalesSummary
 from backend.db.client import get_supabase
 
 router = APIRouter()
 
 
-def get_sales_summary(user_id: str, year: int, month: int) -> dict:
-    """insights.py 등 내부 모듈에서 사용하는 월별 매출 요약 함수"""
+async def get_sales_summary(user_id: str, year: int, month: int) -> dict:
+    """월별 매출 요약 — insights 및 dashboard 공용"""
     supabase = get_supabase()
 
-    def fetch_month(y: int, m: int) -> list[dict]:
-        last_day = calendar.monthrange(y, m)[1]
-        return (
-            supabase.table("sales")
-            .select("amount, category, time_slot, date")
-            .eq("user_id", user_id)
-            .gte("date", f"{y}-{m:02d}-01")
-            .lte("date", f"{y}-{m:02d}-{last_day:02d}")
-            .execute()
-            .data
-        )
+    # 이번달 날짜 범위
+    _, last_day = calendar.monthrange(year, month)
+    from_date = date(year, month, 1)
+    to_date = date(year, month, last_day)
 
-    cur = fetch_month(year, month)
-    prev_year, prev_month = (year - 1, 12) if month == 1 else (year, month - 1)
-    prev = fetch_month(prev_year, prev_month)
+    # 전달 날짜 범위
+    if month == 1:
+        prev_year, prev_month = year - 1, 12
+    else:
+        prev_year, prev_month = year, month - 1
+    _, prev_last_day = calendar.monthrange(prev_year, prev_month)
+    prev_from = date(prev_year, prev_month, 1)
+    prev_to = date(prev_year, prev_month, prev_last_day)
 
-    def aggregate(rows: list[dict]) -> dict:
-        total = sum(r["amount"] for r in rows)
-        by_cat: dict[str, int] = {}
-        by_slot: dict[str, int] = {}
-        for r in rows:
-            by_cat[r["category"]] = by_cat.get(r["category"], 0) + r["amount"]
-            by_slot[r["time_slot"]] = by_slot.get(r["time_slot"], 0) + r["amount"]
-        days = calendar.monthrange(year, month)[1]
-        return {
-            "total": total,
-            "count": len(rows),
-            "daily_avg": total // days if days else 0,
-            "category_breakdown": by_cat,
-            "timeslot_breakdown": by_slot,
-            "entries": [{"date": r["date"], "amount": r["amount"]} for r in rows],
-        }
+    # 전년 동월 날짜 범위
+    _, yoy_last_day = calendar.monthrange(year - 1, month)
+    yoy_from = date(year - 1, month, 1)
+    yoy_to = date(year - 1, month, yoy_last_day)
 
-    c = aggregate(cur)
-    p = aggregate(prev)
-    change_pct = (
-        round((c["total"] - p["total"]) / p["total"] * 100, 1)
-        if p["total"] > 0 else None
+    # 이번달 매출 조회
+    rows = (
+        supabase.table("sales")
+        .select("*")
+        .eq("user_id", user_id)
+        .gte("date", str(from_date))
+        .lte("date", str(to_date))
+        .execute()
+        .data
     )
 
+    # 전달 매출 조회
+    prev_rows = (
+        supabase.table("sales")
+        .select("amount")
+        .eq("user_id", user_id)
+        .gte("date", str(prev_from))
+        .lte("date", str(prev_to))
+        .execute()
+        .data
+    )
+
+    # 전년 동월 매출 조회
+    yoy_rows = (
+        supabase.table("sales")
+        .select("amount")
+        .eq("user_id", user_id)
+        .gte("date", str(yoy_from))
+        .lte("date", str(yoy_to))
+        .execute()
+        .data
+    )
+
+    current_total = sum(r["amount"] for r in rows)
+    prev_total = sum(r["amount"] for r in prev_rows)
+    yoy_total = sum(r["amount"] for r in yoy_rows)
+
+    change_pct = (
+        round((current_total - prev_total) / prev_total * 100, 1)
+        if prev_total > 0
+        else None
+    )
+
+    yoy_change_pct = (
+        round((current_total - yoy_total) / yoy_total * 100, 1)
+        if yoy_total > 0
+        else None
+    )
+
+    today = date.today()
+    days_elapsed = today.day if (year == today.year and month == today.month) else last_day
+    daily_average = round(current_total / days_elapsed) if days_elapsed > 0 else 0
+
+    category_breakdown: dict[str, int] = {}
+    timeslot_breakdown: dict[str, int] = {}
+    for r in rows:
+        cat = r.get("category", "기타")
+        slot = r.get("time_slot", "기타")
+        category_breakdown[cat] = category_breakdown.get(cat, 0) + r["amount"]
+        timeslot_breakdown[slot] = timeslot_breakdown.get(slot, 0) + r["amount"]
+
     return {
-        "current_total": c["total"],
-        "prev_total": p["total"],
+        "current_total": current_total,
+        "prev_total": prev_total,
         "change_pct": change_pct,
-        "transaction_count": c["count"],
-        "daily_average": c["daily_avg"],
-        "category_breakdown": c["category_breakdown"],
-        "timeslot_breakdown": c["timeslot_breakdown"],
-        "entries": c["entries"],
+        "yoy_total": yoy_total,
+        "yoy_change_pct": yoy_change_pct,
+        "transaction_count": len(rows),
+        "daily_average": daily_average,
+        "category_breakdown": category_breakdown,
+        "timeslot_breakdown": timeslot_breakdown,
+        "entries": [{"date": r["date"], "amount": r["amount"]} for r in rows],
     }
 
 
@@ -96,35 +138,56 @@ async def list_sales(
     return result.data
 
 
-@router.get("/summary", response_model=SalesSummary)
+@router.get("/summary")
 async def sales_summary(
-    from_date: date | None = Query(None),
-    to_date: date | None = Query(None),
+    year: int = Query(default=None),
+    month: int = Query(default=None),
+    user_id: str = Depends(get_current_user_id),
+):
+    today = date.today()
+    return await get_sales_summary(
+        user_id=user_id,
+        year=year or today.year,
+        month=month or today.month,
+    )
+
+
+@router.put("/{sale_id}", response_model=SaleResponse)
+async def update_sale(
+    sale_id: str,
+    body: SaleUpdate,
     user_id: str = Depends(get_current_user_id),
     supabase: Client = Depends(db),
 ):
-    query = supabase.table("sales").select("amount, category, time_slot").eq("user_id", user_id)
-    if from_date:
-        query = query.gte("date", str(from_date))
-    if to_date:
-        query = query.lte("date", str(to_date))
-    rows = query.execute().data
-
-    by_category: dict[str, int] = {}
-    by_time_slot: dict[str, int] = {}
-    total = 0
-
-    for row in rows:
-        total += row["amount"]
-        by_category[row["category"]] = by_category.get(row["category"], 0) + row["amount"]
-        by_time_slot[row["time_slot"]] = by_time_slot.get(row["time_slot"], 0) + row["amount"]
-
-    peak = max(by_time_slot, key=by_time_slot.get) if by_time_slot else None
-
-    return SalesSummary(
-        total_amount=total,
-        by_category=by_category,
-        by_time_slot=by_time_slot,
-        peak_time_slot=peak,
-        record_count=len(rows),
+    existing = (
+        supabase.table("sales")
+        .select("id")
+        .eq("id", sale_id)
+        .eq("user_id", user_id)
+        .execute()
     )
+    if not existing.data:
+        raise HTTPException(status_code=404, detail="매출 데이터를 찾을 수 없습니다.")
+
+    update_data = {k: v for k, v in body.model_dump(mode="json").items() if v is not None}
+    result = supabase.table("sales").update(update_data).eq("id", sale_id).execute()
+    return result.data[0]
+
+
+@router.delete("/{sale_id}", status_code=204)
+async def delete_sale(
+    sale_id: str,
+    user_id: str = Depends(get_current_user_id),
+    supabase: Client = Depends(db),
+):
+    existing = (
+        supabase.table("sales")
+        .select("id")
+        .eq("id", sale_id)
+        .eq("user_id", user_id)
+        .execute()
+    )
+    if not existing.data:
+        raise HTTPException(status_code=404, detail="매출 데이터를 찾을 수 없습니다.")
+
+    supabase.table("sales").delete().eq("id", sale_id).execute()

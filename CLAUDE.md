@@ -79,19 +79,27 @@ BOSS/
 ├── frontend/                # Next.js 14 (웹/앱 공용)
 │   ├── app/
 │   │   ├── auth/            # 로그인 / 회원가입 (Supabase Auth)
-│   │   ├── dashboard/       # 대시보드 + 매출 관리
+│   │   ├── dashboard/       # 대시보드
+│   │   │   ├── page.tsx     # 메인 대시보드
+│   │   │   ├── sales/       # 매출 입력·조회
+│   │   │   ├── insights/    # AI 인사이트 (전년 동월 대비·상권 평균)
+│   │   │   ├── tax/         # 세금 기한 + 부가세 신고서 초안
+│   │   │   ├── rag/         # 법령 검색
+│   │   │   └── notifications/ # 알림 이력
 │   │   ├── location/        # 입지분석 페이지
 │   │   ├── onboarding/      # 4단계 창업자 등록 위저드
 │   │   └── page.tsx         # 랜딩 페이지
 │   ├── components/
 │   │   ├── location/        # DistrictSelector / LlmReportPanel / 차트
-│   │   └── onboarding/      # Step1~4 / StepIndicator
+│   │   ├── onboarding/      # Step1~4 / StepIndicator
+│   │   ├── rag/             # ResultCard / LlmSummaryPanel
+│   │   └── tax/             # TaxDeadlineList
 │   └── lib/
 │       └── supabase.ts      # Supabase 클라이언트
 ├── backend/
 │   ├── api/                 # FastAPI 서버
 │   │   ├── main.py
-│   │   ├── routers/         # founders / triggers / drafts / subsidies / tax / location / sales
+│   │   ├── routers/         # founders / triggers / drafts / subsidies / tax / location / sales / insights / rag
 │   │   └── schemas/         # Pydantic 스키마
 │   ├── agents/
 │   │   ├── orchestrator.py  # LangGraph 오케스트레이터 + 상태머신
@@ -106,30 +114,33 @@ BOSS/
 │   │   └── constants.py     # 업종·단계·마포구 상수
 │   ├── db/
 │   │   ├── client.py        # Supabase 클라이언트
-│   │   └── migrations/      # SQL 마이그레이션 (001~003)
+│   │   └── migrations/      # SQL 마이그레이션 (001~005)
 │   ├── notifications/
 │   │   ├── email.py         # 이메일 알림
 │   │   ├── kakao.py         # 카카오톡 알림
 │   │   └── realtime.py      # Supabase Realtime 알림
 │   ├── rag/
-│   │   ├── ingest.py        # 문서 수집 → 청킹 → 임베딩 → Supabase
+│   │   ├── ingest.py        # 문서·법령 청킹 → 임베딩 → Supabase
 │   │   ├── embeddings/      # BGE-M3 (로컬) + OpenAI 임베딩
 │   │   └── retriever/       # pgvector 유사도 검색
+│   ├── tax/
+│   │   ├── vat_calculator.py  # 간이/일반과세자 부가세 계산 엔진
+│   │   ├── pdf_generator.py   # 국세청 서식 PDF 좌표 오버레이 (PyMuPDF)
+│   │   ├── hometax_guide.py   # 홈택스 단계별 입력 가이드 생성
+│   │   └── forms/             # 국세청 공식 서식 PDF (vat_simplified.pdf, vat_general.pdf)
 │   ├── triggers/
 │   │   ├── scheduler.py     # APScheduler 시간 기반 트리거
 │   │   ├── state.py         # 상태 전이 트리거
 │   │   ├── inference.py     # LLM 추론 기반 트리거
 │   │   └── hiring_inference.py  # 채용 전용 추론 트리거
-│   └── data/
-│       ├── crawlers/        # 기업마당 / 골목상권 / 법제처 / 세금달력
-│       ├── parsers/         # PDF 파싱
-│       └── seeds/           # 세금 기한 초기 데이터
+│   ├── data/
+│   │   ├── crawlers/        # 기업마당 / 골목상권 / 법제처 / 세금달력 / 서울 열린데이터
+│   │   ├── parsers/         # PDF 파싱
+│   │   └── seeds/           # 세금 기한 / 재무 mock / 마포 카페 통계
+│   └── scripts/             # 규제법령 임베딩 / 마포 통계 시드 스크립트
 ├── backtest/
 │   └── evaluate.py          # 백테스트 평가 (Precision/Recall)
-├── scripts/
-│   └── ingest_regulations.py  # 규제법령 일괄 임베딩 스크립트
-├── docs/
-│   └── 사업자등록_필요서류_템플릿.md
+├── docs/                    # 창업/운영/채용/폐업 표준서식 PDF
 ├── docker-compose.yml
 ├── CLAUDE.md
 └── README.md
@@ -205,7 +216,15 @@ trigger_log (id, user_id, trigger_type, message, draft_url, sent_at, read_at)
 subsidy_matches (id, user_id, program_id, score, deadline, status)
 
 -- 생성된 서류 초안
-drafts (id, user_id, type, storage_path, created_at)
+drafts (id, user_id, type, storage_path, metadata jsonb, created_at)
+
+-- 창업자 재무 데이터 (매출/매입)
+founder_financials (id, user_id, year, month, sales_card, sales_cash, sales_delivery,
+                    sales_tax_invoice, purchase_tax_invoice, created_at)
+
+-- 사업자 기본 정보
+founder_business_info (user_id, business_name, owner_name, business_number,
+                       business_type, tax_type, address, updated_at)
 ```
 
 ### 벡터 테이블 (pgvector)
@@ -255,11 +274,14 @@ $$;
 ### 청킹 전략
 
 ```
-법령 문서   → 조항(Article) 단위 청킹 — 의미 완결 단위
+법령 문서   → 계층 2단계 청킹
+              article 청크 (조문 전체) + paragraph 청크 (항 단위)
+              parent_doc_id로 연결 — 정밀 검색 + 컨텍스트 복원
 절차 안내   → 단계(Step) 단위 청킹
 공고 문서   → 공고 1건 = 1청크
 metadata 예시:
-  { "law": "식품위생법", "article": "제36조", "business_type": ["카페"] }
+  { "law": "식품위생법", "article": "제36조", "chunk_type": "paragraph",
+    "paragraph_no": 1, "business_type": ["카페"] }
 ```
 
 ---
@@ -272,7 +294,7 @@ metadata 예시:
 - **MINOR**: 하위 호환 기능 추가
 - **PATCH**: 버그 수정
 
-현재 버전: `v0.3.1`
+현재 버전: `v0.4.0`
 
 커밋 메시지 컨벤션:
 
