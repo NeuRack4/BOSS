@@ -17,7 +17,7 @@ from backend.core.constants import DocumentCategory, LEGAL_DISCLAIMER
 from backend.core.config import get_settings
 from backend.rag.document_loader import load_document, load_docs_folder
 from backend.rag.ingest import ingest_documents
-from backend.rag.retriever.pgvector_retriever import retrieve
+from backend.rag.retriever.pgvector_retriever import retrieve, hybrid_retrieve
 from backend.db.client import get_supabase
 
 router = APIRouter()
@@ -131,15 +131,23 @@ async def ingest_file(req: IngestFileRequest):
 async def search(req: SearchRequest):
     """
     쿼리를 임베딩하여 Supabase pgvector에서 유사한 문서 청크를 반환.
-    사업자등록·영업신고 절차 조회, 서식 내용 질의 등에 사용.
+    벡터 + FTS 하이브리드(RRF) 검색으로 한국어 법령 텍스트에 최적화.
     """
-    results = await retrieve(
+    chunks = await hybrid_retrieve(
         query=req.query,
         category=req.category,
         match_count=req.match_count,
-        match_threshold=req.match_threshold,
     )
-    return [SearchResult(**r, disclaimer=LEGAL_DISCLAIMER) for r in results]
+    return [
+        SearchResult(
+            id=r["id"],
+            content=r["content"],
+            metadata=r.get("metadata") or {},
+            similarity=r.get("score") or 0.0,
+            disclaimer=LEGAL_DISCLAIMER,
+        )
+        for r in chunks
+    ]
 
 
 _RAG_SYSTEM_PROMPT = """

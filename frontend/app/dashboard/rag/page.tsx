@@ -56,7 +56,7 @@ export default function RagPage() {
           query: q,
           category: category || null,
           match_count: 8,
-          match_threshold: 0.5,
+          match_threshold: 0.3,
         }),
       });
       if (!res.ok) throw new Error(`검색 실패 (${res.status})`);
