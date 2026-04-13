@@ -37,9 +37,12 @@
 
 ## 타겟
 
-- **누구?** 서울에서 처음 F&B 창업하는 1인 소상공인 (카페 / 베이커리 / 분식)
+- **누구?** 서울 마포구에서 처음 카페 창업하는 1인 소상공인
 - **언제?** 창업 결심 시점 ~ 오픈 후 1년
-- **어디?** 서울 (골목상권 데이터 기반)
+- **어디?** 서울 마포구 (홍대입구·합정·연남동·망원동 등 골목상권 데이터 기반)
+
+> v0.x 스코프: **마포구 카페 단일 업종**에 집중합니다.  
+> 전국 / 다업종 확장은 v2.0 이후 로드맵입니다.
 
 ---
 
@@ -234,6 +237,26 @@ Proactive 타이밍
 
 ---
 
+## 빠른 시작
+
+```bash
+# 1. 환경 변수 설정
+cp .env.example .env
+# .env 에 Supabase / OpenAI / Anthropic 키 입력
+
+# 2. DB 초기화 (Supabase SQL Editor에서 실행)
+# backend/db/migrations/001_initial.sql
+
+# 3. 컨테이너 실행
+docker-compose up --build
+
+# API 서버: http://localhost:8000
+# API 문서: http://localhost:8000/docs
+# 프론트엔드: http://localhost:3000
+```
+
+---
+
 ## 프로젝트 구조
 
 ```
@@ -244,27 +267,40 @@ BOSS/
 │   └── public/
 ├── backend/
 │   ├── api/                 # FastAPI 서버
+│   │   ├── main.py          # 앱 엔트리포인트
+│   │   ├── routers/         # founders / triggers / drafts / subsidies
+│   │   └── schemas/         # Pydantic 스키마
 │   ├── agents/
-│   │   ├── orchestrator.py  # 오케스트레이터 + 상태머신
+│   │   ├── orchestrator.py  # LangGraph 오케스트레이터 + 상태머신
 │   │   ├── subsidy.py       # 지원사업 에이전트
 │   │   ├── tax.py           # 세금/일정 에이전트
-│   │   ├── location.py      # 입지분석 에이전트
+│   │   ├── location.py      # 마포구 입지분석 에이전트
 │   │   └── hiring.py        # 채용/서류 에이전트
+│   ├── core/
+│   │   ├── config.py        # pydantic-settings 환경 변수
+│   │   └── constants.py     # 업종·단계 상수
+│   ├── db/
+│   │   ├── client.py        # Supabase 클라이언트
+│   │   └── migrations/      # SQL 마이그레이션
 │   ├── rag/
-│   │   ├── ingest.py        # 문서 수집 → 청킹 → 임베딩 → Supabase 저장
-│   │   ├── embeddings/      # 임베딩 생성 로직
+│   │   ├── ingest.py        # 문서 수집 → 청킹 → 임베딩 → Supabase
+│   │   ├── embeddings/      # text-embedding-3-small
 │   │   └── retriever/       # pgvector 유사도 검색
 │   ├── triggers/
-│   │   ├── scheduler.py     # 시간 기반 트리거
+│   │   ├── scheduler.py     # APScheduler 시간 기반 트리거
 │   │   ├── state.py         # 상태 전이 트리거
-│   │   └── inference.py     # 추론 기반 트리거
-│   └── data/
-│       ├── crawlers/        # 기업마당, 골목상권 크롤러
-│       ├── parsers/         # PDF 파싱 (표준서식)
-│       └── raw/             # 수집 원본 데이터
+│   │   └── inference.py     # LLM 추론 기반 트리거
+│   ├── data/
+│   │   ├── crawlers/        # 기업마당 API, 골목상권 서울
+│   │   ├── parsers/         # PDF 파싱 (정부 표준서식)
+│   │   └── raw/             # 수집 원본 데이터 (gitignore)
+│   ├── Dockerfile
+│   └── requirements.txt
 ├── backtest/
-│   └── evaluate.py          # 백테스트 평가
+│   └── evaluate.py          # Precision/Recall 백테스트
+├── .github/workflows/ci.yml # GitHub Actions CI
 ├── docker-compose.yml
+├── .env.example
 ├── CLAUDE.md
 └── README.md
 ```
