@@ -70,3 +70,16 @@ async def ingest_from_file(
     ]
 
     return await ingest_documents(documents, category)
+
+
+async def ingest_regulations() -> int:
+    """
+    법제처 API에서 규제법령 조문 수집 → Supabase 저장.
+    REGULATION_TARGETS에 정의된 법령·조문만 선별 수집합니다.
+    """
+    from backend.data.crawlers.law_api import fetch_all_regulations
+
+    docs = await fetch_all_regulations()
+    if not docs:
+        return 0
+    return await ingest_documents(docs, DocumentCategory.REGULATION)

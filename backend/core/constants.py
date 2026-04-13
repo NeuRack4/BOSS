@@ -46,6 +46,7 @@ class DocumentCategory(StrEnum):
     LABOR = "labor"
     LEASE = "lease"
     SUBSIDY = "subsidy"
+    REGULATION = "regulation"  # 규제법령 (식품위생법, 소방법, 건축법 등)
 
 
 class DraftType(StrEnum):
