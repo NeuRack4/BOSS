@@ -39,7 +39,8 @@ export default function SignupPage() {
       }
       setLoading(false);
     } else {
-      router.push("/dashboard");
+      // 신규 가입 → 온보딩 먼저
+      router.push("/onboarding");
     }
   };
 

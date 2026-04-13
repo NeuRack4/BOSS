@@ -1,10 +1,10 @@
 """
-Gemini 2.0 Flash 기반 서류 초안 생성 에이전트
+Groq (Llama 3.3 70B) 기반 서류 초안 생성 에이전트
 
-RAG 검색 → Gemini 2.0 Flash → 구조화된 초안 반환
-무료 API 사용 (Google AI Studio 기준 1,500회/일)
+RAG 검색 → Groq API → 구조화된 초안 반환
+무료 API (14,400 req/일, 30 req/분)
 """
-import google.generativeai as genai
+from openai import AsyncOpenAI
 
 from backend.core.config import get_settings
 from backend.core.constants import LEGAL_DISCLAIMER
@@ -51,38 +51,33 @@ def _format_profile(p: dict) -> str:
     ENTITY = {"individual": "개인사업자", "corporation": "법인사업자"}
 
     lines = []
-    if p.get("name"):              lines.append(f"성명: {p['name']}")
-    if p.get("birth_date"):        lines.append(f"생년월일: {p['birth_date']}")
-    if p.get("phone"):             lines.append(f"연락처: {p['phone']}")
-    if p.get("email"):             lines.append(f"이메일: {p['email']}")
+    if p.get("name"):             lines.append(f"성명: {p['name']}")
+    if p.get("birth_date"):       lines.append(f"생년월일: {p['birth_date']}")
+    if p.get("phone"):            lines.append(f"연락처: {p['phone']}")
+    if p.get("email"):            lines.append(f"이메일: {p['email']}")
     if p.get("resident_id_front"):
         rid = f"{p['resident_id_front']}-{p.get('resident_id_gender', '')}●●●●●●"
         lines.append(f"주민등록번호: {rid}")
-    if p.get("business_type"):     lines.append(f"업종: {BIZ.get(p['business_type'], p['business_type'])}")
-    if p.get("business_name"):     lines.append(f"상호명(예정): {p['business_name']}")
-    if p.get("district"):          lines.append(f"사업 예정 지역: 서울시 {p['district']}")
+    if p.get("business_type"):    lines.append(f"업종: {BIZ.get(p['business_type'], p['business_type'])}")
+    if p.get("business_name"):    lines.append(f"상호명(예정): {p['business_name']}")
+    if p.get("district"):         lines.append(f"사업 예정 지역: 서울시 {p['district']}")
     if p.get("address"):
         addr = p["address"] + (" " + p["address_detail"] if p.get("address_detail") else "")
         lines.append(f"사업장 주소: {addr}")
-    if p.get("floor_area"):        lines.append(f"영업장 면적: {p['floor_area']}㎡")
-    if p.get("tax_type"):          lines.append(f"과세 유형: {TAX.get(p['tax_type'], p['tax_type'])}")
-    if p.get("entity_type"):       lines.append(f"사업자 유형: {ENTITY.get(p['entity_type'], p['entity_type'])}")
-    if p.get("open_date"):         lines.append(f"개업 예정일: {p['open_date']}")
-    if p.get("has_co_owner"):      lines.append("공동사업자: 있음")
+    if p.get("floor_area"):       lines.append(f"영업장 면적: {p['floor_area']}㎡")
+    if p.get("tax_type"):         lines.append(f"과세 유형: {TAX.get(p['tax_type'], p['tax_type'])}")
+    if p.get("entity_type"):      lines.append(f"사업자 유형: {ENTITY.get(p['entity_type'], p['entity_type'])}")
+    if p.get("open_date"):        lines.append(f"개업 예정일: {p['open_date']}")
+    if p.get("has_co_owner"):     lines.append("공동사업자: 있음")
     return "\n".join(lines)
 
 
 async def generate_draft(doc_type: str, user_profile: dict) -> dict:
-    """
-    doc_type: DOC_TYPE_CONFIG 키 (e.g. "business-registration")
-    user_profile: 온보딩 폼 데이터 (snake_case)
-    반환: {"doc_type", "title", "content", "disclaimer"}
-    """
     config = DOC_TYPE_CONFIG.get(doc_type)
     if not config:
         raise ValueError(f"지원하지 않는 서류 유형: {doc_type}")
 
-    # RAG 검색 — 낮은 threshold로 서식 문서 확보
+    # RAG 검색
     chunks = await retrieve(
         query=config["query"],
         category=config["category"],
@@ -91,9 +86,7 @@ async def generate_draft(doc_type: str, user_profile: dict) -> dict:
     )
     rag_context = "\n\n".join(c["content"] for c in chunks) if chunks else "관련 서식 정보 없음"
 
-    prompt = f"""{_SYSTEM_PROMPT}
-
-=== 서식 구조 참고 ===
+    user_message = f"""=== 서식 구조 참고 ===
 {rag_context}
 
 === 창업자 정보 ===
@@ -104,13 +97,24 @@ async def generate_draft(doc_type: str, user_profile: dict) -> dict:
 서식 구조를 충실히 따르되, 창업자 정보를 정확히 반영하여 실제 제출 가능한 수준으로 작성하세요."""
 
     settings = get_settings()
-    genai.configure(api_key=settings.gemini_api_key)
-    model = genai.GenerativeModel("gemini-2.0-flash")
-    response = await model.generate_content_async(prompt)
+    client = AsyncOpenAI(
+        api_key=settings.groq_api_key,
+        base_url="https://api.groq.com/openai/v1",
+    )
+
+    response = await client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {"role": "system", "content": _SYSTEM_PROMPT},
+            {"role": "user", "content": user_message},
+        ],
+        temperature=0.3,
+        max_tokens=4096,
+    )
 
     return {
         "doc_type":   doc_type,
         "title":      f"{config['label']} 초안",
-        "content":    response.text,
+        "content":    response.choices[0].message.content,
         "disclaimer": LEGAL_DISCLAIMER,
     }

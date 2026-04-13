@@ -44,6 +44,9 @@ export default function DashboardLayout({
             if (data.profile && Object.keys(data.profile).length > 0) {
               const formData = profileToFormData(data.profile);
               localStorage.setItem("boss_profile", JSON.stringify(formData));
+            } else {
+              // 프로필 미완성 → 온보딩으로 안내 (강제 이동 아님, 배너로 처리)
+              localStorage.removeItem("boss_profile");
             }
           }
         } catch {}
