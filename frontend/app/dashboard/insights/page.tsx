@@ -172,11 +172,15 @@ export default function InsightsPage() {
             </div>
             <div className="glass-card rounded-xl p-4">
               <p className="text-xs text-gray-400 mb-1">전년 동월 대비</p>
-              <p className={`text-lg font-bold ${
-                result.summary.yoy_change_pct == null ? "text-gray-400"
-                  : result.summary.yoy_change_pct > 0 ? "text-green-600"
-                  : "text-red-500"
-              }`}>
+              <p
+                className={`text-lg font-bold ${
+                  result.summary.yoy_change_pct == null
+                    ? "text-gray-400"
+                    : result.summary.yoy_change_pct > 0
+                      ? "text-green-600"
+                      : "text-red-500"
+                }`}
+              >
                 {result.summary.yoy_change_pct != null
                   ? `${result.summary.yoy_change_pct > 0 ? "▲" : "▼"} ${Math.abs(result.summary.yoy_change_pct)}%`
                   : "-"}
@@ -194,13 +198,17 @@ export default function InsightsPage() {
           <div className="glass-card rounded-xl p-6 border-brand-500/20 glow-blue">
             <div className="flex items-center gap-2 mb-4">
               <span className="text-brand-500 text-lg">✦</span>
-              <h2 className="text-base font-bold text-gray-900">AI 분석 결과</h2>
+              <h2 className="text-base font-bold text-gray-900">
+                AI 분석 결과
+              </h2>
               {result.rag_used && (
                 <span className="text-xs bg-brand-50 text-brand-600 border border-brand-200 px-2 py-0.5 rounded-full font-medium">
                   마포구 실데이터 반영
                 </span>
               )}
-              <span className="ml-auto text-xs text-gray-400">{year}년 {month}월</span>
+              <span className="ml-auto text-xs text-gray-400">
+                {year}년 {month}월
+              </span>
             </div>
             <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
               {result.insight}
