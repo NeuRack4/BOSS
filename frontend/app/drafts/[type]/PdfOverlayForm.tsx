@@ -51,8 +51,8 @@ export default function PdfOverlayForm({
         // Dynamic import to avoid SSR
         const pdfjsLib = await import("pdfjs-dist");
 
-        // Use local worker file (copied to /public) — avoids CDN dependency & Next.js bundler issues
-        pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+        // v3: local worker (.js), avoids Next.js bundler issues with pdfjs-dist v5
+        pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.js";
 
         const pdfDoc = await pdfjsLib.getDocument({
           url: pdfUrl,
@@ -73,8 +73,9 @@ export default function PdfOverlayForm({
           canvas.width = Math.round(vp.width);
           canvas.height = Math.round(vp.height);
 
-          // pdfjs-dist v5: pass canvas directly (canvasContext optional)
-          await page.render({ canvas, viewport: vp }).promise;
+          // pdfjs-dist v3: use canvasContext (no canvas property)
+          const ctx = canvas.getContext("2d")!;
+          await page.render({ canvasContext: ctx, viewport: vp }).promise;
 
           results.push({
             dataUrl: canvas.toDataURL("image/jpeg", 0.92),
