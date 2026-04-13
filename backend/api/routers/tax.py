@@ -40,8 +40,8 @@ async def create_tax_draft(body: DraftRequest):
     if not row:
         raise HTTPException(status_code=404, detail="deadline not found")
 
-    storage_path = await generate_tax_draft(user_id=body.user_id, deadline=row)
-    return {"storage_path": storage_path, "deadline_id": body.deadline_id}
+    storage_path, draft_id = await generate_tax_draft(user_id=body.user_id, deadline=row)
+    return {"storage_path": storage_path, "deadline_id": body.deadline_id, "draft_id": draft_id}
 
 
 @router.post("/deadlines/sync")

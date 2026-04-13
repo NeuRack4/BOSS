@@ -34,6 +34,8 @@ const D_DAY_COLOR: (d: number) => string = (d) => {
 export default function TaxDeadlineList({ deadlines, userId }: Props) {
   const [loadingId, setLoadingId] = useState<number | null>(null);
   const [draftPaths, setDraftPaths] = useState<Record<number, string>>({});
+  const [draftIds, setDraftIds] = useState<Record<number, number>>({});
+  const [downloadingId, setDownloadingId] = useState<number | null>(null);
   const [errors, setErrors] = useState<Record<number, string>>({});
 
   const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -65,6 +67,9 @@ export default function TaxDeadlineList({ deadlines, userId }: Props) {
 
       const data = await res.json();
       setDraftPaths((prev) => ({ ...prev, [deadline.id]: data.storage_path }));
+      if (data.draft_id) {
+        setDraftIds((prev) => ({ ...prev, [deadline.id]: data.draft_id }));
+      }
     } catch (e) {
       setErrors((prev) => ({
         ...prev,
@@ -72,6 +77,34 @@ export default function TaxDeadlineList({ deadlines, userId }: Props) {
       }));
     } finally {
       setLoadingId(null);
+    }
+  };
+
+  const handleDownload = async (deadline: Deadline) => {
+    const draftId = draftIds[deadline.id];
+    if (!draftId) return;
+
+    setDownloadingId(deadline.id);
+    try {
+      const res = await fetch(`${API_BASE}/drafts/${draftId}/download`, {
+        headers: { "X-User-ID": userId },
+      });
+      if (!res.ok) throw new Error(`다운로드 실패 (${res.status})`);
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${deadline.title}_초안.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setErrors((prev) => ({
+        ...prev,
+        [deadline.id]: e instanceof Error ? e.message : "다운로드 오류",
+      }));
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -115,9 +148,39 @@ export default function TaxDeadlineList({ deadlines, userId }: Props) {
 
             <div className="flex flex-col items-end gap-2 shrink-0">
               {draftPaths[d.id] ? (
-                <span className="text-xs text-green-600 font-medium bg-green-50 border border-green-200 px-3 py-1.5 rounded-lg">
-                  ✓ 초안 생성 완료
-                </span>
+                <>
+                  <span className="text-xs text-green-600 font-medium bg-green-50 border border-green-200 px-3 py-1.5 rounded-lg">
+                    ✓ 초안 생성 완료
+                  </span>
+                  {draftIds[d.id] && (
+                    <button
+                      onClick={() => handleDownload(d)}
+                      disabled={downloadingId === d.id}
+                      className="text-sm font-semibold bg-white hover:bg-gray-50 text-brand-600 border border-brand-300 px-4 py-2 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                    >
+                      {downloadingId === d.id ? (
+                        "변환 중..."
+                      ) : (
+                        <>
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                            />
+                          </svg>
+                          PDF 다운로드
+                        </>
+                      )}
+                    </button>
+                  )}
+                </>
               ) : (
                 <button
                   onClick={() => handleDraft(d)}
