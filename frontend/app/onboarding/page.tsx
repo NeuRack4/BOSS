@@ -9,6 +9,7 @@ import Step3Location from "@/components/onboarding/Step3Location";
 import Step4Documents from "@/components/onboarding/Step4Documents";
 import { useRouter } from "next/navigation";
 import { FormData, initialFormData } from "@/components/onboarding/types";
+import { apiFetch, formDataToProfile } from "@/lib/api";
 
 const TOTAL_STEPS = 4;
 
@@ -62,8 +63,17 @@ export default function OnboardingPage() {
     if (step > 1) setStep((s) => s - 1);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     localStorage.setItem("boss_profile", JSON.stringify(formData));
+    // 로그인 상태이면 Supabase에도 저장
+    try {
+      await apiFetch("/founders/me", {
+        method: "PUT",
+        body: JSON.stringify(formDataToProfile(formData as unknown as Record<string, unknown>)),
+      });
+    } catch {
+      // 비로그인 상태면 localStorage만 사용
+    }
     setSubmitted(true);
   };
 
