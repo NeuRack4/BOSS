@@ -141,11 +141,11 @@ async def generate_tax_draft(user_id: str, deadline: dict) -> str:
     supabase.storage.from_("drafts").upload(
         path=storage_path,
         file=draft_content.encode("utf-8"),
-        file_options={"content-type": "text/markdown; charset=utf-8"},
+        file_options={"content-type": "text/markdown; charset=utf-8", "upsert": "true"},
     )
 
     # drafts 테이블 레코드 삽입
-    supabase.table("drafts").insert({
+    insert_result = supabase.table("drafts").insert({
         "user_id": user_id,
         "type": DraftType.TAX_RETURN,
         "storage_path": storage_path,
@@ -157,4 +157,5 @@ async def generate_tax_draft(user_id: str, deadline: dict) -> str:
         },
     }).execute()
 
-    return storage_path
+    draft_id: int = insert_result.data[0]["id"]
+    return storage_path, draft_id

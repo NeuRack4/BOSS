@@ -177,10 +177,62 @@ async def fetch_regulation(target: dict) -> list[dict]:
     return results
 
 
+# 카페 창업자에게 직접 관련된 세금 법령 + 조문 화이트리스트
+TAX_TARGETS = [
+    {
+        "name": "부가가치세법",
+        "article_whitelist": [
+            "제2조",   # 정의 (과세대상)
+            "제3조",   # 납세의무자
+            "제14조",  # 세금계산서 발급
+            "제48조",  # 예정신고와 납부
+            "제49조",  # 확정신고와 납부
+            "제61조",  # 간이과세자 납부의무 면제
+            "제62조",  # 간이과세자 신고와 납부
+        ],
+        "stage": [],
+        "topic": "vat",
+    },
+    {
+        "name": "소득세법",
+        "article_whitelist": [
+            "제19조",  # 사업소득
+            "제70조",  # 종합소득과세표준 확정신고
+            "제76조",  # 납부
+            "제160조", # 장부의 비치·기장
+        ],
+        "stage": [],
+        "topic": "income_tax",
+    },
+    {
+        "name": "국세기본법",
+        "article_whitelist": [
+            "제47조",  # 가산세
+            "제47조의2",  # 무신고가산세
+            "제47조의3",  # 과소신고가산세
+            "제47조의4",  # 납부지연가산세
+            "제45조의2",  # 경정 등의 청구
+        ],
+        "stage": [],
+        "topic": "tax_penalty",
+    },
+]
+
+
 async def fetch_all_regulations() -> list[dict]:
     """전체 규제법령 수집 (REGULATION_TARGETS 전체)"""
     all_docs = []
     for target in REGULATION_TARGETS:
+        docs = await fetch_regulation(target)
+        all_docs.extend(docs)
+        await asyncio.sleep(0.5)
+    return all_docs
+
+
+async def fetch_all_tax_laws() -> list[dict]:
+    """세금 법령 수집 (TAX_TARGETS 전체)"""
+    all_docs = []
+    for target in TAX_TARGETS:
         docs = await fetch_regulation(target)
         all_docs.extend(docs)
         await asyncio.sleep(0.5)

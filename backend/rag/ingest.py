@@ -28,7 +28,7 @@ async def ingest_documents(
     for i in range(0, len(documents), batch_size):
         batch = documents[i : i + batch_size]
         texts = [d["content"] for d in batch]
-        vectors = embed(texts)
+        vectors = await embed(texts)
 
         rows = [
             {

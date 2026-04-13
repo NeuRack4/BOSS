@@ -79,6 +79,7 @@
 - 부가세(1/25, 7/25) · 종합소득세(5월) · 원천세(매월 10일) 기한 관리
 - APScheduler 기반 D-14/D-7/D-1 선제 알림
 - 신고서 초안 자동 생성 (면책 고지 포함)
+- **초안 PDF 다운로드** — ReportLab 한글 CID 폰트 기반, 시스템 의존성 없음
 
 ### 5. 채용 자동화
 
@@ -180,11 +181,12 @@
 
 ### 백엔드
 
-| 기술        | 용도                      |
-| ----------- | ------------------------- |
-| FastAPI     | REST API 서버             |
-| APScheduler | Proactive 트리거 스케줄러 |
-| Pydantic v2 | 스키마 + 환경변수 설정    |
+| 기술        | 용도                               |
+| ----------- | ---------------------------------- |
+| FastAPI     | REST API 서버                      |
+| APScheduler | Proactive 트리거 스케줄러          |
+| Pydantic v2 | 스키마 + 환경변수 설정             |
+| ReportLab   | 세금 초안 PDF 생성 (한글 CID 폰트) |
 
 ### 데이터베이스 (Supabase 유료)
 
@@ -218,21 +220,28 @@
 
 ## API 엔드포인트
 
-| 메서드 | 경로                  | 설명                           |
-| ------ | --------------------- | ------------------------------ |
-| GET    | `/health`             | 서버 상태 확인                 |
-| POST   | `/founders`           | 창업자 프로파일 생성           |
-| GET    | `/founders/{id}`      | 창업자 정보 조회               |
-| GET    | `/location/districts` | 마포구 분석 가능 상권 목록     |
-| POST   | `/location/analyze`   | 상권 비교 분석 실행 (7일 캐시) |
-| GET    | `/location/history`   | 창업자 입지 검색 이력          |
-| POST   | `/sales`              | 매출 데이터 입력               |
-| GET    | `/sales`              | 매출 내역 조회                 |
-| GET    | `/sales/summary`      | 매출 요약 (카테고리·시간대별)  |
-| GET    | `/subsidies`          | 지원사업 목록                  |
-| GET    | `/tax/deadlines`      | 세금 기한 조회                 |
-| POST   | `/triggers/run`       | 트리거 수동 실행               |
-| GET    | `/drafts`             | 생성된 서류 초안 목록          |
+| 메서드 | 경로                    | 설명                           |
+| ------ | ----------------------- | ------------------------------ |
+| GET    | `/health`               | 서버 상태 확인                 |
+| POST   | `/founders`             | 창업자 프로파일 생성           |
+| GET    | `/founders/{id}`        | 창업자 정보 조회               |
+| GET    | `/location/districts`   | 마포구 분석 가능 상권 목록     |
+| POST   | `/location/analyze`     | 상권 비교 분석 실행 (7일 캐시) |
+| GET    | `/location/history`     | 창업자 입지 검색 이력          |
+| POST   | `/sales`                | 매출 데이터 입력               |
+| GET    | `/sales`                | 매출 내역 조회                 |
+| GET    | `/sales/summary`        | 매출 요약 (카테고리·시간대별)  |
+| GET    | `/subsidies`            | 지원사업 목록                  |
+| GET    | `/tax/deadlines`        | 세금 기한 조회                 |
+| POST   | `/triggers/run`         | 트리거 수동 실행               |
+| GET    | `/drafts`               | 생성된 서류 초안 목록          |
+| GET    | `/drafts/{id}/download` | 초안 PDF 다운로드              |
+| POST   | `/tax/draft`            | 세금 신고서 초안 생성          |
+| POST   | `/rag/ingest/all`       | docs/ 전체 문서 pgvector 수집  |
+| POST   | `/rag/ingest/file`      | 특정 파일 pgvector 수집        |
+| POST   | `/rag/search`           | 법령 유사도 검색               |
+| POST   | `/rag/summarize`        | 검색 결과 Claude 요약          |
+| GET    | `/rag/stats`            | 카테고리별 저장 문서 수        |
 
 ---
 
@@ -274,8 +283,9 @@
 | v0.2.0 | 규제법령 RAG (법제처 + BGE-M3), 입지분석 시뮬레이션, 세금 스케줄링, 채용 자동화, Sales API         |
 | v0.3.0 | 창업자 온보딩 위저드 (4단계), 입지분석 UI (차트·리포트), 매출 입력 페이지, Supabase Auth 연동 완성 |
 | v0.3.1 | 입지분석 9개 상권 확대, 서울 열린데이터 API 전환, 검색 이력 UI, 인증 없이 분석 허용                |
+| v0.3.2 | RAG API 라우터 추가 (ingest/search/summarize/stats), 세금 초안 PDF 다운로드 (ReportLab 한글 CID)   |
 
-현재 버전: **`v0.3.1`**
+현재 버전: **`v0.3.2`**
 
 ---
 
