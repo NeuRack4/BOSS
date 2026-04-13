@@ -3,122 +3,41 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import BusinessRegistrationForm, { type BizRegFields } from "./BusinessRegistrationForm";
+import PdfOverlayForm from "./PdfOverlayForm";
+import {
+  BIZ_REG_FIELDS,
+  FOOD_BIZ_FIELDS,
+  EMP_CONTRACT_FIELDS,
+  LEASE_CONTRACT_FIELDS,
+} from "./formFieldCoords";
+import type { FieldDef } from "./PdfOverlayForm";
 
-/* ─── 서류별 메타 ─── */
-const DOC_META: Record<string, { title: string; subtitle: string }> = {
-  "business-registration":  { title: "사업자등록 신청서", subtitle: "개인사업자용 · 국세청 제출" },
-  "food-business-license":  { title: "식품영업 신고서", subtitle: "휴게음식점영업 · 구청 위생과 제출" },
-  "employment-contract":    { title: "표준 근로계약서", subtitle: "고용노동부 표준서식" },
-  "lease-contract":         { title: "상가건물 임대차계약서", subtitle: "법제처 표준서식" },
-};
-
-/* ─── 서류별 필드 레이아웃 (business-registration 제외) ─── */
-type FieldDef = { label: string; key: string; span?: number };
-type Row = FieldDef[];
-type Section = { section: string; rows: Row[] };
-type Layout = Section[];
-
-const LAYOUTS: Record<string, Layout> = {
-  "food-business-license": [
-    {
-      section: "영업자 정보",
-      rows: [
-        [{ label: "영업자 성명", key: "영업자_성명" }, { label: "주민등록번호", key: "영업자_주민등록번호" }],
-        [{ label: "주소", key: "영업자_주소", span: 2 }],
-        [{ label: "전화번호", key: "영업자_전화번호" }, { label: "신고일", key: "신고일" }],
-      ],
-    },
-    {
-      section: "영업장 정보",
-      rows: [
-        [{ label: "영업소 명칭", key: "영업소_명칭" }, { label: "영업의 종류", key: "영업의_종류" }],
-        [{ label: "영업소 소재지", key: "영업소_소재지", span: 2 }],
-        [{ label: "영업장 면적(㎡)", key: "영업장_면적_㎡" }, { label: "급수 시설", key: "급수_시설_종류" }],
-      ],
-    },
-    {
-      section: "위생 관련",
-      rows: [
-        [{ label: "위생책임자", key: "위생책임자_성명" }, { label: "위생교육 이수", key: "식품위생교육_이수여부" }],
-        [{ label: "신고 기관", key: "신고기관", span: 2 }],
-      ],
-    },
-  ],
-  "employment-contract": [
-    {
-      section: "사업주(갑)",
-      rows: [
-        [{ label: "사업주 성명", key: "사업주_성명" }, { label: "사업장 명칭", key: "사업장_명칭" }],
-        [{ label: "사업장 소재지", key: "사업장_소재지", span: 2 }],
-        [{ label: "연락처", key: "사업주_연락처", span: 2 }],
-      ],
-    },
-    {
-      section: "근로자(을)",
-      rows: [
-        [{ label: "근로자 성명", key: "근로자_성명" }, { label: "주민등록번호", key: "근로자_주민등록번호" }],
-      ],
-    },
-    {
-      section: "근로 조건",
-      rows: [
-        [{ label: "근무 장소", key: "근무_장소", span: 2 }],
-        [{ label: "담당 업무", key: "담당_업무", span: 2 }],
-        [{ label: "계약 기간", key: "계약_기간_시작" }, { label: "~ 종료", key: "계약_기간_종료" }],
-        [{ label: "근무 시간", key: "근무_시간" }, { label: "휴게 시간", key: "휴게_시간" }],
-        [{ label: "근무 요일", key: "근무_요일", span: 2 }],
-      ],
-    },
-    {
-      section: "임금",
-      rows: [
-        [{ label: "임금(시급/월급)", key: "임금_시급_또는_월급", span: 2 }],
-        [{ label: "지급일", key: "임금_지급일" }, { label: "지급 방법", key: "임금_지급_방법" }],
-      ],
-    },
-    {
-      section: "기타",
-      rows: [
-        [{ label: "연차 유급휴가", key: "연차_유급휴가", span: 2 }],
-        [{ label: "사회보험", key: "사회보험_적용", span: 2 }],
-        [{ label: "계약 체결일", key: "계약_체결일", span: 2 }],
-      ],
-    },
-  ],
-  "lease-contract": [
-    {
-      section: "임대인(갑)",
-      rows: [
-        [{ label: "임대인 성명", key: "임대인_성명" }, { label: "주민등록번호", key: "임대인_주민등록번호" }],
-        [{ label: "주소", key: "임대인_주소" }, { label: "연락처", key: "임대인_연락처" }],
-      ],
-    },
-    {
-      section: "임차인(을)",
-      rows: [
-        [{ label: "임차인 성명", key: "임차인_성명" }, { label: "주민등록번호", key: "임차인_주민등록번호" }],
-        [{ label: "주소", key: "임차인_주소" }, { label: "연락처", key: "임차인_연락처" }],
-      ],
-    },
-    {
-      section: "부동산 표시",
-      rows: [
-        [{ label: "소재지", key: "부동산_소재지", span: 2 }],
-        [{ label: "면적(㎡)", key: "부동산_면적_㎡" }, { label: "임대 목적", key: "임대_목적" }],
-      ],
-    },
-    {
-      section: "계약 조건",
-      rows: [
-        [{ label: "보증금", key: "보증금" }, { label: "월 차임", key: "월_차임" }],
-        [{ label: "차임 지급일", key: "차임_지급일", span: 2 }],
-        [{ label: "임대 기간 시작", key: "임대_기간_시작" }, { label: "종료", key: "임대_기간_종료" }],
-        [{ label: "특약사항", key: "특약사항", span: 2 }],
-        [{ label: "계약 체결일", key: "계약_체결일", span: 2 }],
-      ],
-    },
-  ],
+/* ─── 서류 메타 ─── */
+const DOC_META: Record<string, { title: string; subtitle: string; pdfUrl: string; fieldDefs: FieldDef[] }> = {
+  "business-registration": {
+    title: "사업자등록 신청서",
+    subtitle: "개인사업자용 · 국세청 제출",
+    pdfUrl: "/forms/biz-reg.pdf",
+    fieldDefs: BIZ_REG_FIELDS,
+  },
+  "food-business-license": {
+    title: "식품영업 신고서",
+    subtitle: "휴게음식점영업 · 구청 위생과 제출",
+    pdfUrl: "/forms/food-biz.pdf",
+    fieldDefs: FOOD_BIZ_FIELDS,
+  },
+  "employment-contract": {
+    title: "표준 근로계약서",
+    subtitle: "고용노동부 표준서식 (정규직)",
+    pdfUrl: "/forms/employment.pdf",
+    fieldDefs: EMP_CONTRACT_FIELDS,
+  },
+  "lease-contract": {
+    title: "상가건물 임대차계약서",
+    subtitle: "법무부 표준계약서",
+    pdfUrl: "/forms/lease.pdf",
+    fieldDefs: LEASE_CONTRACT_FIELDS,
+  },
 };
 
 /* ─── 타입 ─── */
@@ -159,68 +78,6 @@ function profileFromStorage(): Record<string, unknown> {
   } catch { return {}; }
 }
 
-/* ─── 일반 서식 표 렌더러 ─── */
-function FormTable({
-  layout,
-  fields,
-  editMode,
-  onFieldChange,
-}: {
-  layout: Layout;
-  fields: Record<string, string>;
-  editMode: boolean;
-  onFieldChange: (key: string, value: string) => void;
-}) {
-  return (
-    <div className="space-y-0 border border-gray-400 rounded">
-      {layout.map((section, si) => (
-        <div key={si}>
-          <div className="bg-gray-100 border-b border-gray-400 px-4 py-2">
-            <span className="text-xs font-bold text-gray-700 tracking-wide">■ {section.section}</span>
-          </div>
-          {section.rows.map((row, ri) => (
-            <div
-              key={ri}
-              className="flex border-b border-gray-300 last:border-b-0"
-            >
-              {row.map((field, fi) => {
-                const isSpan = field.span === 2;
-                const val = fields[field.key] ?? "";
-                const isEmpty = !val || val === "[직접 입력]" || val === "[확인 필요]";
-                return (
-                  <div
-                    key={fi}
-                    className={`flex ${isSpan ? "flex-1" : "flex-1"} ${!isSpan && fi < row.length - 1 ? "border-r border-gray-300" : ""}`}
-                  >
-                    <div className="w-28 flex-shrink-0 bg-gray-50 border-r border-gray-300 px-3 py-2.5 flex items-center">
-                      <span className="text-xs font-semibold text-gray-600">{field.label}</span>
-                    </div>
-                    <div className="flex-1 px-3 py-2.5 flex items-center min-h-[40px]">
-                      {editMode ? (
-                        <input
-                          type="text"
-                          value={val === "[직접 입력]" ? "" : val}
-                          onChange={(e) => onFieldChange(field.key, e.target.value)}
-                          placeholder="직접 입력"
-                          className="w-full text-sm border-none outline-none bg-yellow-50 px-1 py-0.5 rounded"
-                        />
-                      ) : (
-                        <span className={`text-sm ${isEmpty ? "text-gray-300 italic" : "text-gray-900"}`}>
-                          {val || "[직접 입력]"}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ))}
-        </div>
-      ))}
-    </div>
-  );
-}
-
 /* ─── 메인 페이지 ─── */
 export default function DraftPreviewPage() {
   const { type } = useParams<{ type: string }>();
@@ -233,8 +90,6 @@ export default function DraftPreviewPage() {
   const [editedFields, setEditedFields] = useState<Record<string, string>>({});
 
   const meta = DOC_META[type];
-  const layout = LAYOUTS[type]; // undefined for business-registration (custom form)
-  const isBizReg = type === "business-registration";
 
   useEffect(() => {
     if (!meta) {
@@ -285,35 +140,51 @@ export default function DraftPreviewPage() {
 
   function handlePrint() { window.print(); }
 
-  function handlePdfSave() {
-    // 브라우저 인쇄 다이얼로그에서 "PDF로 저장" 선택
-    window.print();
+  async function handlePdfSave() {
+    const el = document.getElementById("pdf-form-area");
+    if (!el) return;
+
+    const html2pdf = (await import("html2pdf.js")).default;
+    html2pdf()
+      .from(el)
+      .set({
+        filename: `${draft?.title ?? "서류초안"}.pdf`,
+        image: { type: "jpeg", quality: 0.97 },
+        html2canvas: { scale: 2, useCORS: true, allowTaint: true } as never,
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+      })
+      .save();
   }
 
-  const displayFields = editMode ? editedFields : (draft?.fields ?? {});
+  // 수정 사항은 항상 editedFields에서 표시 (editMode 무관)
+  const displayFields = editedFields;
 
   return (
     <>
       <style>{`
         @media print {
           .no-print { display: none !important; }
-          body { background: white; font-family: "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; }
-          #biz-reg-form { font-size: 10px; }
+          body { background: white; margin: 0; }
         }
       `}</style>
 
-      <div className="min-h-screen bg-surface-100">
+      <div className="min-h-screen bg-gray-50">
         {/* 상단 바 */}
         <div className="no-print fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-200 shadow-sm">
           <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <button onClick={() => router.back()} className="text-gray-400 hover:text-gray-600 transition-colors text-sm">
+              <button
+                onClick={() => router.back()}
+                className="text-gray-400 hover:text-gray-600 transition-colors text-sm"
+              >
                 ← 뒤로
               </button>
               <span className="text-gray-200">|</span>
               <span className="text-sm font-semibold text-gray-700">{meta?.title ?? type}</span>
               {editMode && (
-                <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-medium">수정 중</span>
+                <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-medium">
+                  수정 중
+                </span>
               )}
             </div>
             <Link href="/dashboard" className="text-xl font-black gradient-text">BOSS</Link>
@@ -321,28 +192,32 @@ export default function DraftPreviewPage() {
         </div>
 
         <div className="max-w-4xl mx-auto px-6 pt-24 pb-32">
+
           {/* 로딩 */}
           {loading && (
             <div className="flex flex-col items-center justify-center py-24 gap-4">
-              <div className="w-12 h-12 border-4 border-brand-500 border-t-transparent rounded-full animate-spin" />
-              <p className="text-sm text-gray-500">AI가 서류 초안을 작성하고 있습니다...</p>
+              <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              <p className="text-sm text-gray-500">AI가 서류 초안을 작성하고 있습니다…</p>
               <p className="text-xs text-gray-400">RAG 검색 → 필드 자동 입력</p>
             </div>
           )}
 
           {/* 에러 */}
           {error && !loading && (
-            <div className="glass-card rounded-2xl p-8 text-center">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
               <p className="text-red-500 font-semibold mb-2">초안 생성 실패</p>
               <p className="text-sm text-gray-500 mb-6">{error}</p>
               {error.includes("온보딩") ? (
-                <Link href="/onboarding" className="inline-block px-6 py-2.5 rounded-xl bg-brand-500 text-white text-sm font-bold">
+                <Link
+                  href="/onboarding"
+                  className="inline-block px-6 py-2.5 rounded-xl bg-blue-500 text-white text-sm font-bold"
+                >
                   정보 입력하러 가기
                 </Link>
               ) : (
                 <button
                   onClick={() => generateDraft(type, profileFromStorage())}
-                  className="px-6 py-2.5 rounded-xl bg-brand-500 text-white text-sm font-bold"
+                  className="px-6 py-2.5 rounded-xl bg-blue-500 text-white text-sm font-bold"
                 >
                   다시 시도
                 </button>
@@ -354,58 +229,56 @@ export default function DraftPreviewPage() {
           {draft && !loading && (
             <>
               {/* 서류 헤더 */}
-              <div className="text-center mb-6 no-print">
+              <div className="text-center mb-4 no-print">
                 <h1 className="text-2xl font-black text-gray-900">{draft.title}</h1>
                 {meta && <p className="text-xs text-gray-400 mt-1">{meta.subtitle}</p>}
-                <p className="text-xs text-gray-400 mt-1">BOSS AI 생성 초안 · 제출 전 반드시 내용을 확인하세요</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  BOSS AI 생성 초안 · 정부 PDF 서식에 직접 입력됩니다
+                </p>
               </div>
 
-              {/* 서식 본문 */}
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-4 print-area">
-                {isBizReg ? (
-                  <BusinessRegistrationForm
-                    fields={displayFields as BizRegFields}
-                    editMode={editMode}
-                    onChange={(key, value) => handleFieldChange(key as string, value)}
-                  />
-                ) : layout && Object.keys(displayFields).length > 0 ? (
-                  <FormTable
-                    layout={layout}
+              {/* 수정 모드 안내 */}
+              {editMode && (
+                <div className="no-print mb-3 px-4 py-2 bg-yellow-50 border border-yellow-300 rounded-lg text-xs text-yellow-700">
+                  ✎ 노란색 칸을 클릭해 내용을 수정할 수 있습니다. 완료 후 「수정 완료」를 누르세요.
+                </div>
+              )}
+
+              {/* PDF 서식 본문 */}
+              <div
+                id="pdf-form-area"
+                className="bg-white rounded-xl shadow border border-gray-200 overflow-hidden print-area"
+              >
+                {meta ? (
+                  <PdfOverlayForm
+                    pdfUrl={meta.pdfUrl}
                     fields={displayFields}
+                    fieldDefs={meta.fieldDefs}
                     editMode={editMode}
-                    onFieldChange={handleFieldChange}
+                    onChange={handleFieldChange}
+                    formId="pdf-overlay-inner"
                   />
                 ) : (
-                  <pre className="text-sm text-gray-800 whitespace-pre-wrap font-mono leading-relaxed">
+                  <pre className="p-6 text-sm text-gray-700 whitespace-pre-wrap font-mono">
                     {draft.content}
                   </pre>
                 )}
               </div>
 
-              {/* 범례 */}
-              {!editMode && (
-                <div className="flex items-center gap-4 mb-4 px-1 no-print">
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-3 h-3 rounded-sm bg-gray-300" />
-                    <span className="text-xs text-gray-400">[직접 입력] = 제출 전 직접 작성 필요</span>
-                  </div>
-                </div>
-              )}
-
               {/* 면책 고지 */}
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 no-print">
+              <div className="no-print mt-4 bg-amber-50 border border-amber-200 rounded-xl p-4">
                 <p className="text-xs text-amber-700 leading-relaxed">{draft.disclaimer}</p>
               </div>
 
               {/* 액션 버튼 3개 */}
-              <div className="no-print flex flex-col sm:flex-row gap-3">
+              <div className="no-print mt-4 flex flex-col sm:flex-row gap-3">
                 {/* 수정하기 / 완료 */}
                 <button
                   onClick={() => setEditMode((v) => !v)}
                   className={`flex-1 px-6 py-3 rounded-xl border-2 font-bold text-sm transition-all
                     ${editMode
                       ? "border-green-500 text-green-600 bg-green-50 hover:bg-green-100"
-                      : "border-brand-500 text-brand-500 hover:bg-brand-50"
+                      : "border-blue-500 text-blue-500 hover:bg-blue-50"
                     }`}
                 >
                   {editMode ? "✓ 수정 완료" : "✎ 수정하기"}
@@ -422,7 +295,7 @@ export default function DraftPreviewPage() {
                 {/* 출력 */}
                 <button
                   onClick={handlePrint}
-                  className="flex-1 px-6 py-3 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-sm transition-all hover:scale-105 glow-blue"
+                  className="flex-1 px-6 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-bold text-sm transition-all"
                 >
                   출력
                 </button>
