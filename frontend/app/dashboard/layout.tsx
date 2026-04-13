@@ -4,7 +4,13 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { profileToFormData } from "@/lib/api";
+import {
+  profileToFormData,
+  getFounderState,
+  STAGE_LABELS,
+  SUB_STAGE_LABELS,
+  type FounderStateData,
+} from "@/lib/api";
 
 const navItems = [
   { label: "개요", href: "/dashboard", icon: "◈" },
@@ -26,6 +32,9 @@ export default function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [founderState, setFounderState] = useState<FounderStateData | null>(
+    null,
+  );
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
@@ -34,9 +43,13 @@ export default function DashboardLayout({
       } else {
         setAuthChecked(true);
         fetchUnreadCount(user.id);
+        getFounderState()
+          .then(setFounderState)
+          .catch(() => {});
         // Supabase에서 프로필 로드 → localStorage 동기화
         try {
-          const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+          const apiUrl =
+            process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
           const res = await fetch(`${apiUrl}/founders/me`, {
             headers: { "x-user-id": user.id },
           });
@@ -102,11 +115,11 @@ export default function DashboardLayout({
           >
             BOSS
           </Link>
-          <span className="ml-2 text-xs text-gray-400 font-medium">v0.2.0</span>
+          <span className="ml-2 text-xs text-gray-400 font-medium">v0.4.1</span>
         </div>
 
-        {/* 카페 정보 */}
-        <div className="px-4 py-4 border-b border-surface-300">
+        {/* 카페 정보 + 현재 단계 */}
+        <div className="px-4 py-4 border-b border-surface-300 space-y-2">
           <div className="glass-card rounded-lg px-3 py-2.5">
             <p className="text-xs text-gray-400 mb-0.5">내 카페</p>
             <p className="text-sm font-semibold text-gray-800 truncate">
@@ -116,6 +129,17 @@ export default function DashboardLayout({
               1인 운영 · 마포구
             </p>
           </div>
+          {founderState && (
+            <div className="rounded-lg border border-surface-300 bg-surface-50 px-3 py-2">
+              <p className="text-xs text-gray-400 mb-1">현재 단계</p>
+              <p className="text-xs font-semibold text-gray-700">
+                {STAGE_LABELS[founderState.stage]}
+              </p>
+              <p className="text-xs text-brand-500 mt-0.5">
+                · {SUB_STAGE_LABELS[founderState.sub_stage]}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* 네비게이션 */}

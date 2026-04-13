@@ -3,7 +3,10 @@ import { supabase } from "./supabase";
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 /** Supabase 로그인 유저의 X-User-Id 헤더를 자동 첨부하는 fetch 래퍼 */
-export async function apiFetch(path: string, options?: RequestInit): Promise<Response> {
+export async function apiFetch(
+  path: string,
+  options?: RequestInit,
+): Promise<Response> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -17,8 +20,72 @@ export async function apiFetch(path: string, options?: RequestInit): Promise<Res
   return fetch(`${API_URL}${path}`, { ...options, headers });
 }
 
+export type FounderStage = "setup" | "early_ops" | "growth";
+export type FounderSubStage =
+  | "location_search"
+  | "lease_review"
+  | "biz_registration"
+  | "license_application"
+  | "interior"
+  | "pre_open"
+  | "open"
+  | "hiring_preparation"
+  | "hiring_in_progress"
+  | "hiring_contract"
+  | "tax_setup"
+  | "subsidy_active";
+
+export interface FounderStateData {
+  stage: FounderStage;
+  sub_stage: FounderSubStage;
+  metadata: Record<string, unknown>;
+  updated_at: string | null;
+}
+
+export const STAGE_LABELS: Record<FounderStage, string> = {
+  setup: "창업 준비",
+  early_ops: "초기 운영",
+  growth: "성장기",
+};
+
+export const SUB_STAGE_LABELS: Record<FounderSubStage, string> = {
+  location_search: "입지 탐색",
+  lease_review: "임대차 검토",
+  biz_registration: "사업자 등록",
+  license_application: "인허가 신청",
+  interior: "인테리어",
+  pre_open: "오픈 준비",
+  open: "오픈",
+  hiring_preparation: "채용 준비",
+  hiring_in_progress: "채용 중",
+  hiring_contract: "계약서 작성",
+  tax_setup: "세금 셋업",
+  subsidy_active: "지원사업",
+};
+
+export const getFounderState = async (): Promise<FounderStateData> => {
+  const res = await apiFetch("/founders/me/state");
+  if (!res.ok) throw new Error("state fetch failed");
+  return res.json();
+};
+
+export const updateFounderState = async (
+  stage: FounderStage,
+  sub_stage: FounderSubStage,
+  metadata: Record<string, unknown> = {},
+): Promise<FounderStateData> => {
+  const res = await apiFetch("/founders/me/state", {
+    method: "PUT",
+    body: JSON.stringify({ stage, sub_stage, metadata }),
+  });
+  if (!res.ok) throw new Error("state update failed");
+  return res.json();
+};
+
 /** FormData(camelCase) → API 전송용 snake_case 프로필 변환 */
-export function formDataToProfile(f: Record<string, unknown>): Record<string, unknown> {
+export function formDataToProfile(
+  f: Record<string, unknown>,
+): Record<string, unknown> {
   return {
     email: f.email ?? "",
     name: f.name ?? "",
@@ -43,7 +110,9 @@ export function formDataToProfile(f: Record<string, unknown>): Record<string, un
 }
 
 /** API snake_case 프로필 → localStorage FormData(camelCase) 변환 */
-export function profileToFormData(p: Record<string, unknown>): Record<string, unknown> {
+export function profileToFormData(
+  p: Record<string, unknown>,
+): Record<string, unknown> {
   return {
     email: p.email ?? "",
     name: p.name ?? "",
