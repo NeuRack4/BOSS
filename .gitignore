@@ -26,11 +26,18 @@ env/
 dist/
 build/
 
-# Vector DB
-backend/rag/vectordb/chroma/
+# Vector DB (ChromaDB 미사용 — Supabase pgvector 사용)
+backend/rag/vectordb/
 
 # Raw data
 backend/data/raw/
+
+# Backtest results
+backtest/results.json
+
+# pytest
+.pytest_cache/
+
 
 # OS
 .DS_Store
