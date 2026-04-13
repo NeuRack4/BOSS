@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { profileToFormData } from "@/lib/api";
 
 const navItems = [
   { label: "개요", href: "/dashboard", icon: "◈" },
@@ -12,6 +13,7 @@ const navItems = [
   { label: "법령 검색", href: "/dashboard/rag", icon: "⚖" },
   { label: "AI 인사이트", href: "/dashboard/insights", icon: "✦" },
   { label: "알림", href: "/dashboard/notifications", icon: "🔔" },
+  { label: "마이페이지", href: "/dashboard/profile", icon: "👤" },
 ];
 
 export default function DashboardLayout({
@@ -26,12 +28,29 @@ export default function DashboardLayout({
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) {
         router.replace("/auth/login");
       } else {
         setAuthChecked(true);
         fetchUnreadCount(user.id);
+        // Supabase에서 프로필 로드 → localStorage 동기화
+        try {
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+          const res = await fetch(`${apiUrl}/founders/me`, {
+            headers: { "x-user-id": user.id },
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.profile && Object.keys(data.profile).length > 0) {
+              const formData = profileToFormData(data.profile);
+              localStorage.setItem("boss_profile", JSON.stringify(formData));
+            } else {
+              // 프로필 미완성 → 온보딩으로 안내 (강제 이동 아님, 배너로 처리)
+              localStorage.removeItem("boss_profile");
+            }
+          }
+        } catch {}
       }
     });
   }, [router]);

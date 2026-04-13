@@ -4,7 +4,7 @@ from supabase import Client
 from datetime import date
 
 from backend.api.dependencies import db, get_current_user_id
-from backend.api.schemas.sale import SaleCreate, SaleResponse, SaleUpdate
+from backend.api.schemas.sale import SaleCreate, SaleResponse, SaleUpdate, SalesSummary
 from backend.db.client import get_supabase
 
 router = APIRouter()

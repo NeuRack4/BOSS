@@ -14,7 +14,7 @@ from reportlab.platypus import HRFlowable, Paragraph, SimpleDocTemplate, Spacer
 from supabase import Client
 
 from backend.api.dependencies import db, get_current_user_id
-from backend.api.schemas.draft import DraftResponse
+from backend.api.schemas.draft import DraftResponse, GenerateDraftRequest, GenerateDraftResponse
 
 router = APIRouter()
 
@@ -147,3 +147,27 @@ async def download_draft_pdf(
             "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}",
         },
     )
+
+
+@router.post("/generate", response_model=GenerateDraftResponse, summary="서류 초안 생성")
+async def generate_draft(req: GenerateDraftRequest):
+    """
+    Groq (Llama 3.3 70B) + RAG를 사용하여 행정서류 초안을 생성합니다.
+
+    지원 doc_type:
+    - business-registration  : 사업자등록 신청서
+    - food-business-license  : 식품영업 신고서 (휴게음식점)
+    - employment-contract    : 표준 근로계약서
+    - lease-contract         : 상가건물 임대차계약서
+    """
+    from backend.agents.gemini import generate_draft as _generate, DOC_TYPE_CONFIG
+    if req.doc_type not in DOC_TYPE_CONFIG:
+        raise HTTPException(
+            status_code=400,
+            detail=f"지원하지 않는 서류 유형입니다. 가능한 값: {list(DOC_TYPE_CONFIG.keys())}",
+        )
+    try:
+        result = await _generate(req.doc_type, req.user_profile.model_dump())
+        return GenerateDraftResponse(**result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"초안 생성 중 오류: {str(e)}")

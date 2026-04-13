@@ -7,7 +7,9 @@ import Step1Personal from "@/components/onboarding/Step1Personal";
 import Step2Business from "@/components/onboarding/Step2Business";
 import Step3Location from "@/components/onboarding/Step3Location";
 import Step4Documents from "@/components/onboarding/Step4Documents";
+import { useRouter } from "next/navigation";
 import { FormData, initialFormData } from "@/components/onboarding/types";
+import { apiFetch, formDataToProfile } from "@/lib/api";
 
 const TOTAL_STEPS = 4;
 
@@ -42,6 +44,7 @@ function isStepValid(step: number, d: FormData) {
 }
 
 export default function OnboardingPage() {
+  const router = useRouter();
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [submitted, setSubmitted] = useState(false);
@@ -60,14 +63,40 @@ export default function OnboardingPage() {
     if (step > 1) setStep((s) => s - 1);
   };
 
-  const handleSubmit = () => {
-    console.log("📋 BOSS 온보딩 제출 데이터:", formData);
+  const handleSubmit = async () => {
+    localStorage.setItem("boss_profile", JSON.stringify(formData));
+    // 로그인 상태이면 Supabase에도 저장
+    try {
+      await apiFetch("/founders/me", {
+        method: "PUT",
+        body: JSON.stringify(formDataToProfile(formData as unknown as Record<string, unknown>)),
+      });
+    } catch {
+      // 비로그인 상태면 localStorage만 사용
+    }
     setSubmitted(true);
   };
 
   if (submitted) {
+    // 초안 생성 가능한 서류만 필터
+    const DRAFT_SUPPORTED = [
+      "business-registration",
+      "food-business-license",
+      "employment-contract",
+      "lease-contract",
+    ];
+    const DRAFT_META: Record<string, { icon: string; label: string }> = {
+      "business-registration":  { icon: "🏢", label: "사업자등록 신청서" },
+      "food-business-license":  { icon: "🍽", label: "식품영업 신고서" },
+      "employment-contract":    { icon: "📋", label: "표준 근로계약서" },
+      "lease-contract":         { icon: "🔑", label: "상가 임대차계약서" },
+    };
+    const draftDocs = formData.selectedDocuments.filter((d) =>
+      DRAFT_SUPPORTED.includes(d),
+    );
+
     return (
-      <div className="min-h-screen bg-surface-100 flex items-center justify-center px-6">
+      <div className="min-h-screen bg-surface-100 flex items-center justify-center px-6 py-16">
         <div className="max-w-md w-full text-center">
           <div className="w-20 h-20 rounded-full bg-brand-50 border-2 border-brand-500 flex items-center justify-center mx-auto mb-6 glow-blue">
             <svg
@@ -87,40 +116,46 @@ export default function OnboardingPage() {
           <h1 className="text-3xl font-black text-gray-900 mb-3">
             BOSS가 <span className="gradient-text">초안을 준비합니다</span>
           </h1>
-          <p className="text-gray-500 mb-2">
+          <p className="text-gray-500 mb-6">
             <span className="font-semibold text-gray-700">{formData.name}</span>
-            님, 입력하신 정보를 바탕으로 에이전트가 서류 초안 작업을
-            시작했습니다.
-          </p>
-          <p className="text-sm text-gray-400 mb-8">
-            {formData.selectedDocuments.length}개 서류 초안 · {formData.email}
-            으로 알림을 보내드립니다
+            님, 아래 서류를 선택하면 AI가 즉시 초안을 생성합니다.
           </p>
 
-          <div className="glass-card rounded-2xl p-6 mb-6 text-left space-y-3">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-              다음 단계
-            </p>
-            {[
-              "서류 초안이 완성되면 이메일로 알림",
-              "초안 검토 후 직접 제출",
-              "BOSS가 다음 기한·공고를 선제 안내",
-            ].map((item, i) => (
-              <div key={i} className="flex items-start gap-3">
-                <span className="w-5 h-5 rounded-full bg-brand-500 text-white text-xs flex items-center justify-center flex-shrink-0 mt-0.5">
-                  {i + 1}
-                </span>
-                <p className="text-sm text-gray-700">{item}</p>
-              </div>
-            ))}
-          </div>
+          {/* 선택한 서류 → 바로 초안 페이지 이동 */}
+          {draftDocs.length > 0 && (
+            <div className="glass-card rounded-2xl p-5 mb-5 text-left space-y-2">
+              <p className="text-xs font-semibold text-gray-500 mb-3">
+                선택한 서류 초안 바로 보기
+              </p>
+              {draftDocs.map((docType) => {
+                const meta = DRAFT_META[docType];
+                return (
+                  <button
+                    key={docType}
+                    onClick={() => router.push(`/drafts/${docType}`)}
+                    className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-brand-200 bg-brand-50 hover:bg-brand-100 hover:border-brand-400 transition-all group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl">{meta.icon}</span>
+                      <span className="text-sm font-semibold text-gray-800">
+                        {meta.label}
+                      </span>
+                    </div>
+                    <span className="text-xs text-brand-500 group-hover:translate-x-1 transition-transform">
+                      초안 보기 →
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
-          <Link
-            href="/"
-            className="inline-block px-8 py-3 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold transition-all hover:scale-105 glow-blue"
+          <button
+            onClick={() => router.push("/dashboard")}
+            className="w-full px-8 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold text-sm hover:bg-gray-50 transition-all"
           >
-            홈으로 돌아가기
-          </Link>
+            대시보드로 이동
+          </button>
         </div>
       </div>
     );

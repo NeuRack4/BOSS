@@ -25,7 +25,23 @@ export default function LoginPage() {
       setError("이메일 또는 비밀번호가 올바르지 않습니다.");
       setLoading(false);
     } else {
-      router.push("/dashboard");
+      // 프로필 존재 여부 확인 → 있으면 대시보드, 없으면 온보딩
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        try {
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+          const res = await fetch(`${apiUrl}/founders/me`, {
+            headers: { "x-user-id": user.id },
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const hasProfile = data.profile && Object.keys(data.profile).length > 0;
+            router.push(hasProfile ? "/dashboard" : "/onboarding");
+            return;
+          }
+        } catch {}
+      }
+      router.push("/onboarding");
     }
   };
 

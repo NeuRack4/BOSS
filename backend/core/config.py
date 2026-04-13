@@ -15,6 +15,12 @@ class Settings(BaseSettings):
     # Anthropic
     anthropic_api_key: str
 
+    # Google Gemini (레거시)
+    gemini_api_key: str = ""
+
+    # Groq (Llama 3.3 70B — 무료 초안 생성)
+    groq_api_key: str = ""
+
     # 기업마당 API
     bizinfo_api_key: str = ""
 

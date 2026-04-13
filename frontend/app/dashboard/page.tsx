@@ -47,6 +47,17 @@ export default function DashboardPage() {
   const today = new Date();
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("boss_profile");
+      if (raw) {
+        const profile = JSON.parse(raw);
+        setSelectedDocs(profile.selectedDocuments ?? []);
+      }
+    } catch {}
+  }, []);
 
   useEffect(() => {
     const fetchSummary = async () => {
@@ -273,6 +284,80 @@ export default function DashboardPage() {
           </p>
         </button>
       </div>
+
+      {/* BOSS 서류 초안 */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-base font-bold text-gray-900">BOSS 서류 초안</h2>
+            <p className="text-xs text-gray-400 mt-0.5">창업에 필요한 서류를 AI가 자동 작성합니다</p>
+          </div>
+          <span className="text-xs font-semibold text-brand-500 bg-brand-50 px-2 py-1 rounded-full">Proactive</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {DRAFT_CARDS.map((card) => {
+            const isSelected = selectedDocs.includes(card.type);
+            return (
+              <button
+                key={card.type}
+                onClick={() => router.push(`/drafts/${card.type}`)}
+                className={`rounded-xl p-5 transition-all group text-left border ${
+                  isSelected
+                    ? "bg-brand-50 border-brand-400 glow-blue"
+                    : "glass-card hover:border-brand-500/30 hover:glow-blue"
+                }`}
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">{card.icon}</span>
+                    <h3 className="font-bold text-gray-900 text-sm">{card.label}</h3>
+                  </div>
+                  {isSelected ? (
+                    <span className="text-xs font-semibold text-brand-600 bg-brand-100 px-2 py-0.5 rounded-full">선택됨</span>
+                  ) : (
+                    <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{card.category}</span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 ml-8">{card.desc}</p>
+                <p className="text-xs text-brand-500 mt-3 ml-8 group-hover:translate-x-1 transition-transform">
+                  초안 생성 →
+                </p>
+              </button>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
+
+const DRAFT_CARDS = [
+  {
+    type: "business-registration",
+    label: "사업자등록 신청서",
+    icon: "🏢",
+    category: "인허가",
+    desc: "개업 전 필수 — 세무서 제출용 사업자등록 신청서",
+  },
+  {
+    type: "food-business-license",
+    label: "식품영업 신고서",
+    icon: "🍽",
+    category: "인허가",
+    desc: "휴게음식점 영업신고 — 구청 위생과 제출용",
+  },
+  {
+    type: "employment-contract",
+    label: "표준 근로계약서",
+    icon: "📋",
+    category: "채용",
+    desc: "알바·정규직 고용 시 — 고용노동부 표준서식",
+  },
+  {
+    type: "lease-contract",
+    label: "상가 임대차계약서",
+    icon: "🔑",
+    category: "계약",
+    desc: "상가 임대 계약 시 참고용 표준 임대차계약서",
+  },
+];
