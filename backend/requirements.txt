@@ -7,6 +7,7 @@ supabase==2.7.4
 
 # AI / LLM
 anthropic==0.34.2
+google-generativeai>=0.8.0
 
 # Embeddings (BGE-M3 로컬)
 # ⚠️  torch는 CUDA 버전에 맞게 별도 설치 필요:

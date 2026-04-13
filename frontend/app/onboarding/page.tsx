@@ -7,6 +7,7 @@ import Step1Personal from "@/components/onboarding/Step1Personal";
 import Step2Business from "@/components/onboarding/Step2Business";
 import Step3Location from "@/components/onboarding/Step3Location";
 import Step4Documents from "@/components/onboarding/Step4Documents";
+import { useRouter } from "next/navigation";
 import { FormData, initialFormData } from "@/components/onboarding/types";
 
 const TOTAL_STEPS = 4;
@@ -42,6 +43,7 @@ function isStepValid(step: number, d: FormData) {
 }
 
 export default function OnboardingPage() {
+  const router = useRouter();
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [submitted, setSubmitted] = useState(false);
@@ -61,7 +63,7 @@ export default function OnboardingPage() {
   };
 
   const handleSubmit = () => {
-    console.log("📋 BOSS 온보딩 제출 데이터:", formData);
+    localStorage.setItem("boss_profile", JSON.stringify(formData));
     setSubmitted(true);
   };
 
@@ -115,12 +117,12 @@ export default function OnboardingPage() {
             ))}
           </div>
 
-          <Link
-            href="/"
+          <button
+            onClick={() => router.push("/dashboard")}
             className="inline-block px-8 py-3 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold transition-all hover:scale-105 glow-blue"
           >
-            홈으로 돌아가기
-          </Link>
+            대시보드로 이동
+          </button>
         </div>
       </div>
     );

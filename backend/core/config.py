@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     # Anthropic
     anthropic_api_key: str
 
+    # Google Gemini
+    gemini_api_key: str = ""
+
     # 기업마당 API
     bizinfo_api_key: str = ""
 
