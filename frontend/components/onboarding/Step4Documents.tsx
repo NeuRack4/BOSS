@@ -71,7 +71,10 @@ export default function Step4Documents({ data, onChange }: Props) {
   };
 
   const selectAll = () => {
-    onChange("selectedDocuments", ALL_DOCUMENTS.map((d) => d.value));
+    onChange(
+      "selectedDocuments",
+      ALL_DOCUMENTS.map((d) => d.value),
+    );
   };
 
   const clearAll = () => {
@@ -83,13 +86,17 @@ export default function Step4Documents({ data, onChange }: Props) {
       <div>
         <h2 className="text-2xl font-black text-gray-900">생성할 서류 선택</h2>
         <p className="text-sm text-gray-500 mt-1">
-          선택한 서류의 초안을 BOSS가 먼저 준비합니다. 언제든 추가 요청 가능합니다.
+          선택한 서류의 초안을 BOSS가 먼저 준비합니다. 언제든 추가 요청
+          가능합니다.
         </p>
       </div>
 
       <div className="flex items-center justify-between">
         <span className="text-sm text-gray-500">
-          <span className="font-bold text-brand-600">{data.selectedDocuments.length}</span>개 선택됨
+          <span className="font-bold text-brand-600">
+            {data.selectedDocuments.length}
+          </span>
+          개 선택됨
         </span>
         <div className="flex gap-2">
           <button
@@ -135,23 +142,41 @@ export default function Step4Documents({ data, onChange }: Props) {
                   <div className="flex items-center gap-2 mb-0.5">
                     <span
                       className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                        selected ? "bg-brand-100 text-brand-700" : "bg-surface-200 text-gray-500"
+                        selected
+                          ? "bg-brand-100 text-brand-700"
+                          : "bg-surface-200 text-gray-500"
                       }`}
                     >
                       {doc.tag}
                     </span>
                   </div>
-                  <p className="text-sm font-bold text-gray-800 mt-1">{doc.title}</p>
-                  <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{doc.desc}</p>
+                  <p className="text-sm font-bold text-gray-800 mt-1">
+                    {doc.title}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
+                    {doc.desc}
+                  </p>
                 </div>
                 <div
                   className={`flex-shrink-0 w-5 h-5 rounded-full border-2 mt-0.5 flex items-center justify-center transition-all ${
-                    selected ? "border-brand-500 bg-brand-500" : "border-gray-300"
+                    selected
+                      ? "border-brand-500 bg-brand-500"
+                      : "border-gray-300"
                   }`}
                 >
                   {selected && (
-                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    <svg
+                      className="w-3 h-3 text-white"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={3}
+                        d="M5 13l4 4L19 7"
+                      />
                     </svg>
                   )}
                 </div>
@@ -163,22 +188,34 @@ export default function Step4Documents({ data, onChange }: Props) {
 
       {data.selectedDocuments.length > 0 && (
         <div className="p-4 rounded-xl bg-green-50 border border-green-200 flex gap-3">
-          <svg className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <svg
+            className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
           </svg>
           <div>
             <p className="text-xs font-semibold text-green-700">
               {data.selectedDocuments.length}개 서류 초안을 준비합니다
             </p>
             <p className="text-xs text-green-600 mt-0.5">
-              BOSS가 입력하신 정보를 바탕으로 초안을 생성합니다. 검토 후 제출만 하시면 됩니다.
+              BOSS가 입력하신 정보를 바탕으로 초안을 생성합니다. 검토 후 제출만
+              하시면 됩니다.
             </p>
           </div>
         </div>
       )}
 
       <p className="text-xs text-gray-400 text-center leading-relaxed">
-        본 서비스가 생성하는 서류 초안은 참고용이며, 실제 신고 및 제출 전 반드시 전문가 확인을 권장합니다.
+        본 서비스가 생성하는 서류 초안은 참고용이며, 실제 신고 및 제출 전 반드시
+        전문가 확인을 권장합니다.
       </p>
     </div>
   );

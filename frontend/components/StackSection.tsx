@@ -3,7 +3,11 @@ const stackGroups = [
     category: "AI / LLM",
     icon: "🤖",
     items: [
-      { name: "Claude API", desc: "초안 생성 · 추론 트리거", badge: "claude-sonnet-4-6" },
+      {
+        name: "Claude API",
+        desc: "초안 생성 · 추론 트리거",
+        badge: "claude-sonnet-4-6",
+      },
       { name: "LangGraph", desc: "상태머신 · 멀티에이전트 오케스트레이션" },
       { name: "LangChain", desc: "RAG 파이프라인 · 에이전트 체인" },
     ],
@@ -13,7 +17,11 @@ const stackGroups = [
     icon: "🔍",
     items: [
       { name: "ChromaDB", desc: "벡터 DB (로컬)" },
-      { name: "OpenAI Embeddings", desc: "문서 임베딩", badge: "text-embedding-3-small" },
+      {
+        name: "OpenAI Embeddings",
+        desc: "문서 임베딩",
+        badge: "text-embedding-3-small",
+      },
       { name: "LlamaIndex", desc: "문서 파싱 + 인덱싱" },
     ],
   },
@@ -55,16 +63,23 @@ export default function StackSection() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {stackGroups.map((group) => (
-            <div key={group.category} className="glass-card rounded-2xl p-6 hover:shadow-md transition-shadow">
+            <div
+              key={group.category}
+              className="glass-card rounded-2xl p-6 hover:shadow-md transition-shadow"
+            >
               <div className="flex items-center gap-2 mb-5">
                 <span className="text-xl">{group.icon}</span>
-                <h3 className="text-sm font-bold text-gray-900">{group.category}</h3>
+                <h3 className="text-sm font-bold text-gray-900">
+                  {group.category}
+                </h3>
               </div>
               <ul className="space-y-4">
                 {group.items.map((item) => (
                   <li key={item.name}>
                     <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                      <span className="text-sm font-semibold text-gray-800">{item.name}</span>
+                      <span className="text-sm font-semibold text-gray-800">
+                        {item.name}
+                      </span>
                       {item.badge && (
                         <span className="text-xs px-1.5 py-0.5 rounded bg-brand-50 text-brand-600 font-mono border border-brand-100">
                           {item.badge}

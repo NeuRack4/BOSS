@@ -37,7 +37,9 @@ export default function LoginPage() {
           <Link href="/" className="inline-block">
             <span className="text-3xl font-black gradient-text">BOSS</span>
           </Link>
-          <p className="text-sm text-gray-400 mt-2">서울 F&B 창업자를 위한 AI 비서</p>
+          <p className="text-sm text-gray-400 mt-2">
+            서울 F&B 창업자를 위한 AI 비서
+          </p>
         </div>
 
         {/* 카드 */}
@@ -46,7 +48,9 @@ export default function LoginPage() {
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">이메일</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                이메일
+              </label>
               <input
                 type="email"
                 value={form.email}
@@ -58,7 +62,9 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">비밀번호</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                비밀번호
+              </label>
               <input
                 type="password"
                 value={form.password}
@@ -86,7 +92,10 @@ export default function LoginPage() {
 
           <p className="text-center text-sm text-gray-400 mt-6">
             계정이 없으신가요?{" "}
-            <Link href="/auth/signup" className="text-brand-500 font-semibold hover:underline">
+            <Link
+              href="/auth/signup"
+              className="text-brand-500 font-semibold hover:underline"
+            >
               회원가입
             </Link>
           </p>

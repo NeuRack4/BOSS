@@ -38,13 +38,14 @@ export default function DashboardPage() {
           </span>
         </div>
         <p className="text-sm text-gray-500 leading-relaxed">
-          매출 데이터가 쌓이면 AI가 마포구 카페 평균과 비교해 변화 원인을 분석해드립니다.
+          매출 데이터가 쌓이면 AI가 마포구 카페 평균과 비교해 변화 원인을
+          분석해드립니다.
         </p>
         <div className="mt-4 p-3 bg-surface-100 rounded-lg border border-surface-300">
           <p className="text-xs text-gray-400 font-medium mb-1">예시</p>
           <p className="text-sm text-gray-600 italic">
-            "이번달 매출이 지난달 대비 17% 하락했습니다. 마포구 카페 평균 대비 낮은 수준이며,
-            주말 오후 매출 감소가 주요 원인으로 보입니다..."
+            "이번달 매출이 지난달 대비 17% 하락했습니다. 마포구 카페 평균 대비
+            낮은 수준이며, 주말 오후 매출 감소가 주요 원인으로 보입니다..."
           </p>
         </div>
       </div>
@@ -74,7 +75,9 @@ export default function DashboardPage() {
             <h3 className="font-bold text-gray-900">AI 분석</h3>
           </div>
           <p className="text-sm text-gray-500">매출 데이터 기반 인사이트</p>
-          <p className="text-xs text-gray-400 mt-3">매출 데이터 입력 후 활성화</p>
+          <p className="text-xs text-gray-400 mt-3">
+            매출 데이터 입력 후 활성화
+          </p>
         </a>
       </div>
     </div>
