@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import BusinessRegistrationForm, { type BizRegFields } from "./BusinessRegistrationForm";
 
 /* ─── 서류별 메타 ─── */
 const DOC_META: Record<string, { title: string; subtitle: string }> = {
@@ -12,44 +13,13 @@ const DOC_META: Record<string, { title: string; subtitle: string }> = {
   "lease-contract":         { title: "상가건물 임대차계약서", subtitle: "법제처 표준서식" },
 };
 
-/* ─── 서류별 필드 레이아웃 ─── */
+/* ─── 서류별 필드 레이아웃 (business-registration 제외) ─── */
 type FieldDef = { label: string; key: string; span?: number };
 type Row = FieldDef[];
 type Section = { section: string; rows: Row[] };
 type Layout = Section[];
 
 const LAYOUTS: Record<string, Layout> = {
-  "business-registration": [
-    {
-      section: "신청인 인적사항",
-      rows: [
-        [{ label: "성명", key: "신청인_성명" }, { label: "주민등록번호", key: "신청인_주민등록번호" }],
-        [{ label: "주소", key: "신청인_주소", span: 2 }],
-        [{ label: "전화번호", key: "신청인_전화번호" }, { label: "이메일", key: "신청인_이메일" }],
-      ],
-    },
-    {
-      section: "사업자 기본사항",
-      rows: [
-        [{ label: "상호(법인명)", key: "상호_법인명" }, { label: "업태", key: "업태" }],
-        [{ label: "종목", key: "종목" }, { label: "개업 연월일", key: "개업_연월일" }],
-        [{ label: "사업장 소재지", key: "사업장_소재지", span: 2 }],
-      ],
-    },
-    {
-      section: "사업장 현황",
-      rows: [
-        [{ label: "면적(㎡)", key: "사업장_면적_㎡" }, { label: "사업자 유형", key: "사업자_유형" }],
-        [{ label: "과세 유형", key: "과세_유형" }, { label: "공동사업자", key: "공동사업자_여부" }],
-      ],
-    },
-    {
-      section: "제출 정보",
-      rows: [
-        [{ label: "관할 세무서", key: "관할_세무서" }, { label: "신청일", key: "신청일" }],
-      ],
-    },
-  ],
   "food-business-license": [
     {
       section: "영업자 정보",
@@ -189,21 +159,29 @@ function profileFromStorage(): Record<string, unknown> {
   } catch { return {}; }
 }
 
-/* ─── 서식 표 렌더러 ─── */
-function FormTable({ layout, fields }: { layout: Layout; fields: Record<string, string> }) {
+/* ─── 일반 서식 표 렌더러 ─── */
+function FormTable({
+  layout,
+  fields,
+  editMode,
+  onFieldChange,
+}: {
+  layout: Layout;
+  fields: Record<string, string>;
+  editMode: boolean;
+  onFieldChange: (key: string, value: string) => void;
+}) {
   return (
     <div className="space-y-0 border border-gray-400 rounded">
       {layout.map((section, si) => (
         <div key={si}>
-          {/* 섹션 헤더 */}
           <div className="bg-gray-100 border-b border-gray-400 px-4 py-2">
             <span className="text-xs font-bold text-gray-700 tracking-wide">■ {section.section}</span>
           </div>
-          {/* 행 */}
           {section.rows.map((row, ri) => (
             <div
               key={ri}
-              className={`flex border-b border-gray-300 last:border-b-0 ${si < layout.length - 1 || ri < section.rows.length - 1 ? "" : "border-b-0"}`}
+              className="flex border-b border-gray-300 last:border-b-0"
             >
               {row.map((field, fi) => {
                 const isSpan = field.span === 2;
@@ -214,15 +192,23 @@ function FormTable({ layout, fields }: { layout: Layout; fields: Record<string, 
                     key={fi}
                     className={`flex ${isSpan ? "flex-1" : "flex-1"} ${!isSpan && fi < row.length - 1 ? "border-r border-gray-300" : ""}`}
                   >
-                    {/* 레이블 */}
                     <div className="w-28 flex-shrink-0 bg-gray-50 border-r border-gray-300 px-3 py-2.5 flex items-center">
                       <span className="text-xs font-semibold text-gray-600">{field.label}</span>
                     </div>
-                    {/* 값 */}
                     <div className="flex-1 px-3 py-2.5 flex items-center min-h-[40px]">
-                      <span className={`text-sm ${isEmpty ? "text-gray-300 italic" : "text-gray-900"}`}>
-                        {val || "[직접 입력]"}
-                      </span>
+                      {editMode ? (
+                        <input
+                          type="text"
+                          value={val === "[직접 입력]" ? "" : val}
+                          onChange={(e) => onFieldChange(field.key, e.target.value)}
+                          placeholder="직접 입력"
+                          className="w-full text-sm border-none outline-none bg-yellow-50 px-1 py-0.5 rounded"
+                        />
+                      ) : (
+                        <span className={`text-sm ${isEmpty ? "text-gray-300 italic" : "text-gray-900"}`}>
+                          {val || "[직접 입력]"}
+                        </span>
+                      )}
                     </div>
                   </div>
                 );
@@ -243,12 +229,15 @@ export default function DraftPreviewPage() {
   const [draft, setDraft] = useState<DraftResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editMode, setEditMode] = useState(false);
+  const [editedFields, setEditedFields] = useState<Record<string, string>>({});
 
   const meta = DOC_META[type];
-  const layout = LAYOUTS[type];
+  const layout = LAYOUTS[type]; // undefined for business-registration (custom form)
+  const isBizReg = type === "business-registration";
 
   useEffect(() => {
-    if (!meta || !layout) {
+    if (!meta) {
       setError("지원하지 않는 서류 유형입니다.");
       return;
     }
@@ -258,7 +247,15 @@ export default function DraftPreviewPage() {
       return;
     }
     generateDraft(type, profile);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type]);
+
+  // draft.fields가 바뀌면 editedFields 초기화
+  useEffect(() => {
+    if (draft?.fields) {
+      setEditedFields({ ...draft.fields });
+    }
+  }, [draft?.fields]);
 
   async function generateDraft(docType: string, profile: Record<string, unknown>) {
     setLoading(true);
@@ -282,54 +279,48 @@ export default function DraftPreviewPage() {
     }
   }
 
+  function handleFieldChange(key: string, value: string) {
+    setEditedFields((prev) => ({ ...prev, [key]: value }));
+  }
+
   function handlePrint() { window.print(); }
 
-  function handleDownload() {
-    if (!draft) return;
-    const lines: string[] = [`【${draft.title}】\n`];
-    layout?.forEach((section) => {
-      lines.push(`\n■ ${section.section}`);
-      section.rows.forEach((row) => {
-        row.forEach((f) => {
-          lines.push(`${f.label}: ${draft.fields?.[f.key] ?? "[직접 입력]"}`);
-        });
-      });
-    });
-    lines.push(`\n---\n${draft.disclaimer}`);
-    const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${draft.title}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+  function handlePdfSave() {
+    // 브라우저 인쇄 다이얼로그에서 "PDF로 저장" 선택
+    window.print();
   }
+
+  const displayFields = editMode ? editedFields : (draft?.fields ?? {});
 
   return (
     <>
       <style>{`
         @media print {
           .no-print { display: none !important; }
-          body { background: white; font-family: "Malgun Gothic", sans-serif; }
+          body { background: white; font-family: "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; }
+          #biz-reg-form { font-size: 10px; }
         }
       `}</style>
 
       <div className="min-h-screen bg-surface-100">
         {/* 상단 바 */}
         <div className="no-print fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-200 shadow-sm">
-          <div className="max-w-3xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <button onClick={() => router.back()} className="text-gray-400 hover:text-gray-600 transition-colors text-sm">
                 ← 뒤로
               </button>
               <span className="text-gray-200">|</span>
               <span className="text-sm font-semibold text-gray-700">{meta?.title ?? type}</span>
+              {editMode && (
+                <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-medium">수정 중</span>
+              )}
             </div>
             <Link href="/dashboard" className="text-xl font-black gradient-text">BOSS</Link>
           </div>
         </div>
 
-        <div className="max-w-3xl mx-auto px-6 pt-24 pb-32">
+        <div className="max-w-4xl mx-auto px-6 pt-24 pb-32">
           {/* 로딩 */}
           {loading && (
             <div className="flex flex-col items-center justify-center py-24 gap-4">
@@ -363,16 +354,27 @@ export default function DraftPreviewPage() {
           {draft && !loading && (
             <>
               {/* 서류 헤더 */}
-              <div className="text-center mb-6">
+              <div className="text-center mb-6 no-print">
                 <h1 className="text-2xl font-black text-gray-900">{draft.title}</h1>
                 {meta && <p className="text-xs text-gray-400 mt-1">{meta.subtitle}</p>}
                 <p className="text-xs text-gray-400 mt-1">BOSS AI 생성 초안 · 제출 전 반드시 내용을 확인하세요</p>
               </div>
 
-              {/* 서식 표 */}
+              {/* 서식 본문 */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-4 print-area">
-                {layout && draft.fields && Object.keys(draft.fields).length > 0 ? (
-                  <FormTable layout={layout} fields={draft.fields} />
+                {isBizReg ? (
+                  <BusinessRegistrationForm
+                    fields={displayFields as BizRegFields}
+                    editMode={editMode}
+                    onChange={(key, value) => handleFieldChange(key as string, value)}
+                  />
+                ) : layout && Object.keys(displayFields).length > 0 ? (
+                  <FormTable
+                    layout={layout}
+                    fields={displayFields}
+                    editMode={editMode}
+                    onFieldChange={handleFieldChange}
+                  />
                 ) : (
                   <pre className="text-sm text-gray-800 whitespace-pre-wrap font-mono leading-relaxed">
                     {draft.content}
@@ -381,31 +383,48 @@ export default function DraftPreviewPage() {
               </div>
 
               {/* 범례 */}
-              <div className="flex items-center gap-4 mb-4 px-1">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded-sm bg-gray-300" />
-                  <span className="text-xs text-gray-400">[직접 입력] = 제출 전 직접 작성 필요</span>
+              {!editMode && (
+                <div className="flex items-center gap-4 mb-4 px-1 no-print">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded-sm bg-gray-300" />
+                    <span className="text-xs text-gray-400">[직접 입력] = 제출 전 직접 작성 필요</span>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* 면책 고지 */}
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 no-print">
                 <p className="text-xs text-amber-700 leading-relaxed">{draft.disclaimer}</p>
               </div>
 
-              {/* 액션 버튼 */}
+              {/* 액션 버튼 3개 */}
               <div className="no-print flex flex-col sm:flex-row gap-3">
+                {/* 수정하기 / 완료 */}
                 <button
-                  onClick={handleDownload}
-                  className="flex-1 px-6 py-3 rounded-xl border-2 border-brand-500 text-brand-500 font-bold text-sm hover:bg-brand-50 transition-all"
+                  onClick={() => setEditMode((v) => !v)}
+                  className={`flex-1 px-6 py-3 rounded-xl border-2 font-bold text-sm transition-all
+                    ${editMode
+                      ? "border-green-500 text-green-600 bg-green-50 hover:bg-green-100"
+                      : "border-brand-500 text-brand-500 hover:bg-brand-50"
+                    }`}
                 >
-                  텍스트 파일 저장
+                  {editMode ? "✓ 수정 완료" : "✎ 수정하기"}
                 </button>
+
+                {/* PDF 저장 */}
+                <button
+                  onClick={handlePdfSave}
+                  className="flex-1 px-6 py-3 rounded-xl border-2 border-gray-400 text-gray-600 font-bold text-sm hover:bg-gray-50 transition-all"
+                >
+                  PDF 저장
+                </button>
+
+                {/* 출력 */}
                 <button
                   onClick={handlePrint}
                   className="flex-1 px-6 py-3 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-sm transition-all hover:scale-105 glow-blue"
                 >
-                  출력 / PDF 저장
+                  출력
                 </button>
               </div>
             </>
