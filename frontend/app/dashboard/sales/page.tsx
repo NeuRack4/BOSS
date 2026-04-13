@@ -87,7 +87,9 @@ export default function SalesPage() {
       }
     } else {
       // 신규 입력 모드
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       const { error: insertError } = await supabase.from("sales").insert({
         user_id: user?.id,
         date: form.date,
@@ -160,7 +162,9 @@ export default function SalesPage() {
       </div>
 
       {/* 입력/수정 폼 */}
-      <div className={`glass-card rounded-xl p-6 ${editingId ? "border-brand-500/40 glow-blue" : ""}`}>
+      <div
+        className={`glass-card rounded-xl p-6 ${editingId ? "border-brand-500/40 glow-blue" : ""}`}
+      >
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-base font-bold text-gray-900">
             {editingId ? "매출 수정" : "매출 입력"}
@@ -218,9 +222,10 @@ export default function SalesPage() {
                     type="button"
                     onClick={() => setForm({ ...form, category: cat })}
                     className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors
-                      ${form.category === cat
-                        ? "bg-brand-50 border-brand-500/40 text-brand-600"
-                        : "border-surface-300 text-gray-500 hover:border-brand-300"
+                      ${
+                        form.category === cat
+                          ? "bg-brand-50 border-brand-500/40 text-brand-600"
+                          : "border-surface-300 text-gray-500 hover:border-brand-300"
                       }`}
                   >
                     {cat}
@@ -239,9 +244,10 @@ export default function SalesPage() {
                     type="button"
                     onClick={() => setForm({ ...form, time_slot: slot })}
                     className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors
-                      ${form.time_slot === slot
-                        ? "bg-brand-50 border-brand-500/40 text-brand-600"
-                        : "border-surface-300 text-gray-500 hover:border-brand-300"
+                      ${
+                        form.time_slot === slot
+                          ? "bg-brand-50 border-brand-500/40 text-brand-600"
+                          : "border-surface-300 text-gray-500 hover:border-brand-300"
                       }`}
                   >
                     {slot}
@@ -277,16 +283,21 @@ export default function SalesPage() {
             type="submit"
             disabled={loading || !form.amount}
             className={`w-full py-3 rounded-xl font-bold text-sm transition-all
-              ${success
-                ? "bg-green-500 text-white"
-                : "bg-brand-500 hover:bg-brand-600 text-white glow-blue disabled:opacity-50 disabled:cursor-not-allowed"
+              ${
+                success
+                  ? "bg-green-500 text-white"
+                  : "bg-brand-500 hover:bg-brand-600 text-white glow-blue disabled:opacity-50 disabled:cursor-not-allowed"
               }`}
           >
             {success
               ? "✓ 완료"
               : loading
-              ? editingId ? "수정 중..." : "저장 중..."
-              : editingId ? "수정 저장" : "매출 저장"}
+                ? editingId
+                  ? "수정 중..."
+                  : "저장 중..."
+                : editingId
+                  ? "수정 저장"
+                  : "매출 저장"}
           </button>
         </form>
       </div>
@@ -320,9 +331,10 @@ export default function SalesPage() {
               <div
                 key={entry.id}
                 className={`flex items-center justify-between p-3 rounded-lg border transition-colors
-                  ${editingId === entry.id
-                    ? "bg-brand-50/50 border-brand-500/30"
-                    : "bg-surface-100 border-surface-300"
+                  ${
+                    editingId === entry.id
+                      ? "bg-brand-50/50 border-brand-500/30"
+                      : "bg-surface-100 border-surface-300"
                   }`}
               >
                 <div className="flex items-center gap-3 min-w-0">
@@ -350,9 +362,18 @@ export default function SalesPage() {
                     className="text-gray-400 hover:text-brand-500 transition-colors p-1"
                     title="수정"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                      />
                     </svg>
                   </button>
                   {/* 삭제 버튼 */}
@@ -363,14 +384,38 @@ export default function SalesPage() {
                     title="삭제"
                   >
                     {deletingId === entry.id ? (
-                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                      <svg
+                        className="w-4 h-4 animate-spin"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8v8H4z"
+                        />
                       </svg>
                     ) : (
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        />
                       </svg>
                     )}
                   </button>
