@@ -51,9 +51,8 @@ export default function PdfOverlayForm({
         // Dynamic import to avoid SSR
         const pdfjsLib = await import("pdfjs-dist");
 
-        // Use CDN worker (avoids bundler issues with web workers)
-        pdfjsLib.GlobalWorkerOptions.workerSrc =
-          `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+        // Use local worker file (copied to /public) — avoids CDN dependency & Next.js bundler issues
+        pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
         const pdfDoc = await pdfjsLib.getDocument({
           url: pdfUrl,

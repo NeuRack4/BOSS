@@ -297,6 +297,8 @@ async def generate_draft(doc_type: str, user_profile: dict) -> dict:
     ]
 
     # 429/413 발생 시 llama-3.1-8b-instant 로 fallback (RAG 제거로 토큰 절감)
+    # 두 모델 모두 rate-limit 이면 template 기본값 반환 (LLM 없이)
+    response = None
     for model, msg, max_tok in [
         ("llama-3.3-70b-versatile", messages, 2048),
         ("llama-3.1-8b-instant",    fallback_messages, 1024),
@@ -312,10 +314,18 @@ async def generate_draft(doc_type: str, user_profile: dict) -> dict:
         except Exception as e:
             err_str = str(e)
             if any(code in err_str for code in ("429", "413", "rate_limit")):
-                if model == "llama-3.1-8b-instant":
-                    raise  # 두 모델 모두 실패
-                continue
-            raise
+                continue   # 다음 모델 시도 (마지막이면 루프 종료)
+            raise          # 그 외 에러는 즉시 raise
+
+    # 두 모델 모두 rate-limit → template 기본값으로 초안 반환
+    if response is None:
+        return {
+            "doc_type":   doc_type,
+            "title":      f"{config['label']} 초안 (기본 양식)",
+            "content":    "",
+            "fields":     config["json_template"].copy(),
+            "disclaimer": LEGAL_DISCLAIMER + "\n※ API 한도 초과로 AI 자동 입력 없이 기본 양식이 표시됩니다. [직접 입력] 항목을 채워주세요.",
+        }
 
     raw = response.choices[0].message.content or ""
     fields = _extract_json(raw)
