@@ -26,7 +26,9 @@ class FounderSubStage(StrEnum):
 
     # EARLY_OPS
     OPEN = "open"               # 오픈
-    HIRING = "hiring"           # 첫 채용
+    HIRING_PREPARATION = "hiring_preparation"  # 채용 준비 (공고 초안 생성)
+    HIRING_IN_PROGRESS = "hiring_in_progress"  # 공고 게시 후 지원자 대기
+    HIRING_CONTRACT = "hiring_contract"        # 면접 완료 → 계약서 초안 자동 생성
     TAX_SETUP = "tax_setup"     # 세금 신고 셋업
 
     # GROWTH
@@ -55,6 +57,7 @@ class DraftType(StrEnum):
     LEASE_CONTRACT = "lease_contract"
     TAX_RETURN = "tax_return"
     JOB_POSTING = "job_posting"
+    WAGE_SIMULATION = "wage_simulation"  # 인건비 시뮬레이션 리포트
 
 
 # 서울 자치구 목록
