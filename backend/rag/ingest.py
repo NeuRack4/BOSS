@@ -28,7 +28,7 @@ async def ingest_documents(
     for i in range(0, len(documents), batch_size):
         batch = documents[i : i + batch_size]
         texts = [d["content"] for d in batch]
-        vectors = await embed(texts)
+        vectors = embed(texts)
 
         rows = [
             {
@@ -44,7 +44,7 @@ async def ingest_documents(
 
         supabase.table("documents").insert(rows).execute()
         total += len(rows)
-        await asyncio.sleep(0.1)  # rate limit 방지
+        print(f"[ingest] {total + len(rows)}개 저장 완료")
 
     return total
 
