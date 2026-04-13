@@ -92,10 +92,10 @@ export default function Header() {
                 로그인
               </a>
               <a
-                href="/auth/signup"
+                href="/onboarding"
                 className="px-4 py-2 text-sm font-semibold rounded-lg bg-brand-500 hover:bg-brand-600 text-white transition-colors glow-blue"
               >
-                회원가입
+                시작하기
               </a>
             </>
           )}
