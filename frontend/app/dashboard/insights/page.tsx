@@ -7,6 +7,8 @@ type Summary = {
   current_total: number;
   prev_total: number;
   change_pct: number | null;
+  yoy_total: number;
+  yoy_change_pct: number | null;
   transaction_count: number;
   daily_average: number;
   category_breakdown: Record<string, number>;
@@ -16,6 +18,7 @@ type Summary = {
 type InsightResult = {
   insight: string;
   summary: Summary;
+  rag_used: boolean;
 };
 
 export default function InsightsPage() {
@@ -150,9 +153,15 @@ export default function InsightsPage() {
               </p>
             </div>
             <div className="glass-card rounded-xl p-4">
-              <p className="text-xs text-gray-400 mb-1">거래 건수</p>
-              <p className="text-lg font-bold text-gray-900">
-                {result.summary.transaction_count}건
+              <p className="text-xs text-gray-400 mb-1">전년 동월 대비</p>
+              <p className={`text-lg font-bold ${
+                result.summary.yoy_change_pct == null ? "text-gray-400"
+                  : result.summary.yoy_change_pct > 0 ? "text-green-600"
+                  : "text-red-500"
+              }`}>
+                {result.summary.yoy_change_pct != null
+                  ? `${result.summary.yoy_change_pct > 0 ? "▲" : "▼"} ${Math.abs(result.summary.yoy_change_pct)}%`
+                  : "-"}
               </p>
             </div>
             <div className="glass-card rounded-xl p-4">
@@ -168,6 +177,11 @@ export default function InsightsPage() {
             <div className="flex items-center gap-2 mb-4">
               <span className="text-brand-500 text-lg">✦</span>
               <h2 className="text-base font-bold text-gray-900">AI 분석 결과</h2>
+              {result.rag_used && (
+                <span className="text-xs bg-brand-50 text-brand-600 border border-brand-200 px-2 py-0.5 rounded-full font-medium">
+                  마포구 실데이터 반영
+                </span>
+              )}
               <span className="ml-auto text-xs text-gray-400">{year}년 {month}월</span>
             </div>
             <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">

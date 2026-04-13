@@ -49,6 +49,7 @@ class DocumentCategory(StrEnum):
     LEASE = "lease"
     SUBSIDY = "subsidy"
     REGULATION = "regulation"  # 규제법령 (식품위생법, 소방법, 건축법 등)
+    MAPO_STATS = "mapo_stats"  # 마포구 카페 상권 통계
 
 
 class DraftType(StrEnum):
