@@ -22,7 +22,8 @@ type Summary = {
   entries: { date: string; amount: number }[];
 };
 
-function formatAmount(n: number) {
+function formatAmount(n: number | undefined | null) {
+  if (n == null) return "-";
   if (n >= 10000) return `${(n / 10000).toFixed(1)}만원`;
   return `${n.toLocaleString()}원`;
 }
@@ -35,12 +36,15 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const fetchSummary = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
       const res = await fetch(
-        `${apiUrl}/sales/summary?user_id=${user.id}&year=${today.getFullYear()}&month=${today.getMonth() + 1}`
+        `${apiUrl}/sales/summary?year=${today.getFullYear()}&month=${today.getMonth() + 1}`,
+        { headers: { "X-User-Id": user.id } },
       );
       if (res.ok) {
         const data = await res.json();
@@ -64,28 +68,46 @@ export default function DashboardPage() {
       .map(([day, amount]) => ({ day, amount }));
   })();
 
-  const changeColor = summary?.change_pct != null
-    ? summary.change_pct > 0 ? "text-green-600" : "text-red-500"
-    : "text-gray-400";
+  const changeColor =
+    summary?.change_pct != null
+      ? summary.change_pct > 0
+        ? "text-green-600"
+        : "text-red-500"
+      : "text-gray-400";
 
-  const stats = summary ? [
-    { label: "이번달 매출", value: formatAmount(summary.current_total), icon: "₩" },
-    {
-      label: "전달 대비",
-      value: summary.change_pct != null
-        ? `${summary.change_pct > 0 ? "▲" : "▼"} ${Math.abs(summary.change_pct)}%`
-        : "-",
-      icon: "↑",
-      color: changeColor,
-    },
-    { label: "거래 건수", value: `${summary.transaction_count}건`, icon: "◈" },
-    { label: "일 평균 매출", value: formatAmount(summary.daily_average), icon: "∼" },
-  ] : [
-    { label: "이번달 매출", value: "-", icon: "₩" },
-    { label: "전달 대비", value: "-", icon: "↑" },
-    { label: "거래 건수", value: "-", icon: "◈" },
-    { label: "일 평균 매출", value: "-", icon: "∼" },
-  ];
+  const stats = summary
+    ? [
+        {
+          label: "이번달 매출",
+          value: formatAmount(summary.current_total),
+          icon: "₩",
+        },
+        {
+          label: "전달 대비",
+          value:
+            summary.change_pct != null
+              ? `${summary.change_pct > 0 ? "▲" : "▼"} ${Math.abs(summary.change_pct)}%`
+              : "-",
+          icon: "↑",
+          color: changeColor,
+        },
+        {
+          label: "거래 건수",
+          value: `${summary.transaction_count}건`,
+          icon: "◈",
+        },
+        {
+          label: "일 평균 매출",
+          value: formatAmount(summary.daily_average),
+          icon: "∼",
+        },
+      ]
+    : [
+        { label: "이번달 매출", value: "-", icon: "₩" },
+        { label: "전달 대비", value: "-", icon: "↑" },
+        { label: "거래 건수", value: "-", icon: "◈" },
+        { label: "일 평균 매출", value: "-", icon: "∼" },
+      ];
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">
@@ -93,7 +115,8 @@ export default function DashboardPage() {
       <div>
         <h1 className="text-2xl font-black text-gray-900">대시보드</h1>
         <p className="text-sm text-gray-500 mt-1">
-          {today.getFullYear()}년 {today.getMonth() + 1}월 · 마포구 카페 운영 현황
+          {today.getFullYear()}년 {today.getMonth() + 1}월 · 마포구 카페 운영
+          현황
         </p>
       </div>
 
