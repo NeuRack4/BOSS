@@ -32,6 +32,17 @@ export default function DashboardPage() {
   const today = new Date();
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("boss_profile");
+      if (raw) {
+        const profile = JSON.parse(raw);
+        setSelectedDocs(profile.selectedDocuments ?? []);
+      }
+    } catch {}
+  }, []);
 
   useEffect(() => {
     const fetchSummary = async () => {
@@ -197,25 +208,36 @@ export default function DashboardPage() {
           <span className="text-xs font-semibold text-brand-500 bg-brand-50 px-2 py-1 rounded-full">Proactive</span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {DRAFT_CARDS.map((card) => (
-            <button
-              key={card.type}
-              onClick={() => router.push(`/drafts/${card.type}`)}
-              className="glass-card rounded-xl p-5 hover:border-brand-500/30 hover:glow-blue transition-all group text-left"
-            >
-              <div className="flex items-start justify-between mb-2">
-                <div className="flex items-center gap-3">
-                  <span className="text-xl">{card.icon}</span>
-                  <h3 className="font-bold text-gray-900 text-sm">{card.label}</h3>
+          {DRAFT_CARDS.map((card) => {
+            const isSelected = selectedDocs.includes(card.type);
+            return (
+              <button
+                key={card.type}
+                onClick={() => router.push(`/drafts/${card.type}`)}
+                className={`rounded-xl p-5 transition-all group text-left border ${
+                  isSelected
+                    ? "bg-brand-50 border-brand-400 glow-blue"
+                    : "glass-card hover:border-brand-500/30 hover:glow-blue"
+                }`}
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">{card.icon}</span>
+                    <h3 className="font-bold text-gray-900 text-sm">{card.label}</h3>
+                  </div>
+                  {isSelected ? (
+                    <span className="text-xs font-semibold text-brand-600 bg-brand-100 px-2 py-0.5 rounded-full">선택됨</span>
+                  ) : (
+                    <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{card.category}</span>
+                  )}
                 </div>
-                <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{card.category}</span>
-              </div>
-              <p className="text-xs text-gray-500 ml-8">{card.desc}</p>
-              <p className="text-xs text-brand-500 mt-3 ml-8 group-hover:translate-x-1 transition-transform">
-                초안 생성 →
-              </p>
-            </button>
-          ))}
+                <p className="text-xs text-gray-500 ml-8">{card.desc}</p>
+                <p className="text-xs text-brand-500 mt-3 ml-8 group-hover:translate-x-1 transition-transform">
+                  초안 생성 →
+                </p>
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>
