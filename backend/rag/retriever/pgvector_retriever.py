@@ -10,8 +10,12 @@ Hybrid Search 흐름:
      — 벡터 순위 + FTS(tsvector simple) 순위를 RRF로 합산
   3. paragraph 청크가 검색되면 parent article 청크를 함께 반환 (컨텍스트 확장)
 """
+import logging
+
 from backend.db.client import get_supabase
 from backend.rag.embeddings.bge_embeddings import embed_single
+
+logger = logging.getLogger(__name__)
 
 
 async def retrieve(
@@ -33,6 +37,10 @@ async def retrieve(
             "filter_category": category,
         },
     ).execute()
+
+    if hasattr(result, "error") and result.error:
+        logger.error("match_documents RPC 오류: %s", result.error)
+        return []
 
     return result.data or []
 
@@ -62,6 +70,10 @@ async def hybrid_retrieve(
             "filter_category": category,
         },
     ).execute()
+
+    if hasattr(result, "error") and result.error:
+        logger.error("hybrid_search RPC 오류: %s", result.error)
+        return []
 
     chunks: list[dict] = result.data or []
 
