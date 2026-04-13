@@ -46,11 +46,15 @@ def _parse_alley_item(item: dict) -> dict:
 
 
 def _fallback_mapo_data() -> list[dict]:
-    """API 장애 시 사용하는 마포구 주요 상권 기본 데이터"""
+    """API 장애 시 사용하는 마포구 9개 상권 기본 데이터"""
     return [
-        {"name": "홍대입구", "cafe_count": 312, "survival_rate": 0.62, "monthly_sales": 8500000, "foot_traffic": 95000},
-        {"name": "합정", "cafe_count": 178, "survival_rate": 0.58, "monthly_sales": 7200000, "foot_traffic": 72000},
-        {"name": "연남동", "cafe_count": 145, "survival_rate": 0.71, "monthly_sales": 6800000, "foot_traffic": 68000},
-        {"name": "망원동", "cafe_count": 98, "survival_rate": 0.74, "monthly_sales": 5900000, "foot_traffic": 54000},
-        {"name": "공덕", "cafe_count": 87, "survival_rate": 0.55, "monthly_sales": 6100000, "foot_traffic": 61000},
+        {"name": "홍대입구", "survival_rate": 0.62, "monthly_sales": 8500000, "foot_traffic": 95000},
+        {"name": "합정",     "survival_rate": 0.58, "monthly_sales": 7200000, "foot_traffic": 72000},
+        {"name": "연남동",   "survival_rate": 0.71, "monthly_sales": 6800000, "foot_traffic": 68000},
+        {"name": "망원동",   "survival_rate": 0.74, "monthly_sales": 5900000, "foot_traffic": 54000},
+        {"name": "공덕",     "survival_rate": 0.55, "monthly_sales": 6100000, "foot_traffic": 61000},
+        {"name": "성산동",   "survival_rate": 0.68, "monthly_sales": 4800000, "foot_traffic": 38000},
+        {"name": "마포대로", "survival_rate": 0.52, "monthly_sales": 5200000, "foot_traffic": 45000},
+        {"name": "아현동",   "survival_rate": 0.61, "monthly_sales": 3900000, "foot_traffic": 32000},
+        {"name": "신수동",   "survival_rate": 0.66, "monthly_sales": 3500000, "foot_traffic": 28000},
     ]

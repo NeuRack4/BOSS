@@ -1,14 +1,12 @@
 """
 입지분석 에이전트 (마포구 한정)
-- 골목상권 + 서울 열린데이터 수집
+- 서울 열린데이터 API (VwsmAdstrdStorW + VwsmAdstrdFlpopW) 수집
 - 시뮬레이션 엔진으로 5개 지표 계산
 - Claude가 결과를 해석한 리포트 생성
 """
-import asyncio
 import anthropic
 from backend.core.config import get_settings
 from backend.core.constants import LEGAL_DISCLAIMER
-from backend.data.crawlers.alley import fetch_alley_data
 from backend.data.crawlers.seoul_open import fetch_all_mapo_enriched, _MAPO_DONG_MAP
 from backend.analysis.simulator import simulate_districts, to_json_scores
 
@@ -38,14 +36,11 @@ async def run(ctx: dict | None = None, districts: list[str] | None = None) -> di
     settings = get_settings()
     client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
 
-    # 1. 데이터 수집 (병렬)
-    alley_data, enriched_map = await asyncio.gather(
-        fetch_alley_data(region="마포구", business_type="카페"),
-        fetch_all_mapo_enriched(),
-    )
+    # 1. 데이터 수집 (서울 열린데이터 단일 소스)
+    enriched_map = await fetch_all_mapo_enriched()
 
-    # 2. 두 소스 병합
-    merged = _merge_data(alley_data, enriched_map)
+    # 2. 시뮬레이터 입력 형식으로 변환
+    merged = [{"name": k, **v} for k, v in enriched_map.items()]
 
     # 요청된 상권 필터링
     if districts:
@@ -93,16 +88,6 @@ async def run(ctx: dict | None = None, districts: list[str] | None = None) -> di
         "llm_report": llm_report,
         "raw_data": merged,
     }
-
-
-def _merge_data(alley_data: list[dict], enriched_map: dict[str, dict]) -> list[dict]:
-    """골목상권 데이터와 서울 열린데이터를 상권명 기준으로 병합"""
-    merged = []
-    for item in alley_data:
-        name = item.get("name", "")
-        extra = enriched_map.get(name, {})
-        merged.append({**item, **extra})
-    return merged
 
 
 def _format_scores_for_llm(scores) -> str:

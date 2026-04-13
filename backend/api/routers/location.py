@@ -7,11 +7,11 @@ GET  /location/history       → 창업자 검색 이력
 """
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from supabase import Client
 
 from backend.agents.location import run as run_location_agent
-from backend.api.dependencies import db, get_current_user_id
+from backend.api.dependencies import db
 from backend.api.schemas.location import (
     AnalyzeRequest,
     AnalyzeResponse,
@@ -36,8 +36,8 @@ async def list_districts():
 @router.post("/analyze", response_model=AnalyzeResponse)
 async def analyze(
     body: AnalyzeRequest,
-    user_id: str = Depends(get_current_user_id),
     supabase: Client = Depends(db),
+    x_user_id: str | None = Header(default=None),
 ):
     """
     상권 분석 실행.
@@ -116,16 +116,17 @@ async def analyze(
     if not top_pick and all_scores:
         top_pick = all_scores[0].district
 
-    # 검색 이력 저장
-    report_ids = [
-        cached_rows[d]["id"] for d in requested if d in cached_rows
-    ]
-    supabase.table("founder_location_searches").insert({
-        "user_id": user_id,
-        "districts": requested,
-        "top_pick": top_pick,
-        "report_ids": report_ids,
-    }).execute()
+    # 검색 이력 저장 (user_id 있을 때만)
+    if x_user_id:
+        report_ids = [
+            cached_rows[d]["id"] for d in requested if d in cached_rows
+        ]
+        supabase.table("founder_location_searches").insert({
+            "user_id": x_user_id,
+            "districts": requested,
+            "top_pick": top_pick,
+            "report_ids": report_ids,
+        }).execute()
 
     return AnalyzeResponse(
         top_pick=top_pick,
@@ -138,16 +139,17 @@ async def analyze(
 
 @router.get("/history", response_model=list[LocationSearchRecord])
 async def get_history(
-    user_id: str = Depends(get_current_user_id),
     supabase: Client = Depends(db),
+    x_user_id: str | None = Header(default=None),
 ):
-    """창업자의 입지 검색 이력 반환 (최신순 10건)"""
-    result = (
+    """입지 검색 이력 반환 (최신순 10건). user_id 없으면 전체 최근 이력."""
+    query = (
         supabase.table("founder_location_searches")
         .select("id, districts, top_pick, searched_at")
-        .eq("user_id", user_id)
         .order("searched_at", desc=True)
         .limit(10)
-        .execute()
     )
+    if x_user_id:
+        query = query.eq("user_id", x_user_id)
+    result = query.execute()
     return result.data or []
