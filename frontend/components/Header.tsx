@@ -1,15 +1,37 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
+import type { User } from "@supabase/supabase-js";
 
 export default function Header() {
+  const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handler);
     return () => window.removeEventListener("scroll", handler);
   }, []);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => setUser(user));
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push("/");
+  };
+
+  const displayName = user?.email?.split("@")[0] ?? "";
 
   return (
     <header
@@ -42,12 +64,42 @@ export default function Header() {
           ))}
         </nav>
 
-        <a
-          href="#cta"
-          className="px-4 py-2 text-sm font-semibold rounded-lg bg-brand-500 hover:bg-brand-600 text-white transition-colors glow-blue"
-        >
-          시작하기
-        </a>
+        <div className="flex items-center gap-2">
+          {user ? (
+            <>
+              <a
+                href="/dashboard"
+                className="px-4 py-2 text-sm font-semibold rounded-lg border border-brand-500/30 text-brand-600 hover:bg-brand-50 transition-colors"
+              >
+                Dashboard
+              </a>
+              <span className="text-sm text-gray-600 font-medium hidden sm:block">
+                {displayName}님
+              </span>
+              <button
+                onClick={handleLogout}
+                className="px-4 py-2 text-sm font-semibold rounded-lg border border-gray-200 text-gray-600 hover:border-red-300 hover:text-red-500 transition-colors"
+              >
+                로그아웃
+              </button>
+            </>
+          ) : (
+            <>
+              <a
+                href="/auth/login"
+                className="px-4 py-2 text-sm font-semibold rounded-lg border border-gray-200 text-gray-600 hover:border-brand-300 hover:text-brand-600 transition-colors"
+              >
+                로그인
+              </a>
+              <a
+                href="/auth/signup"
+                className="px-4 py-2 text-sm font-semibold rounded-lg bg-brand-500 hover:bg-brand-600 text-white transition-colors glow-blue"
+              >
+                회원가입
+              </a>
+            </>
+          )}
+        </div>
       </div>
     </header>
   );
