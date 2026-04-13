@@ -1,3 +1,7 @@
+"use client";
+
+import Link from "next/link";
+
 export default function CTASection() {
   return (
     <section id="cta" className="py-32 px-6 bg-white">
@@ -27,9 +31,12 @@ export default function CTASection() {
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <button className="w-full sm:w-auto px-10 py-4 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-lg transition-all hover:scale-105 glow-blue">
+              <Link
+                href="/onboarding"
+                className="w-full sm:w-auto px-10 py-4 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-lg transition-all hover:scale-105 glow-blue text-center"
+              >
                 무료로 시작하기
-              </button>
+              </Link>
               <button className="w-full sm:w-auto px-10 py-4 rounded-xl border border-gray-200 hover:border-brand-300 text-gray-700 font-semibold text-lg transition-all hover:bg-brand-50">
                 데모 보기
               </button>
