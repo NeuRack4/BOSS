@@ -3,7 +3,7 @@ Supabase pgvector 유사도 검색
 match_documents RPC 함수 호출
 """
 from backend.db.client import get_supabase
-from backend.rag.embeddings.openai_embeddings import embed_single
+from backend.rag.embeddings.bge_embeddings import embed_single
 
 
 async def retrieve(

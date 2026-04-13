@@ -38,7 +38,11 @@ def route(ctx: FounderContext) -> Literal["subsidy", "tax", "location", "hiring"
         FounderSubStage.LICENSE_APPLICATION,
     ):
         return "tax"
-    if sub == FounderSubStage.HIRING:
+    if sub in (
+        FounderSubStage.HIRING_PREPARATION,
+        FounderSubStage.HIRING_IN_PROGRESS,
+        FounderSubStage.HIRING_CONTRACT,
+    ):
         return "hiring"
     if sub == FounderSubStage.SUBSIDY_ACTIVE:
         return "subsidy"

@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.core.config import get_settings
-from backend.api.routers import health, founders, triggers, drafts, subsidies
+from backend.api.routers import health, founders, triggers, drafts, subsidies, tax, location, sales
 from backend.triggers.scheduler import start_scheduler, stop_scheduler
 
 
@@ -37,6 +37,9 @@ def create_app() -> FastAPI:
     app.include_router(triggers.router, prefix="/triggers", tags=["triggers"])
     app.include_router(drafts.router, prefix="/drafts", tags=["drafts"])
     app.include_router(subsidies.router, prefix="/subsidies", tags=["subsidies"])
+    app.include_router(tax.router, prefix="/tax", tags=["tax"])
+    app.include_router(location.router, prefix="/location", tags=["location"])
+    app.include_router(sales.router, prefix="/sales", tags=["sales"])
 
     return app
 

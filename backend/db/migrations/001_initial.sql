@@ -72,7 +72,7 @@ create table if not exists documents (
   source      text not null,    -- 출처 (예: 식품위생법 시행규칙)
   chunk_index int  not null,
   content     text not null,
-  embedding   vector(1536),     -- text-embedding-3-small
+  embedding   vector(1024),     -- BGE-M3 (003_vector_dim_bge.sql로 교체됨)
   metadata    jsonb default '{}',
   created_at  timestamptz default now()
 );

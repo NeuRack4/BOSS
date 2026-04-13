@@ -10,14 +10,14 @@ class Settings(BaseSettings):
     supabase_anon_key: str
     supabase_service_role_key: str
 
-    # OpenAI
-    openai_api_key: str
-
     # Anthropic
     anthropic_api_key: str
 
     # 기업마당 API
     bizinfo_api_key: str = ""
+
+    # 서울 열린데이터광장 API
+    seoul_open_api_key: str = ""
 
     # App
     app_env: str = "development"

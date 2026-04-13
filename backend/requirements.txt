@@ -7,7 +7,13 @@ supabase==2.7.4
 
 # AI / LLM
 anthropic==0.34.2
-openai==1.51.0
+
+# Embeddings (BGE-M3 로컬)
+# ⚠️  torch는 CUDA 버전에 맞게 별도 설치 필요:
+#     pip install torch --index-url https://download.pytorch.org/whl/cu121
+sentence-transformers>=3.0.0
+torch>=2.0.0
+accelerate>=0.26.0
 
 # Agent Orchestration
 langgraph==0.2.28
@@ -29,4 +35,3 @@ pdfplumber==0.11.4
 # Dev / Test
 pytest==8.3.3
 pytest-asyncio==0.24.0
-httpx==0.27.2  # for TestClient
