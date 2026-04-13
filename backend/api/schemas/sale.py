@@ -26,6 +26,14 @@ class SaleResponse(BaseModel):
     created_at: datetime
 
 
+class SaleUpdate(BaseModel):
+    date: date | None = None
+    amount: int | None = None
+    category: SaleCategory | None = None
+    time_slot: TimeSlot | None = None
+    memo: str | None = None
+
+
 class SalesSummary(BaseModel):
     total_amount: int
     by_category: dict[str, int]   # {"음료": 120000, "디저트": 50000, ...}
