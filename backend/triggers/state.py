@@ -12,6 +12,7 @@ from datetime import date, datetime, timezone
 from backend.db.client import get_supabase
 from backend.core.constants import FounderSubStage
 from backend.notifications.base import NotificationChannel
+from backend.notifications.email import EmailChannel
 from backend.notifications.realtime import RealtimeChannel
 
 logger = logging.getLogger(__name__)
@@ -24,7 +25,7 @@ _DRAFT_TRIGGER_D_DAY = 14
 
 def _get_channels() -> list[NotificationChannel]:
     """활성화된 알림 채널 목록 반환 — 채널 추가 시 여기만 수정"""
-    return [RealtimeChannel()]
+    return [RealtimeChannel(), EmailChannel()]
 
 
 async def on_state_transition(user_id: str, new_sub_stage: FounderSubStage) -> None:

@@ -19,6 +19,17 @@ class Settings(BaseSettings):
     # 서울 열린데이터광장 API
     seoul_open_api_key: str = ""
 
+    # 공공데이터포털 API
+    public_data_api_key: str = ""
+
+    # SMTP — Resend (smtp.resend.com)
+    smtp_host: str = "smtp.resend.com"
+    smtp_port: int = 465
+    smtp_user: str = "resend"
+    smtp_password: str = ""   # Resend API 키 (re_xxx...)
+    smtp_from_email: str = ""
+    smtp_from_name: str = "BOSS 비서"
+
     # App
     app_env: str = "development"
     log_level: str = "INFO"
