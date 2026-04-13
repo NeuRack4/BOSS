@@ -1,4 +1,6 @@
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic.aliases import AliasChoices
 from functools import lru_cache
 
 
@@ -16,8 +18,11 @@ class Settings(BaseSettings):
     # 기업마당 API
     bizinfo_api_key: str = ""
 
-    # 서울 열린데이터광장 API
-    seoul_open_api_key: str = ""
+    # 서울 열린데이터광장 API (SEOUL_OPEN_API_KEY 또는 SEOUL_API_KEY 둘 다 허용)
+    seoul_open_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("SEOUL_OPEN_API_KEY", "SEOUL_API_KEY"),
+    )
 
     # 공공데이터포털 API
     public_data_api_key: str = ""
