@@ -45,7 +45,7 @@ async def analyze_sales(req: InsightRequest):
     settings = get_settings()
 
     # 매출 요약 데이터 조회
-    summary = await get_sales_summary(
+    summary = get_sales_summary(
         user_id=req.user_id,
         year=req.year,
         month=req.month,
