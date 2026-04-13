@@ -101,9 +101,11 @@ export default function Step1Personal({ data, onChange }: Props) {
         required
         hint="사업자등록 서류 생성에만 사용됩니다. 뒷 6자리는 수집하지 않습니다."
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          {/* 앞 6자리 */}
           <input
             type="text"
+            inputMode="numeric"
             placeholder="000000"
             maxLength={6}
             value={data.residentIdFront}
@@ -113,11 +115,13 @@ export default function Step1Personal({ data, onChange }: Props) {
                 e.target.value.replace(/\D/g, "").slice(0, 6),
               )
             }
-            className={`${inputClass} text-center tracking-widest`}
+            className="w-32 px-3 py-3 rounded-xl border border-surface-300 bg-white text-gray-800 text-sm text-center tracking-widest placeholder-gray-300 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all"
           />
-          <span className="text-gray-400 font-bold text-lg">-</span>
+          <span className="text-gray-400 font-bold text-lg flex-shrink-0">-</span>
+          {/* 성별 1자리 */}
           <input
             type="text"
+            inputMode="numeric"
             placeholder="0"
             maxLength={1}
             value={data.residentIdGender}
@@ -127,10 +131,11 @@ export default function Step1Personal({ data, onChange }: Props) {
                 e.target.value.replace(/\D/g, "").slice(0, 1),
               )
             }
-            className={`${inputClass} text-center tracking-widest w-20 flex-shrink-0`}
+            className="w-12 px-2 py-3 rounded-xl border border-surface-300 bg-white text-gray-800 text-sm text-center tracking-widest placeholder-gray-300 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all flex-shrink-0"
           />
-          <span className="text-gray-300 tracking-widest text-sm font-mono flex-shrink-0">
-            ● ● ● ● ● ●
+          {/* 뒷 6자리 마스킹 표시 */}
+          <span className="text-gray-300 text-sm font-mono tracking-widest flex-shrink-0 select-none">
+            ●●●●●●
           </span>
         </div>
       </Field>
