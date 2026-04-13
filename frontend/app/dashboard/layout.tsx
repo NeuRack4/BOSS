@@ -9,6 +9,7 @@ const navItems = [
   { label: "개요", href: "/dashboard", icon: "◈" },
   { label: "매출 관리", href: "/dashboard/sales", icon: "₩" },
   { label: "AI 인사이트", href: "/dashboard/insights", icon: "✦" },
+  { label: "알림", href: "/dashboard/notifications", icon: "🔔" },
 ];
 
 export default function DashboardLayout({
@@ -20,6 +21,7 @@ export default function DashboardLayout({
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -27,9 +29,26 @@ export default function DashboardLayout({
         router.replace("/auth/login");
       } else {
         setAuthChecked(true);
+        fetchUnreadCount(user.id);
       }
     });
   }, [router]);
+
+  // 알림 페이지 방문 시 뱃지 갱신
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) fetchUnreadCount(user.id);
+    });
+  }, [pathname]);
+
+  const fetchUnreadCount = async (userId: string) => {
+    const { count } = await supabase
+      .from("trigger_log")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .is("read_at", null);
+    setUnreadCount(count ?? 0);
+  };
 
   if (!authChecked) {
     return (
@@ -62,7 +81,7 @@ export default function DashboardLayout({
           >
             BOSS
           </Link>
-          <span className="ml-2 text-xs text-gray-400 font-medium">v0.1.0</span>
+          <span className="ml-2 text-xs text-gray-400 font-medium">v0.2.0</span>
         </div>
 
         {/* 카페 정보 */}
@@ -82,6 +101,7 @@ export default function DashboardLayout({
         <nav className="flex-1 px-3 py-4 space-y-1">
           {navItems.map(({ label, href, icon }) => {
             const isActive = pathname === href;
+            const isNotification = href === "/dashboard/notifications";
             return (
               <Link
                 key={href}
@@ -95,7 +115,12 @@ export default function DashboardLayout({
                   }`}
               >
                 <span className="text-base w-5 text-center">{icon}</span>
-                {label}
+                <span className="flex-1">{label}</span>
+                {isNotification && unreadCount > 0 && (
+                  <span className="text-xs bg-red-500 text-white font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -132,6 +157,13 @@ export default function DashboardLayout({
             ☰
           </button>
           <span className="font-black gradient-text">BOSS</span>
+          {unreadCount > 0 && (
+            <Link href="/dashboard/notifications" className="ml-auto">
+              <span className="text-xs bg-red-500 text-white font-bold px-2 py-0.5 rounded-full">
+                🔔 {unreadCount}
+              </span>
+            </Link>
+          )}
         </header>
 
         <main className="flex-1 p-6">{children}</main>
