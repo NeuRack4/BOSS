@@ -19,7 +19,9 @@ export default function Header() {
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => setUser(user));
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_, session) => {
       setUser(session?.user ?? null);
     });
 
@@ -43,8 +45,12 @@ export default function Header() {
     >
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-2xl font-black tracking-tight gradient-text">BOSS</span>
-          <span className="text-xs text-gray-400 font-medium hidden sm:block">v0.1.0</span>
+          <span className="text-2xl font-black tracking-tight gradient-text">
+            BOSS
+          </span>
+          <span className="text-xs text-gray-400 font-medium hidden sm:block">
+            v0.1.0
+          </span>
         </div>
 
         <nav className="hidden md:flex items-center gap-8">

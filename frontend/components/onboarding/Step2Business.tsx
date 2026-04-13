@@ -10,7 +10,12 @@ interface Props {
 const inputClass =
   "w-full px-4 py-3 rounded-xl border border-surface-300 bg-white text-gray-800 text-sm placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all";
 
-const BUSINESS_TYPES: { value: BusinessType; label: string; icon: string; desc: string }[] = [
+const BUSINESS_TYPES: {
+  value: BusinessType;
+  label: string;
+  icon: string;
+  desc: string;
+}[] = [
   { value: "cafe", label: "카페", icon: "☕", desc: "음료·디저트 위주" },
   { value: "bakery", label: "베이커리", icon: "🥐", desc: "빵·케이크 전문" },
   { value: "bunsik", label: "분식", desc: "떡볶이·순대·국수", icon: "🍜" },
@@ -19,13 +24,39 @@ const BUSINESS_TYPES: { value: BusinessType; label: string; icon: string; desc: 
 const STAGES: { value: Stage; label: string; desc: string }[] = [
   { value: "planning", label: "구상 중", desc: "아직 장소를 정하지 않았어요" },
   { value: "contracted", label: "계약 완료", desc: "임대차 계약을 마쳤어요" },
-  { value: "preparing", label: "오픈 준비 중", desc: "인테리어·기기 설치 중이에요" },
+  {
+    value: "preparing",
+    label: "오픈 준비 중",
+    desc: "인테리어·기기 설치 중이에요",
+  },
 ];
 
 const SEOUL_DISTRICTS = [
-  "강남구","강동구","강북구","강서구","관악구","광진구","구로구","금천구",
-  "노원구","도봉구","동대문구","동작구","마포구","서대문구","서초구","성동구",
-  "성북구","송파구","양천구","영등포구","용산구","은평구","종로구","중구","중랑구",
+  "강남구",
+  "강동구",
+  "강북구",
+  "강서구",
+  "관악구",
+  "광진구",
+  "구로구",
+  "금천구",
+  "노원구",
+  "도봉구",
+  "동대문구",
+  "동작구",
+  "마포구",
+  "서대문구",
+  "서초구",
+  "성동구",
+  "성북구",
+  "송파구",
+  "양천구",
+  "영등포구",
+  "용산구",
+  "은평구",
+  "종로구",
+  "중구",
+  "중랑구",
 ];
 
 function CardSelect<T extends string>({
@@ -116,7 +147,9 @@ export default function Step2Business({ data, onChange }: Props) {
           >
             <option value="">구를 선택하세요</option>
             {SEOUL_DISTRICTS.map((d) => (
-              <option key={d} value={d}>{d}</option>
+              <option key={d} value={d}>
+                {d}
+              </option>
             ))}
           </select>
         </div>
@@ -162,7 +195,9 @@ export default function Step2Business({ data, onChange }: Props) {
       <div className="flex items-center justify-between p-4 rounded-xl border border-surface-300 bg-white">
         <div>
           <p className="text-sm font-semibold text-gray-700">공동사업자 있음</p>
-          <p className="text-xs text-gray-400 mt-0.5">2인 이상 공동 창업 시 선택</p>
+          <p className="text-xs text-gray-400 mt-0.5">
+            2인 이상 공동 창업 시 선택
+          </p>
         </div>
         <button
           type="button"

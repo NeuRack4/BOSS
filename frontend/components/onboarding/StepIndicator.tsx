@@ -22,19 +22,32 @@ export default function StepIndicator({ current }: { current: number }) {
           const done = num < current;
           const active = num === current;
           return (
-            <div key={num} className="relative z-10 flex flex-col items-center gap-2">
+            <div
+              key={num}
+              className="relative z-10 flex flex-col items-center gap-2"
+            >
               <div
                 className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${
                   done
                     ? "bg-brand-500 text-white"
                     : active
-                    ? "bg-brand-500 text-white glow-blue scale-110"
-                    : "bg-white border-2 border-surface-300 text-gray-400"
+                      ? "bg-brand-500 text-white glow-blue scale-110"
+                      : "bg-white border-2 border-surface-300 text-gray-400"
                 }`}
               >
                 {done ? (
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2.5}
+                      d="M5 13l4 4L19 7"
+                    />
                   </svg>
                 ) : (
                   num
@@ -42,7 +55,11 @@ export default function StepIndicator({ current }: { current: number }) {
               </div>
               <span
                 className={`text-xs font-medium whitespace-nowrap ${
-                  active ? "text-brand-600" : done ? "text-gray-500" : "text-gray-400"
+                  active
+                    ? "text-brand-600"
+                    : done
+                      ? "text-gray-500"
+                      : "text-gray-400"
                 }`}
               >
                 {label}

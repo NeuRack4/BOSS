@@ -20,7 +20,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="BOSS API",
         description="Business Operations Support System — Proactive AI 비서",
-        version="0.1.0",
+        version="0.3.0",
         lifespan=lifespan,
     )
 

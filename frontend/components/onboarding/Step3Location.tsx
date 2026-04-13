@@ -109,7 +109,9 @@ export default function Step3Location({ data, onChange }: Props) {
               ㎡
             </span>
           </div>
-          <p className="text-xs text-gray-400">휴게음식점 영업신고서 필수 항목</p>
+          <p className="text-xs text-gray-400">
+            휴게음식점 영업신고서 필수 항목
+          </p>
         </div>
 
         <div className="space-y-1.5">
@@ -140,15 +142,21 @@ export default function Step3Location({ data, onChange }: Props) {
 
       {/* Tax type guide */}
       <div className="p-4 rounded-xl bg-surface-100 border border-surface-300 space-y-2">
-        <p className="text-xs font-semibold text-gray-600">과세 유형 기준 안내</p>
+        <p className="text-xs font-semibold text-gray-600">
+          과세 유형 기준 안내
+        </p>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-0.5">
             <p className="text-xs font-medium text-gray-700">간이과세자</p>
-            <p className="text-xs text-gray-500">연 매출 1억 400만원 미만 예상</p>
+            <p className="text-xs text-gray-500">
+              연 매출 1억 400만원 미만 예상
+            </p>
           </div>
           <div className="space-y-0.5">
             <p className="text-xs font-medium text-gray-700">일반과세자</p>
-            <p className="text-xs text-gray-500">연 매출 1억 400만원 이상 예상</p>
+            <p className="text-xs text-gray-500">
+              연 매출 1억 400만원 이상 예상
+            </p>
           </div>
         </div>
         <p className="text-xs text-gray-400">
@@ -167,13 +175,26 @@ export default function Step3Location({ data, onChange }: Props) {
 
       {!data.hasHygieneEdu && (
         <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 flex gap-3">
-          <svg className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          <svg
+            className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+            />
           </svg>
           <div>
-            <p className="text-xs font-semibold text-amber-700">식품위생교육 미이수 확인</p>
+            <p className="text-xs font-semibold text-amber-700">
+              식품위생교육 미이수 확인
+            </p>
             <p className="text-xs text-amber-600 mt-0.5">
-              BOSS가 식품안전나라 온라인 교육 신청 일정과 링크를 함께 안내해드립니다.
+              BOSS가 식품안전나라 온라인 교육 신청 일정과 링크를 함께
+              안내해드립니다.
             </p>
           </div>
         </div>

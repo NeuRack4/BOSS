@@ -60,7 +60,9 @@ export default function SalesPage() {
     setLoading(true);
     setError(null);
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     const { error: insertError } = await supabase.from("sales").insert({
       user_id: user?.id,
@@ -89,7 +91,9 @@ export default function SalesPage() {
       {/* 페이지 헤더 */}
       <div>
         <h1 className="text-2xl font-black text-gray-900">매출 관리</h1>
-        <p className="text-sm text-gray-500 mt-1">일별 매출을 기록하고 추적하세요</p>
+        <p className="text-sm text-gray-500 mt-1">
+          일별 매출을 기록하고 추적하세요
+        </p>
       </div>
 
       {/* 입력 폼 */}
@@ -99,7 +103,9 @@ export default function SalesPage() {
           {/* 날짜 + 금액 */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">날짜</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                날짜
+              </label>
               <input
                 type="date"
                 value={form.date}
@@ -127,7 +133,9 @@ export default function SalesPage() {
           {/* 카테고리 + 시간대 */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">카테고리</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                카테고리
+              </label>
               <div className="flex gap-2">
                 {CATEGORIES.map((cat) => (
                   <button
@@ -135,9 +143,10 @@ export default function SalesPage() {
                     type="button"
                     onClick={() => setForm({ ...form, category: cat })}
                     className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors
-                      ${form.category === cat
-                        ? "bg-brand-50 border-brand-500/40 text-brand-600"
-                        : "border-surface-300 text-gray-500 hover:border-brand-300"
+                      ${
+                        form.category === cat
+                          ? "bg-brand-50 border-brand-500/40 text-brand-600"
+                          : "border-surface-300 text-gray-500 hover:border-brand-300"
                       }`}
                   >
                     {cat}
@@ -146,7 +155,9 @@ export default function SalesPage() {
               </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">시간대</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                시간대
+              </label>
               <div className="flex gap-2">
                 {TIME_SLOTS.map((slot) => (
                   <button
@@ -154,9 +165,10 @@ export default function SalesPage() {
                     type="button"
                     onClick={() => setForm({ ...form, time_slot: slot })}
                     className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors
-                      ${form.time_slot === slot
-                        ? "bg-brand-50 border-brand-500/40 text-brand-600"
-                        : "border-surface-300 text-gray-500 hover:border-brand-300"
+                      ${
+                        form.time_slot === slot
+                          ? "bg-brand-50 border-brand-500/40 text-brand-600"
+                          : "border-surface-300 text-gray-500 hover:border-brand-300"
                       }`}
                   >
                     {slot}
@@ -192,9 +204,10 @@ export default function SalesPage() {
             type="submit"
             disabled={loading || !form.amount}
             className={`w-full py-3 rounded-xl font-bold text-sm transition-all
-              ${success
-                ? "bg-green-500 text-white"
-                : "bg-brand-500 hover:bg-brand-600 text-white glow-blue disabled:opacity-50 disabled:cursor-not-allowed"
+              ${
+                success
+                  ? "bg-green-500 text-white"
+                  : "bg-brand-500 hover:bg-brand-600 text-white glow-blue disabled:opacity-50 disabled:cursor-not-allowed"
               }`}
           >
             {success ? "✓ 저장 완료" : loading ? "저장 중..." : "매출 저장"}
@@ -221,7 +234,9 @@ export default function SalesPage() {
           <div className="text-center py-10">
             <p className="text-3xl mb-3 text-gray-300">₩</p>
             <p className="text-sm text-gray-400">아직 입력된 매출이 없습니다</p>
-            <p className="text-xs text-gray-400 mt-1">위 폼에서 첫 매출을 기록해보세요</p>
+            <p className="text-xs text-gray-400 mt-1">
+              위 폼에서 첫 매출을 기록해보세요
+            </p>
           </div>
         ) : (
           <div className="space-y-3">

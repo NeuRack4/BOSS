@@ -134,17 +134,28 @@ export default function ScenarioSection() {
                 )}
 
                 {item.response && (
-                  <div className={`glass-card rounded-xl p-4 border-l-4 ${bossBorderColors[item.accent]}`}>
+                  <div
+                    className={`glass-card rounded-xl p-4 border-l-4 ${bossBorderColors[item.accent]}`}
+                  >
                     <div className="flex items-center gap-2 mb-2">
-                      <span className={`text-xs font-semibold uppercase tracking-wide ${bossTagColors[item.accent]}`}>
+                      <span
+                        className={`text-xs font-semibold uppercase tracking-wide ${bossTagColors[item.accent]}`}
+                      >
                         BOSS
                       </span>
-                      <span className={`w-2 h-2 rounded-full animate-pulse ${dotColors[item.accent]}`} />
+                      <span
+                        className={`w-2 h-2 rounded-full animate-pulse ${dotColors[item.accent]}`}
+                      />
                     </div>
                     <ul className="space-y-1.5">
                       {item.response.map((line, j) => (
-                        <li key={j} className="text-gray-600 text-sm flex items-start gap-2">
-                          <span className="text-brand-500 mt-0.5 flex-shrink-0">›</span>
+                        <li
+                          key={j}
+                          className="text-gray-600 text-sm flex items-start gap-2"
+                        >
+                          <span className="text-brand-500 mt-0.5 flex-shrink-0">
+                            ›
+                          </span>
                           {line}
                         </li>
                       ))}

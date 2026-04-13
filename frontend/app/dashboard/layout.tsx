@@ -56,7 +56,10 @@ export default function DashboardLayout({
       >
         {/* 로고 */}
         <div className="h-16 flex items-center px-6 border-b border-surface-300">
-          <Link href="/" className="text-xl font-black gradient-text tracking-tight">
+          <Link
+            href="/"
+            className="text-xl font-black gradient-text tracking-tight"
+          >
             BOSS
           </Link>
           <span className="ml-2 text-xs text-gray-400 font-medium">v0.1.0</span>
@@ -66,8 +69,12 @@ export default function DashboardLayout({
         <div className="px-4 py-4 border-b border-surface-300">
           <div className="glass-card rounded-lg px-3 py-2.5">
             <p className="text-xs text-gray-400 mb-0.5">내 카페</p>
-            <p className="text-sm font-semibold text-gray-800 truncate">마포구 카페</p>
-            <p className="text-xs text-brand-500 font-medium">1인 운영 · 마포구</p>
+            <p className="text-sm font-semibold text-gray-800 truncate">
+              마포구 카페
+            </p>
+            <p className="text-xs text-brand-500 font-medium">
+              1인 운영 · 마포구
+            </p>
           </div>
         </div>
 
@@ -81,9 +88,10 @@ export default function DashboardLayout({
                 href={href}
                 onClick={() => setSidebarOpen(false)}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
-                  ${isActive
-                    ? "bg-brand-50 text-brand-600 border border-brand-500/20"
-                    : "text-gray-600 hover:bg-surface-200 hover:text-gray-900"
+                  ${
+                    isActive
+                      ? "bg-brand-50 text-brand-600 border border-brand-500/20"
+                      : "text-gray-600 hover:bg-surface-200 hover:text-gray-900"
                   }`}
               >
                 <span className="text-base w-5 text-center">{icon}</span>

@@ -51,7 +51,9 @@ export default function SignupPage() {
           <Link href="/" className="inline-block">
             <span className="text-3xl font-black gradient-text">BOSS</span>
           </Link>
-          <p className="text-sm text-gray-400 mt-2">서울 F&B 창업자를 위한 AI 비서</p>
+          <p className="text-sm text-gray-400 mt-2">
+            서울 F&B 창업자를 위한 AI 비서
+          </p>
         </div>
 
         {/* 카드 */}
@@ -60,7 +62,9 @@ export default function SignupPage() {
 
           <form onSubmit={handleSignup} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">이메일</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                이메일
+              </label>
               <input
                 type="email"
                 value={form.email}
@@ -72,7 +76,9 @@ export default function SignupPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">비밀번호</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                비밀번호
+              </label>
               <input
                 type="password"
                 value={form.password}
@@ -84,7 +90,9 @@ export default function SignupPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">비밀번호 확인</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                비밀번호 확인
+              </label>
               <input
                 type="password"
                 value={form.confirm}
@@ -112,7 +120,10 @@ export default function SignupPage() {
 
           <p className="text-center text-sm text-gray-400 mt-6">
             이미 계정이 있으신가요?{" "}
-            <Link href="/auth/login" className="text-brand-500 font-semibold hover:underline">
+            <Link
+              href="/auth/login"
+              className="text-brand-500 font-semibold hover:underline"
+            >
               로그인
             </Link>
           </p>

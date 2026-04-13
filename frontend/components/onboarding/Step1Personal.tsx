@@ -49,9 +49,7 @@ export default function Step1Personal({ data, onChange }: Props) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-black text-gray-900">
-          창업자 기본 정보
-        </h2>
+        <h2 className="text-2xl font-black text-gray-900">창업자 기본 정보</h2>
         <p className="text-sm text-gray-500 mt-1">
           사업자등록 서류 초안에 자동으로 입력됩니다.
         </p>
@@ -110,7 +108,10 @@ export default function Step1Personal({ data, onChange }: Props) {
             maxLength={6}
             value={data.residentIdFront}
             onChange={(e) =>
-              onChange("residentIdFront", e.target.value.replace(/\D/g, "").slice(0, 6))
+              onChange(
+                "residentIdFront",
+                e.target.value.replace(/\D/g, "").slice(0, 6),
+              )
             }
             className={`${inputClass} text-center tracking-widest`}
           />
@@ -121,7 +122,10 @@ export default function Step1Personal({ data, onChange }: Props) {
             maxLength={1}
             value={data.residentIdGender}
             onChange={(e) =>
-              onChange("residentIdGender", e.target.value.replace(/\D/g, "").slice(0, 1))
+              onChange(
+                "residentIdGender",
+                e.target.value.replace(/\D/g, "").slice(0, 1),
+              )
             }
             className={`${inputClass} text-center tracking-widest w-20 flex-shrink-0`}
           />
@@ -132,12 +136,22 @@ export default function Step1Personal({ data, onChange }: Props) {
       </Field>
 
       <div className="p-4 rounded-xl bg-blue-50 border border-brand-100 flex gap-3">
-        <svg className="w-5 h-5 text-brand-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        <svg
+          className="w-5 h-5 text-brand-500 flex-shrink-0 mt-0.5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
         </svg>
         <p className="text-xs text-brand-700 leading-relaxed">
-          입력하신 개인정보는 서류 초안 생성 목적으로만 사용되며, 서버에 저장되지 않습니다.
-          실제 제출은 창업자 본인이 직접 검토 후 진행합니다.
+          입력하신 개인정보는 서류 초안 생성 목적으로만 사용되며, 서버에
+          저장되지 않습니다. 실제 제출은 창업자 본인이 직접 검토 후 진행합니다.
         </p>
       </div>
     </div>

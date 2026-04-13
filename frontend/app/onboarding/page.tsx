@@ -12,10 +12,19 @@ import { FormData, initialFormData } from "@/components/onboarding/types";
 const TOTAL_STEPS = 4;
 
 function isStep1Valid(d: FormData) {
-  return d.name && d.birthDate && d.phone && d.email && d.residentIdFront.length === 6 && d.residentIdGender.length === 1;
+  return (
+    d.name &&
+    d.birthDate &&
+    d.phone &&
+    d.email &&
+    d.residentIdFront.length === 6 &&
+    d.residentIdGender.length === 1
+  );
 }
 function isStep2Valid(d: FormData) {
-  return d.businessType && d.businessName && d.district && d.stage && d.entityType;
+  return (
+    d.businessType && d.businessName && d.district && d.stage && d.entityType
+  );
 }
 function isStep3Valid(d: FormData) {
   return d.address && d.floorArea;
@@ -39,7 +48,7 @@ export default function OnboardingPage() {
 
   const onChange = (
     field: keyof FormData,
-    value: string | boolean | string[]
+    value: string | boolean | string[],
   ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
@@ -61,24 +70,37 @@ export default function OnboardingPage() {
       <div className="min-h-screen bg-surface-100 flex items-center justify-center px-6">
         <div className="max-w-md w-full text-center">
           <div className="w-20 h-20 rounded-full bg-brand-50 border-2 border-brand-500 flex items-center justify-center mx-auto mb-6 glow-blue">
-            <svg className="w-10 h-10 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+            <svg
+              className="w-10 h-10 text-brand-500"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2.5}
+                d="M5 13l4 4L19 7"
+              />
             </svg>
           </div>
           <h1 className="text-3xl font-black text-gray-900 mb-3">
             BOSS가 <span className="gradient-text">초안을 준비합니다</span>
           </h1>
           <p className="text-gray-500 mb-2">
-            <span className="font-semibold text-gray-700">{formData.name}</span>님,
-            입력하신 정보를 바탕으로 에이전트가 서류 초안 작업을 시작했습니다.
+            <span className="font-semibold text-gray-700">{formData.name}</span>
+            님, 입력하신 정보를 바탕으로 에이전트가 서류 초안 작업을
+            시작했습니다.
           </p>
           <p className="text-sm text-gray-400 mb-8">
-            {formData.selectedDocuments.length}개 서류 초안 ·{" "}
-            {formData.email}으로 알림을 보내드립니다
+            {formData.selectedDocuments.length}개 서류 초안 · {formData.email}
+            으로 알림을 보내드립니다
           </p>
 
           <div className="glass-card rounded-2xl p-6 mb-6 text-left space-y-3">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">다음 단계</p>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              다음 단계
+            </p>
             {[
               "서류 초안이 완성되면 이메일로 알림",
               "초안 검토 후 직접 제출",
@@ -154,8 +176,8 @@ export default function OnboardingPage() {
                   i + 1 === step
                     ? "w-5 h-2 bg-brand-500"
                     : i + 1 < step
-                    ? "w-2 h-2 bg-brand-300"
-                    : "w-2 h-2 bg-gray-200"
+                      ? "w-2 h-2 bg-brand-300"
+                      : "w-2 h-2 bg-gray-200"
                 }`}
               />
             ))}

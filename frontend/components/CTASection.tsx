@@ -43,7 +43,8 @@ export default function CTASection() {
             </div>
 
             <p className="mt-8 text-xs text-gray-400">
-              현재 버전: v0.1.0 · 서울 F&B(카페/베이커리/분식) 한정 서비스 · AI 심화과정 조별과제 2026
+              현재 버전: v0.1.0 · 서울 F&B(카페/베이커리/분식) 한정 서비스 · AI
+              심화과정 조별과제 2026
             </p>
           </div>
         </div>

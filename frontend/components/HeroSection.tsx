@@ -24,16 +24,21 @@ export default function HeroSection() {
         <p className="text-xl md:text-2xl text-gray-500 max-w-2xl mx-auto mb-4 leading-relaxed">
           물어보기 전에 에이전트가 먼저 챙깁니다.
           <br />
-          <span className="text-gray-700 font-medium">검토하고 제출만 하세요.</span>
+          <span className="text-gray-700 font-medium">
+            검토하고 제출만 하세요.
+          </span>
         </p>
 
         {/* Comparison table */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10 mb-12">
           <div className="glass-card rounded-xl px-6 py-4 text-left w-full sm:w-auto bg-gray-50 border-gray-200 shadow-none">
-            <p className="text-xs text-gray-400 mb-2 font-medium">기존 서비스</p>
+            <p className="text-xs text-gray-400 mb-2 font-medium">
+              기존 서비스
+            </p>
             <ul className="space-y-1.5 text-sm text-gray-500">
               <li className="flex items-center gap-2">
-                <span className="text-red-400">✕</span> 물어봐야 답한다 (Reactive)
+                <span className="text-red-400">✕</span> 물어봐야 답한다
+                (Reactive)
               </li>
               <li className="flex items-center gap-2">
                 <span className="text-red-400">✕</span> 정보만 나열한다
@@ -44,20 +49,24 @@ export default function HeroSection() {
             </ul>
           </div>
 
-          <div className="text-2xl text-brand-500 font-bold hidden sm:block">→</div>
+          <div className="text-2xl text-brand-500 font-bold hidden sm:block">
+            →
+          </div>
           <div className="text-2xl text-brand-500 font-bold sm:hidden">↓</div>
 
           <div className="glass-card rounded-xl px-6 py-4 text-left w-full sm:w-auto border-brand-500/30 glow-blue">
             <p className="text-xs text-brand-600 mb-2 font-medium">BOSS</p>
             <ul className="space-y-1.5 text-sm text-gray-700">
               <li className="flex items-center gap-2">
-                <span className="text-green-500">✓</span> 먼저 알려준다 (Proactive)
+                <span className="text-green-500">✓</span> 먼저 알려준다
+                (Proactive)
               </li>
               <li className="flex items-center gap-2">
                 <span className="text-green-500">✓</span> 초안을 들고 온다
               </li>
               <li className="flex items-center gap-2">
-                <span className="text-green-500">✓</span> 창업 여정을 하나의 맥락으로
+                <span className="text-green-500">✓</span> 창업 여정을 하나의
+                맥락으로
               </li>
             </ul>
           </div>

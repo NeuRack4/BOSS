@@ -53,7 +53,10 @@ const features = [
   },
 ];
 
-const colorMap: Record<string, { card: string; icon: string; tag: string; bullet: string }> = {
+const colorMap: Record<
+  string,
+  { card: string; icon: string; tag: string; bullet: string }
+> = {
   brand: {
     card: "hover:border-brand-300 hover:shadow-brand-100",
     icon: "bg-brand-50 text-brand-500",
@@ -109,14 +112,20 @@ export default function FeaturesSection() {
                 className={`glass-card rounded-2xl p-7 transition-all duration-300 hover:shadow-lg ${c.card}`}
               >
                 <div className="flex items-start gap-4 mb-5">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0 ${c.icon}`}>
+                  <div
+                    className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0 ${c.icon}`}
+                  >
                     {feat.icon}
                   </div>
                   <div>
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-md ${c.tag}`}>
+                    <span
+                      className={`text-xs font-semibold px-2 py-0.5 rounded-md ${c.tag}`}
+                    >
                       {feat.subtitle}
                     </span>
-                    <h3 className="text-xl font-bold text-gray-900 mt-1">{feat.title}</h3>
+                    <h3 className="text-xl font-bold text-gray-900 mt-1">
+                      {feat.title}
+                    </h3>
                   </div>
                 </div>
 
