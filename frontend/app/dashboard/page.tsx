@@ -17,6 +17,8 @@ type Summary = {
   current_total: number;
   prev_total: number;
   change_pct: number | null;
+  yoy_total: number;
+  yoy_change_pct: number | null;
   transaction_count: number;
   daily_average: number;
   entries: { date: string; amount: number }[];
@@ -25,6 +27,16 @@ type Summary = {
 function formatAmount(n: number) {
   if (n >= 10000) return `${(n / 10000).toFixed(1)}만원`;
   return `${n.toLocaleString()}원`;
+}
+
+function ChangeBadge({ pct }: { pct: number | null }) {
+  if (pct === null) return <span className="text-gray-400 text-sm">-</span>;
+  const positive = pct > 0;
+  return (
+    <span className={`text-sm font-bold ${positive ? "text-green-600" : "text-red-500"}`}>
+      {positive ? "▲" : "▼"} {Math.abs(pct)}%
+    </span>
+  );
 }
 
 export default function DashboardPage() {
@@ -57,7 +69,7 @@ export default function DashboardPage() {
     if (!summary?.entries?.length) return [];
     const map: Record<string, number> = {};
     for (const e of summary.entries) {
-      const day = e.date.slice(8, 10) + "일"; // "01일"
+      const day = e.date.slice(8, 10) + "일";
       map[day] = (map[day] || 0) + e.amount;
     }
     return Object.entries(map)
@@ -111,6 +123,42 @@ export default function DashboardPage() {
             </p>
           </div>
         ))}
+      </div>
+
+      {/* 전년 동월 비교 */}
+      <div className="glass-card rounded-xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-bold text-gray-900">전년 동월 비교</h2>
+          <span className="text-xs text-gray-400">
+            {today.getFullYear() - 1}년 {today.getMonth() + 1}월 vs {today.getFullYear()}년 {today.getMonth() + 1}월
+          </span>
+        </div>
+        <div className="grid grid-cols-3 gap-6">
+          <div>
+            <p className="text-xs text-gray-400 mb-1">전년 동월 매출</p>
+            <p className="text-lg font-bold text-gray-700">
+              {loading ? <span className="text-gray-300">...</span> : summary ? formatAmount(summary.yoy_total) : "-"}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-400 mb-1">이번달 매출</p>
+            <p className="text-lg font-bold text-gray-900">
+              {loading ? <span className="text-gray-300">...</span> : summary ? formatAmount(summary.current_total) : "-"}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-400 mb-1">전년 대비</p>
+            <div className="mt-0.5">
+              {loading
+                ? <span className="text-gray-300 text-lg font-bold">...</span>
+                : <ChangeBadge pct={summary?.yoy_change_pct ?? null} />
+              }
+            </div>
+            {!loading && summary?.yoy_total === 0 && (
+              <p className="text-xs text-gray-400 mt-0.5">전년 데이터 없음</p>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* 일별 매출 차트 */}

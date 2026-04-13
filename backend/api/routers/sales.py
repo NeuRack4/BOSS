@@ -1,10 +1,10 @@
 import calendar
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from supabase import Client
 from datetime import date
 
 from backend.api.dependencies import db, get_current_user_id
-from backend.api.schemas.sale import SaleCreate, SaleResponse
+from backend.api.schemas.sale import SaleCreate, SaleResponse, SaleUpdate
 from backend.db.client import get_supabase
 
 router = APIRouter()
@@ -28,6 +28,11 @@ async def get_sales_summary(user_id: str, year: int, month: int) -> dict:
     prev_from = date(prev_year, prev_month, 1)
     prev_to = date(prev_year, prev_month, prev_last_day)
 
+    # 전년 동월 날짜 범위
+    _, yoy_last_day = calendar.monthrange(year - 1, month)
+    yoy_from = date(year - 1, month, 1)
+    yoy_to = date(year - 1, month, yoy_last_day)
+
     # 이번달 매출 조회
     rows = (
         supabase.table("sales")
@@ -50,12 +55,30 @@ async def get_sales_summary(user_id: str, year: int, month: int) -> dict:
         .data
     )
 
+    # 전년 동월 매출 조회
+    yoy_rows = (
+        supabase.table("sales")
+        .select("amount")
+        .eq("user_id", user_id)
+        .gte("date", str(yoy_from))
+        .lte("date", str(yoy_to))
+        .execute()
+        .data
+    )
+
     current_total = sum(r["amount"] for r in rows)
     prev_total = sum(r["amount"] for r in prev_rows)
+    yoy_total = sum(r["amount"] for r in yoy_rows)
 
     change_pct = (
         round((current_total - prev_total) / prev_total * 100, 1)
         if prev_total > 0
+        else None
+    )
+
+    yoy_change_pct = (
+        round((current_total - yoy_total) / yoy_total * 100, 1)
+        if yoy_total > 0
         else None
     )
 
@@ -75,6 +98,8 @@ async def get_sales_summary(user_id: str, year: int, month: int) -> dict:
         "current_total": current_total,
         "prev_total": prev_total,
         "change_pct": change_pct,
+        "yoy_total": yoy_total,
+        "yoy_change_pct": yoy_change_pct,
         "transaction_count": len(rows),
         "daily_average": daily_average,
         "category_breakdown": category_breakdown,
@@ -125,3 +150,44 @@ async def sales_summary(
         year=year or today.year,
         month=month or today.month,
     )
+
+
+@router.put("/{sale_id}", response_model=SaleResponse)
+async def update_sale(
+    sale_id: str,
+    body: SaleUpdate,
+    user_id: str = Depends(get_current_user_id),
+    supabase: Client = Depends(db),
+):
+    existing = (
+        supabase.table("sales")
+        .select("id")
+        .eq("id", sale_id)
+        .eq("user_id", user_id)
+        .execute()
+    )
+    if not existing.data:
+        raise HTTPException(status_code=404, detail="매출 데이터를 찾을 수 없습니다.")
+
+    update_data = {k: v for k, v in body.model_dump(mode="json").items() if v is not None}
+    result = supabase.table("sales").update(update_data).eq("id", sale_id).execute()
+    return result.data[0]
+
+
+@router.delete("/{sale_id}", status_code=204)
+async def delete_sale(
+    sale_id: str,
+    user_id: str = Depends(get_current_user_id),
+    supabase: Client = Depends(db),
+):
+    existing = (
+        supabase.table("sales")
+        .select("id")
+        .eq("id", sale_id)
+        .eq("user_id", user_id)
+        .execute()
+    )
+    if not existing.data:
+        raise HTTPException(status_code=404, detail="매출 데이터를 찾을 수 없습니다.")
+
+    supabase.table("sales").delete().eq("id", sale_id).execute()
