@@ -4,6 +4,87 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
 
 ---
 
+## [v0.7.0] — 2026-04-14
+
+### 기능 개선 — 서류 초안 PDF 오버레이 UX 전면 고도화
+
+#### Added
+
+- **식품영업신고서 레이아웃 보정** (`backend/api/routers/pdf_forms.py`)
+  - PyMuPDF `add_redact_annot` + `apply_redactions`로 하단 '210mm×297mm 백상지' 문구 영구 삭제
+  - 신고인 성명/주소 row 각 +5pt 확장 — 기존 y=132.9~169.0 → y=132.9~174.0 (셀 경계선 직접 재작성)
+  - 흰 박스 덮기 → 내부 구분선(회색 0.36pt) + 외곽선(검정 0.84pt) 재그리기로 깔끔한 서식 유지
+- **사업자등록·식품영업 체크박스 통합 토글 UI** (`frontend/app/drafts/[type]/page.tsx`)
+  - `CHECKBOX_KEYS` Set — 사업자등록(25개) + 식품영업(29개) 체크박스 필드 통합 관리
+  - `CHECKBOX_SECTIONS` 그룹 설정 — 사업자등록 12개 그룹 / 식품영업 6개 그룹으로 편집 패널 하단 배치
+  - 토글 버튼: `[V]` = 체크 (파란 배경) / `[ ]` = 미체크 (흰 배경) — PDF 렌더링과 동일한 표시
+  - `HIDDEN_EDIT_FIELDS` — 내부 계산용 키 편집 패널에서 제외 (신고/신청 년·월·일, 구 방식 키)
+- **체크박스 값 정규화** (`applyFixedValues`)
+  - 구 방식("여"/"부"/"해당"/"미해당") → 신 방식("V"/"") 일괄 변환 (localStorage·DB 저장 데이터 하위호환)
+  - 비어있거나 "미해당" → `""`, 나머지 모든 비어있지 않은 값 → `"V"`
+- **CORS 500 오류 대응** (`backend/api/main.py`)
+  - FastAPI CORSMiddleware가 500 응답에 헤더를 누락하는 문제 → 글로벌 `@app.exception_handler(Exception)` 추가
+
+#### Changed
+
+- **신고인 성명 데이터 소스 정확화** (`frontend/app/drafts/[type]/page.tsx`)
+  - 기존: Supabase auth 이메일 파생 `userName`이 1순위로 `신고인_성명` 덮어씀
+  - 변경: `profileFromStorage().name` (온보딩 실제 입력) → DB `성명_대표자` → auth `userName` 순 우선순위
+  - `applyFixedValues`에서 모든 로드 경로에 profile.name 주입 — 사업자등록 `성명_대표자`와 동일 소스
+- **localStorage background refresh 분리** — fetch 실패와 `setEditedFields` 호출을 독립 try-catch로 분리
+  - 백엔드 500/CORS 오류 발생 시에도 userName·profile.name 주입된 필드로 UI 갱신 보장
+- **명칭(상호) 상태 갱신** — food-biz/employment-contract 로드 시 사업자등록 DB `상호_단체명` 항상 background 재조회
+  - localStorage 캐시가 stale해도 최신 상호명으로 자동 갱신
+
+---
+
+## [v0.6.0] — 2026-04-14
+
+### 기능 — 지원사업 공고 캘린더 + 전용 하이브리드 검색
+
+#### Added
+
+- **지원사업 공고 캘린더** (`frontend/app/dashboard/subsidies/page.tsx`)
+  - FullCalendar 기반 구글 캘린더 스타일 월간 뷰 (데스크탑) + `listMonth` 뷰 (모바일 자동 전환)
+  - 누적형 지역 필터 버튼 그룹: `숨김 → 마포구 → + 서울 → + 전국`
+  - 기간 파싱 가능한 공고는 캘린더 bar, 불가 공고("예산 소진시까지" 등)는 **상시 모집 섹션** 분리
+  - 공고 클릭 시 사이드 드로어 — 접수 기간·지원 대상·분야·설명·기업마당 원문/주관기관 홈페이지 링크
+  - 이벤트 bar 얇게 스타일 튜닝 (11px · line-height 1.25 · 여백 축소)
+- **기업마당 API 통합 정상화** (`backend/data/crawlers/bizinfo.py`)
+  - 기존 코드가 잘못된 파라미터(`authKey`/`items`)를 사용해 미동작 상태였던 문제 수정 — `crtfcKey`/`jsonArray` 로 교체
+  - 기간 필드 `reqstBeginEndDe` 단일 문자열 파싱 (YYYY-MM-DD / YYYY.MM.DD) 및 상시 모집 자동 분류
+  - HTML 태그가 섞인 `bsnsSumryCn` 설명 본문 정리
+  - `pldirSportRealmLclasCodeNm == '창업'` 대분류 필터로 범위 좁힘 (약 90여 건)
+- **DB 스키마** (`migrations/013_subsidy_programs.sql`, `014_subsidy_programs_search.sql`)
+  - `subsidy_programs` 테이블 — `external_id UNIQUE` 중복 방지, `is_ongoing`·`period_raw`·`program_kind`·`sub_kind` 등 확장 컬럼
+  - `subsidy_fetch_log(fetch_date PK)` — 하루 1회 동기화 멱등성 확보 (동시 호출 경합은 PK 선점 insert 로 방지)
+  - `subsidy_programs.embedding vector(1024)` + HNSW 인덱스 + `pg_trgm` GIN 인덱스
+  - `search_subsidies()` RPC — 벡터 + FTS + trigram 3-way RRF 하이브리드 검색
+- **지원사업 전용 임베딩 파이프라인** (`backend/rag/subsidy_ingest.py`)
+  - 제목 + 분야 + 대상 + 지역 + 주관 + 기간 + 태그 + 내용을 구조화해 한 번의 BGE-M3 임베딩
+  - 법령 RAG(`law_chunks`) 와 독립된 자체 테이블에 저장 — 카테고리 오염 방지
+  - `embedded_at` 타임스탬프로 증분 재임베딩 지원
+- **API 엔드포인트** (`backend/api/routers/subsidies.py`)
+  - `GET /subsidies/calendar?from=&to=` — 기간 내 공고
+  - `GET /subsidies/ongoing` — 상시 모집 공고
+  - `POST /subsidies/search` — 공고 전용 하이브리드 검색
+  - `POST /subsidies/sync-today` — 일일 증분 동기화
+- **CLI 스크립트**
+  - `backend/scripts/backfill_subsidies.py` — 스냅샷 1회 수집
+  - `backend/scripts/ingest_subsidies.py` — 임베딩 (`--incremental` 옵션)
+
+#### Changed
+
+- 사이드바: "AI 인사이트" 와 "알림" 사이에 **지원사업** 메뉴 추가 (`frontend/app/dashboard/layout.tsx`)
+- 법령 RAG 드롭다운에서 "지원사업 공고" 제거 — 전용 페이지로 분리
+- 프론트 의존성: `@fullcalendar/react`, `daygrid`, `list`, `interaction`, `core` 6종 추가
+
+#### Fixed
+
+- 기존 bizinfo 크롤러가 런타임에 실패하던 문제 (API 응답 구조 변경 반영)
+
+---
+
 ## [v0.5.0] — 2026-04-14
 
 ### 기능 개선 — RAG 하이브리드 검색 정확도 강화 + 인사이트 데이터 확장 + 서류 자동화 고도화
@@ -42,6 +123,9 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
 
 - RAG 검색 결과 유사도 수치가 내부 RRF 점수로 표시되던 오류
 - 벡터 단독 랭킹에서 제목만 있는 짧은 조문 청크가 상위로 노출되던 오염
+- `weather_crawler` 기상청 API 403 오류 해소 — serviceKey URL 직접 삽입 → params dict 방식 변경
+- 인사이트 API 공휴일 컨텍스트 누락 — `get_month_holidays()` 추가로 Claude 프롬프트에 해당 월 공휴일 자동 주입
+- `seed_strategy` SEMAS 상권분석과 창업 시리즈 5개 PDF 추가 (`docs/strategy/`, 2020~2021년)
 
 ---
 

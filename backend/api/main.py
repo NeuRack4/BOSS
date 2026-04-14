@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from backend.core.config import get_settings
 from backend.api.routers import health, founders, triggers, drafts, subsidies, tax, location, sales, insights, rag, pdf_forms
@@ -31,6 +32,23 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # 미처리 예외(500)도 CORS 헤더를 포함하도록 글로벌 핸들러 등록
+    # FastAPI CORSMiddleware가 500 응답에 헤더를 누락하는 경우 방어
+    origins_set = set(settings.cors_origins)
+
+    @app.exception_handler(Exception)
+    async def _global_exc_handler(request: Request, exc: Exception):
+        origin = request.headers.get("origin", "")
+        cors_origin = origin if origin in origins_set else (settings.cors_origins[0] if settings.cors_origins else "*")
+        return JSONResponse(
+            status_code=500,
+            content={"detail": f"내부 서버 오류: {type(exc).__name__}"},
+            headers={
+                "Access-Control-Allow-Origin": cors_origin,
+                "Access-Control-Allow-Credentials": "true",
+            },
+        )
 
     app.include_router(health.router, tags=["health"])
     app.include_router(founders.router, prefix="/founders", tags=["founders"])
