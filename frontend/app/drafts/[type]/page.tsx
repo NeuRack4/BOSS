@@ -172,7 +172,7 @@ const MOCK_FIELDS: Record<string, Record<string, string>> = {
     신고인_주민등록번호: "900101-1234567",
     신고인_주소: "서울시 마포구 연남동 567-8",
     신고인_전화번호: "010-1234-5678",
-    명칭_상호: "연남 브루잉 카페",
+    명칭_상호: "연남카페",
     영업장_전화번호: "02-1234-5678",
     "영업장_내부면적_㎡": "26.4",
     "영업장_외부면적_㎡": "6.6",
@@ -301,7 +301,13 @@ export default function DraftPreviewPage() {
       return;
     }
 
-    // localStorage에 저장된 수정 이력이 있으면 우선 사용
+    // 고정값 강제 적용 헬퍼
+    function applyFixedValues(fields: Record<string, string>) {
+      if (type === "business-registration") fields["주종목"] = "카페";
+      return fields;
+    }
+
+    // ① localStorage 우선
     const savedKey = `boss_draft_fields_${type}`;
     const saved = (() => {
       try {
@@ -311,8 +317,7 @@ export default function DraftPreviewPage() {
       }
     })();
     if (saved && typeof saved === "object" && Object.keys(saved).length > 0) {
-      // 주종목 등 고정값 강제 적용 (이전 저장값에 잘못된 값이 있어도 덮어씀)
-      if (type === "business-registration") saved["주종목"] = "카페";
+      applyFixedValues(saved);
       const savedDraft: DraftResult = {
         doc_type: type,
         title: meta.title,
@@ -327,27 +332,62 @@ export default function DraftPreviewPage() {
       return;
     }
 
-    const profile = profileFromStorage();
-    if (!profile.name) {
-      // 온보딩 미완료 → mock 데이터로 PDF 표시
-      const mockFields = { ...(MOCK_FIELDS[type] ?? {}) };
-      // 고정값 강제 적용
-      if (type === "business-registration") mockFields["주종목"] = "카페";
-      const mockDraft: DraftResult = {
-        doc_type: type,
-        title: meta.title,
-        content: "",
-        fields: mockFields,
-        disclaimer:
-          "※ 온보딩 정보가 입력되지 않아 예시 데이터로 표시됩니다. 수정하기를 눌러 실제 정보로 변경하세요.\n본 내용은 참고용이며 실제 신고 및 계약 전 전문가 확인을 권장합니다.",
-      };
-      setDraft(mockDraft);
-      setEditedFields({ ...mockFields });
-      renderPdf(mockFields);
-      return;
+    // ② DB에서 저장된 필드 불러오기 (Supabase 로그인 상태일 때)
+    async function tryLoadFromDb() {
+      try {
+        const { supabase } = await import("@/lib/supabase");
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return null;
+        const res = await fetch(`${apiUrl}/drafts/load-fields/${type}`, {
+          headers: { "x-user-id": user.id },
+        });
+        if (!res.ok) return null;
+        const json = await res.json();
+        return json.fields as Record<string, string> | null;
+      } catch {
+        return null;
+      }
     }
-    generateDraft(type, profile);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    tryLoadFromDb().then((dbFields) => {
+      if (dbFields && Object.keys(dbFields).length > 0) {
+        applyFixedValues(dbFields);
+        // localStorage에도 캐시
+        try { localStorage.setItem(savedKey, JSON.stringify(dbFields)); } catch { /* 무시 */ }
+        const dbDraft: DraftResult = {
+          doc_type: type,
+          title: meta.title,
+          content: "",
+          fields: dbFields,
+          disclaimer:
+            "※ 저장된 내용을 불러왔습니다.\n본 내용은 참고용이며 실제 신고 및 계약 전 전문가 확인을 권장합니다.",
+        };
+        setDraft(dbDraft);
+        setEditedFields(dbFields);
+        renderPdf(dbFields);
+        return;
+      }
+
+      // ③ DB에도 없으면 → 온보딩/mock/AI 흐름
+      const profile = profileFromStorage();
+      if (!profile.name) {
+        const mockFields = applyFixedValues({ ...(MOCK_FIELDS[type] ?? {}) });
+        const mockDraft: DraftResult = {
+          doc_type: type,
+          title: meta.title,
+          content: "",
+          fields: mockFields,
+          disclaimer:
+            "※ 온보딩 정보가 입력되지 않아 예시 데이터로 표시됩니다. 수정하기를 눌러 실제 정보로 변경하세요.\n본 내용은 참고용이며 실제 신고 및 계약 전 전문가 확인을 권장합니다.",
+        };
+        setDraft(mockDraft);
+        setEditedFields({ ...mockFields });
+        renderPdf(mockFields);
+        return;
+      }
+      generateDraft(type, profile);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type]);
 
   /* draft.fields 바뀌면 editedFields 초기화 + PDF 첫 렌더 (API 응답 시에만) */

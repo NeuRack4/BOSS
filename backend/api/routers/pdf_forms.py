@@ -572,3 +572,28 @@ async def save_draft_fields(
         ).execute()
 
     return {"ok": True}
+
+
+@router.get("/load-fields/{doc_type}", summary="DB에서 서류 필드 불러오기")
+async def load_draft_fields(
+    doc_type: str,
+    user_id: str = Depends(get_current_user_id),
+    supabase=Depends(db),
+):
+    """drafts 테이블에서 저장된 필드값 반환 (없으면 null)"""
+    config = DOC_CONFIG.get(doc_type)
+    if not config:
+        raise HTTPException(status_code=404, detail=f"지원하지 않는 서류 유형: {doc_type}")
+
+    result = (
+        supabase.table("drafts")
+        .select("metadata")
+        .eq("user_id", user_id)
+        .eq("type", doc_type)
+        .maybe_single()
+        .execute()
+    )
+
+    if result.data and result.data.get("metadata", {}).get("fields"):
+        return {"fields": result.data["metadata"]["fields"]}
+    return {"fields": None}
