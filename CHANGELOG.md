@@ -4,6 +4,38 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
 
 ---
 
+## [v0.7.0] — 2026-04-14
+
+### 기능 개선 — 인사이트 데이터 풀 연결 + 상권 벤치마킹 (Steps 1–7)
+
+#### Added
+
+- **마포구 유동인구 RAG 연결** (`backend/rag/retriever/pgvector_retriever.py`)
+  - 기존 mapo_stats 전용 검색에서 4-way 병렬 검색으로 확장
+  - `retrieve_docs()` 범용 함수 추가 — `match_docs` RPC(migration 013) 사용
+  - 유동인구(5,824청크) · 상권변화지표 · 전략 가이드 동시 RAG 검색
+  - `retrieve_strategy()` 버그 수정 — `law_chunks` → `documents` 테이블로 교정
+- **Claude 프롬프트 4개 섹션 자동 주입** (`backend/api/routers/insights.py`)
+  - `[마포구 카페 상권 통계]` · `[마포구 유동인구]` · `[마포구 상권변화지표]` · `[소상공인 경영 전략 가이드]`
+  - `[날씨 정보]` — 비·맑음 일별 매출 상관 분석 (weather_data 테이블 직접 조회)
+  - `[공휴일 정보]` — 해당 월 공휴일 목록 자동 주입 (holidays.json 기반)
+  - 시스템 프롬프트 확장 — 유동인구 피크 시간대 · 상권등급(HH/HL/LH/LL) 인용 가이드 추가
+- **상권 평균 벤치마킹** (`GET /insights/areas`, `GET /insights/benchmark`)
+  - 32개 마포구 상권 드롭다운 선택 → 내 카페 월 매출 vs 상권 카페 1개당 평균 비교
+  - 수평 바 차트 시각화 — 평균 대비 비율(%) + 초과/미달 금액 표시
+  - AI 분석과 독립적으로 동작 (매출 데이터 없어도 상권 평균 조회 가능)
+  - 요청 분기 데이터 없으면 최신 분기(20244)로 자동 폴백
+- **DB 마이그레이션** (`migrations/013_match_documents_by_category.sql`)
+  - `match_docs()` RPC — documents 테이블 카테고리별 범용 벡터 검색 함수
+- **구현 문서** (`docs/steps-1-7-implementation.md`) — 데이터 흐름·API·테스트 방법 정리
+
+#### Changed
+
+- 인사이트 페이지 벤치마킹 섹션 항상 표시 (기존: AI 분석 후에만 표시)
+- 날씨 반영 배지 (`날씨 반영`) AI 분석 결과 헤더에 추가
+
+---
+
 ## [v0.6.0] — 2026-04-14
 
 ### 기능 — 지원사업 공고 캘린더 + 전용 하이브리드 검색

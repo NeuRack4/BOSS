@@ -140,10 +140,19 @@ async def main() -> None:
     for file in files:
         print(f"\n[seed_strategy] 처리 중: {file.name}")
 
-        # 텍스트 추출
+        # 텍스트 추출 — Windows 한글 파일명 인코딩 이슈 우회: bytes로 읽어 BytesIO 전달
         if file.suffix == ".pdf":
             try:
-                text = parse_pdf(file)
+                import io, pdfplumber
+                with open(file, "rb") as fh:
+                    raw = fh.read()
+                text_parts = []
+                with pdfplumber.open(io.BytesIO(raw)) as pdf:
+                    for page in pdf.pages:
+                        t = page.extract_text()
+                        if t:
+                            text_parts.append(t)
+                text = "\n\n".join(text_parts)
             except Exception as e:
                 print(f"  PDF 파싱 실패: {e}")
                 continue
