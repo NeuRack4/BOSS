@@ -648,10 +648,12 @@ async def load_draft_fields(
         .select("metadata")
         .eq("user_id", user_id)
         .eq("type", doc_type)
-        .maybe_single()
+        .order("id", desc=True)
+        .limit(1)
         .execute()
     )
 
-    if result.data and result.data.get("metadata", {}).get("fields"):
-        return {"fields": result.data["metadata"]["fields"]}
+    row = result.data[0] if result.data else None
+    if row and row.get("metadata", {}).get("fields"):
+        return {"fields": row["metadata"]["fields"]}
     return {"fields": None}

@@ -4,7 +4,7 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
 
 ---
 
-## [v0.7.0] — 2026-04-14
+## [v0.8.0] — 2026-04-14
 
 ### 기능 개선 — 서류 초안 PDF 오버레이 UX 전면 고도화
 
@@ -18,23 +18,65 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
   - `CHECKBOX_KEYS` Set — 사업자등록(25개) + 식품영업(29개) 체크박스 필드 통합 관리
   - `CHECKBOX_SECTIONS` 그룹 설정 — 사업자등록 12개 그룹 / 식품영업 6개 그룹으로 편집 패널 하단 배치
   - 토글 버튼: `[V]` = 체크 (파란 배경) / `[ ]` = 미체크 (흰 배경) — PDF 렌더링과 동일한 표시
-  - `HIDDEN_EDIT_FIELDS` — 내부 계산용 키 편집 패널에서 제외 (신고/신청 년·월·일, 구 방식 키)
+  - `HIDDEN_EDIT_FIELDS` — 구 방식 단일 키(여/부) 편집 패널에서 제외 + `applyFixedValues` 마이그레이션
 - **체크박스 값 정규화** (`applyFixedValues`)
   - 구 방식("여"/"부"/"해당"/"미해당") → 신 방식("V"/"") 일괄 변환 (localStorage·DB 저장 데이터 하위호환)
-  - 비어있거나 "미해당" → `""`, 나머지 모든 비어있지 않은 값 → `"V"`
+  - 사업자등록 구 단일 키(자동정정신청, 투자조합_출자여부 등 8종) → `_여`/`_부` 쌍으로 자동 마이그레이션
 - **CORS 500 오류 대응** (`backend/api/main.py`)
-  - FastAPI CORSMiddleware가 500 응답에 헤더를 누락하는 문제 → 글로벌 `@app.exception_handler(Exception)` 추가
+  - FastAPI CORSMiddleware 500 헤더 누락 → 글로벌 `@app.exception_handler(Exception)` 추가
+- **load-fields 500 수정** (`backend/api/routers/pdf_forms.py`)
+  - `.maybe_single()` → `.order("id", desc=True).limit(1)` 교체 — 복수 행 시 APIError 방지
 
 #### Changed
 
-- **신고인 성명 데이터 소스 정확화** (`frontend/app/drafts/[type]/page.tsx`)
-  - 기존: Supabase auth 이메일 파생 `userName`이 1순위로 `신고인_성명` 덮어씀
-  - 변경: `profileFromStorage().name` (온보딩 실제 입력) → DB `성명_대표자` → auth `userName` 순 우선순위
-  - `applyFixedValues`에서 모든 로드 경로에 profile.name 주입 — 사업자등록 `성명_대표자`와 동일 소스
-- **localStorage background refresh 분리** — fetch 실패와 `setEditedFields` 호출을 독립 try-catch로 분리
-  - 백엔드 500/CORS 오류 발생 시에도 userName·profile.name 주입된 필드로 UI 갱신 보장
-- **명칭(상호) 상태 갱신** — food-biz/employment-contract 로드 시 사업자등록 DB `상호_단체명` 항상 background 재조회
+- **명칭(상호) 상태 갱신** — food-biz/employment-contract 로드 시 사업자등록 DB `상호_단체명` 항상 재조회
   - localStorage 캐시가 stale해도 최신 상호명으로 자동 갱신
+
+#### Fixed
+
+- **신고인 성명 빈칸 버그** (`frontend/app/drafts/[type]/page.tsx`)
+  - 백엔드 500 시 background refresh가 이름 주입 없이 `setEditedFields` 덮어쓰던 문제
+  - DB `성명_대표자` → `profileFromStorage().name` → auth `userName` 순으로 확정, fetch 전 선주입
+  - mock "홍길동" → 로그인 auth 이름으로 무조건 교체
+- **load-fields 500 에러** (`backend/api/routers/pdf_forms.py`)
+  - `.maybe_single()` → `.order("id", desc=True).limit(1)` 교체 — 복수 행 시 PostgREST APIError 방지
+- **CORS 500 헤더 누락** (`backend/api/main.py`)
+  - 미처리 예외 응답에 CORS 헤더 포함되도록 글로벌 exception handler 추가
+- **사업자등록 편집 패널 구 방식 키 노출** (`frontend/app/drafts/[type]/page.tsx`)
+  - "자동정정신청"·"투자조합_출자여부" 등 구 단일 키 10종이 텍스트 입력으로 노출되던 문제
+  - `HIDDEN_EDIT_FIELDS` 추가 + `applyFixedValues` 마이그레이션으로 신 방식 `_여`/`_부` 쌍으로 자동 변환
+
+---
+
+## [v0.7.0] — 2026-04-14
+
+### 기능 개선 — 인사이트 데이터 풀 연결 + 상권 벤치마킹 (Steps 1–7)
+
+#### Added
+
+- **마포구 유동인구 RAG 연결** (`backend/rag/retriever/pgvector_retriever.py`)
+  - 기존 mapo_stats 전용 검색에서 4-way 병렬 검색으로 확장
+  - `retrieve_docs()` 범용 함수 추가 — `match_docs` RPC(migration 013) 사용
+  - 유동인구(5,824청크) · 상권변화지표 · 전략 가이드 동시 RAG 검색
+  - `retrieve_strategy()` 버그 수정 — `law_chunks` → `documents` 테이블로 교정
+- **Claude 프롬프트 4개 섹션 자동 주입** (`backend/api/routers/insights.py`)
+  - `[마포구 카페 상권 통계]` · `[마포구 유동인구]` · `[마포구 상권변화지표]` · `[소상공인 경영 전략 가이드]`
+  - `[날씨 정보]` — 비·맑음 일별 매출 상관 분석 (weather_data 테이블 직접 조회)
+  - `[공휴일 정보]` — 해당 월 공휴일 목록 자동 주입 (holidays.json 기반)
+  - 시스템 프롬프트 확장 — 유동인구 피크 시간대 · 상권등급(HH/HL/LH/LL) 인용 가이드 추가
+- **상권 평균 벤치마킹** (`GET /insights/areas`, `GET /insights/benchmark`)
+  - 32개 마포구 상권 드롭다운 선택 → 내 카페 월 매출 vs 상권 카페 1개당 평균 비교
+  - 수평 바 차트 시각화 — 평균 대비 비율(%) + 초과/미달 금액 표시
+  - AI 분석과 독립적으로 동작 (매출 데이터 없어도 상권 평균 조회 가능)
+  - 요청 분기 데이터 없으면 최신 분기(20244)로 자동 폴백
+- **DB 마이그레이션** (`migrations/013_match_documents_by_category.sql`)
+  - `match_docs()` RPC — documents 테이블 카테고리별 범용 벡터 검색 함수
+- **구현 문서** (`docs/steps-1-7-implementation.md`) — 데이터 흐름·API·테스트 방법 정리
+
+#### Changed
+
+- 인사이트 페이지 벤치마킹 섹션 항상 표시 (기존: AI 분석 후에만 표시)
+- 날씨 반영 배지 (`날씨 반영`) AI 분석 결과 헤더에 추가
 
 ---
 

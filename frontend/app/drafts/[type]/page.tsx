@@ -54,12 +54,23 @@ const CHECKBOX_KEYS = new Set<string>([
   "반려동물_출입여부_해당", "반려동물_출입여부_미해당",
 ]);
 
-/* ─── 편집 패널에서 숨길 필드 (내부 계산용, 구 방식 키) ─── */
+/* ─── 편집 패널에서 숨길 필드 (내부 계산용 / 구 방식 단일 키) ─── */
 const HIDDEN_EDIT_FIELDS = new Set<string>([
   "신고_년", "신고_월", "신고_일",
   "신청_년", "신청_월", "신청_일",
-  "공유주방_사용여부",   // 구 방식 — 이제 공유주방_해당/미해당 사용
-  "공동조리장_이용여부", // 구 방식 — 이제 공동조리장_해당/미해당 사용
+  "공유주방_사용여부",            // 구 방식 → 공유주방_해당/미해당
+  "공동조리장_이용여부",          // 구 방식 → 공동조리장_해당/미해당
+  // 사업자등록 구 방식 단일 키 (applyFixedValues에서 _여/_부 쌍으로 마이그레이션 후 삭제)
+  "자동정정신청",
+  "투자조합_출자여부",
+  "허가사업_여부",
+  "간이과세_신고여부",
+  "간이과세_포기신고여부",
+  "확정일자_신청여부",
+  "공동사업자_신청여부",
+  "사업장외_송달장소_신청여부",
+  "현금영수증_가입신청여부",
+  "신탁재산_여부",
 ]);
 
 /* ─── 체크박스 섹션 그룹 (편집 패널 하단 그리드 표시) ─── */
@@ -438,13 +449,39 @@ export default function DraftPreviewPage() {
         const profileName = (profileFromStorage().name as string) || "";
         if (profileName) fields["신고인_성명"] = profileName;
       }
+
+      // 사업자등록 구 방식 단일 키 → 신 방식 _여/_부 쌍으로 마이그레이션 후 삭제
+      if (type === "business-registration") {
+        const MIGRATE: Record<string, [string, string]> = {
+          "자동정정신청":               ["주소자동정정_여",   "주소자동정정_부"],
+          "투자조합_출자여부":           ["투자조합여부_여",   "투자조합여부_부"],
+          "간이과세_신고여부":           ["간이과세적용_여",   "간이과세적용_부"],
+          "간이과세_포기신고여부":       ["간이과세포기_여",   "간이과세포기_부"],
+          "확정일자_신청여부":           ["확정일자_여",       "확정일자_부"],
+          "공동사업자_신청여부":         ["공동사업자_여",     "공동사업자_부"],
+          "사업장외_송달장소_신청여부":  ["송달장소_여",       "송달장소_부"],
+          "현금영수증_가입신청여부":     ["현금영수증_여",     "현금영수증_부"],
+        };
+        for (const [oldKey, [yeoKey, buKey]] of Object.entries(MIGRATE)) {
+          if (oldKey in fields) {
+            const v = fields[oldKey];
+            // 기존값이 "여" → 여 체크 / "부" → 부 체크 / 그 외 → 이미 설정된 값 유지
+            if (!fields[yeoKey] && !fields[buKey]) {
+              fields[yeoKey] = v === "여" ? "V" : "";
+              fields[buKey]  = v === "부" ? "V" : "";
+            }
+            delete fields[oldKey];
+          }
+        }
+        // 매핑 불가 구 키 — 삭제만
+        ["허가사업_여부", "신탁재산_여부"].forEach((k) => { delete fields[k]; });
+      }
+
       // 체크박스 정규화: 구 방식("해당"/"미해당"/"여"/"부" 텍스트) → "V"/"" 통일
       Array.from(CHECKBOX_KEYS).forEach((key) => {
         if (key in fields) {
           const v = fields[key];
-          // 비어있거나 "미해당" → 미체크
           if (v === "" || v === "미해당") fields[key] = "";
-          // 그 외 모든 비어있지 않은 값("V", "해당", "여", "부" 등) → 체크
           else fields[key] = "V";
         }
       });
@@ -494,6 +531,13 @@ export default function DraftPreviewPage() {
 
           const updatedFields = { ...saved };
 
+          // food-biz: 신고인_성명 — fetch 성공/실패 무관하게 먼저 주입 (최소 보장)
+          if (type === "food-business-license") {
+            const profileName = (profileFromStorage().name as string) || "";
+            const nameToUse = profileName || liveUserName;
+            if (nameToUse) updatedFields["신고인_성명"] = nameToUse;
+          }
+
           // ── Step 2: 사업자등록 DB 조회 → 상호명 + 대표자 성명 갱신 ──
           try {
             const bizRes = await fetch(
@@ -506,14 +550,12 @@ export default function DraftPreviewPage() {
               const ownerName: string = bizJson.fields?.["성명_대표자"] || "";
               if (type === "food-business-license") {
                 if (bizName) updatedFields["명칭_상호"] = bizName;
-                // 신고인_성명 = 성명(대표자)와 동일 소스 (profile.name > DB 대표자명 > auth)
-                const profileName = (profileFromStorage().name as string) || "";
-                const resolvedName = profileName || ownerName || liveUserName;
-                if (resolvedName) updatedFields["신고인_성명"] = resolvedName;
+                // DB 대표자명 있으면 더 정확한 값으로 교체
+                if (ownerName) updatedFields["신고인_성명"] = ownerName;
               }
               if (type === "employment-contract" && bizName) updatedFields["채용기관장_사업장명"] = bizName;
             }
-          } catch { /* 네트워크 오류 무시 — updatedFields는 이미 준비됨 */ }
+          } catch { /* 네트워크 오류 무시 — updatedFields에 이미 이름 주입됨 */ }
 
           // ── Step 3: 항상 상태 갱신 (fetch 성공/실패 무관) ───────────
           setEditedFields(updatedFields);
@@ -610,6 +652,10 @@ export default function DraftPreviewPage() {
     tryLoadFromDb().then(({ fields: dbFields, userName }) => {
       if (dbFields && Object.keys(dbFields).length > 0) {
         applyFixedValues(dbFields);
+        // food-biz: profile.name → auth userName 순으로 fallback 주입
+        if (type === "food-business-license" && !dbFields["신고인_성명"] && userName) {
+          dbFields["신고인_성명"] = userName;
+        }
         // localStorage에도 캐시
         try { localStorage.setItem(savedKey, JSON.stringify(dbFields)); } catch { /* 무시 */ }
         const dbDraft: DraftResult = {
@@ -630,9 +676,8 @@ export default function DraftPreviewPage() {
       const profile = profileFromStorage();
       if (!profile.name) {
         const mockFields = applyFixedValues({ ...(MOCK_FIELDS[type] ?? {}) });
-        // 온보딩 미완료 시 auth userName을 폴백으로 주입
-        // (profile.name이 있으면 applyFixedValues에서 이미 처리)
-        if (userName && type === "food-business-license" && !mockFields["신고인_성명"]) {
+        // 온보딩 미완료: mock "홍길동" 대신 auth 이름으로 무조건 교체
+        if (userName && type === "food-business-license") {
           mockFields["신고인_성명"] = userName;
         }
         const mockDraft: DraftResult = {
