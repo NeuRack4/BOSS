@@ -4,6 +4,50 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
 
 ---
 
+## [v0.8.0] — 2026-04-14
+
+### 기능 개선 — 서류 초안 PDF 오버레이 UX 전면 고도화
+
+#### Added
+
+- **식품영업신고서 레이아웃 보정** (`backend/api/routers/pdf_forms.py`)
+  - PyMuPDF `add_redact_annot` + `apply_redactions`로 하단 '210mm×297mm 백상지' 문구 영구 삭제
+  - 신고인 성명/주소 row 각 +5pt 확장 — 기존 y=132.9~169.0 → y=132.9~174.0 (셀 경계선 직접 재작성)
+  - 흰 박스 덮기 → 내부 구분선(회색 0.36pt) + 외곽선(검정 0.84pt) 재그리기로 깔끔한 서식 유지
+- **사업자등록·식품영업 체크박스 통합 토글 UI** (`frontend/app/drafts/[type]/page.tsx`)
+  - `CHECKBOX_KEYS` Set — 사업자등록(25개) + 식품영업(29개) 체크박스 필드 통합 관리
+  - `CHECKBOX_SECTIONS` 그룹 설정 — 사업자등록 12개 그룹 / 식품영업 6개 그룹으로 편집 패널 하단 배치
+  - 토글 버튼: `[V]` = 체크 (파란 배경) / `[ ]` = 미체크 (흰 배경) — PDF 렌더링과 동일한 표시
+  - `HIDDEN_EDIT_FIELDS` — 구 방식 단일 키(여/부) 편집 패널에서 제외 + `applyFixedValues` 마이그레이션
+- **체크박스 값 정규화** (`applyFixedValues`)
+  - 구 방식("여"/"부"/"해당"/"미해당") → 신 방식("V"/"") 일괄 변환 (localStorage·DB 저장 데이터 하위호환)
+  - 사업자등록 구 단일 키(자동정정신청, 투자조합_출자여부 등 8종) → `_여`/`_부` 쌍으로 자동 마이그레이션
+- **CORS 500 오류 대응** (`backend/api/main.py`)
+  - FastAPI CORSMiddleware 500 헤더 누락 → 글로벌 `@app.exception_handler(Exception)` 추가
+- **load-fields 500 수정** (`backend/api/routers/pdf_forms.py`)
+  - `.maybe_single()` → `.order("id", desc=True).limit(1)` 교체 — 복수 행 시 APIError 방지
+
+#### Changed
+
+- **명칭(상호) 상태 갱신** — food-biz/employment-contract 로드 시 사업자등록 DB `상호_단체명` 항상 재조회
+  - localStorage 캐시가 stale해도 최신 상호명으로 자동 갱신
+
+#### Fixed
+
+- **신고인 성명 빈칸 버그** (`frontend/app/drafts/[type]/page.tsx`)
+  - 백엔드 500 시 background refresh가 이름 주입 없이 `setEditedFields` 덮어쓰던 문제
+  - DB `성명_대표자` → `profileFromStorage().name` → auth `userName` 순으로 확정, fetch 전 선주입
+  - mock "홍길동" → 로그인 auth 이름으로 무조건 교체
+- **load-fields 500 에러** (`backend/api/routers/pdf_forms.py`)
+  - `.maybe_single()` → `.order("id", desc=True).limit(1)` 교체 — 복수 행 시 PostgREST APIError 방지
+- **CORS 500 헤더 누락** (`backend/api/main.py`)
+  - 미처리 예외 응답에 CORS 헤더 포함되도록 글로벌 exception handler 추가
+- **사업자등록 편집 패널 구 방식 키 노출** (`frontend/app/drafts/[type]/page.tsx`)
+  - "자동정정신청"·"투자조합_출자여부" 등 구 단일 키 10종이 텍스트 입력으로 노출되던 문제
+  - `HIDDEN_EDIT_FIELDS` 추가 + `applyFixedValues` 마이그레이션으로 신 방식 `_여`/`_부` 쌍으로 자동 변환
+
+---
+
 ## [v0.7.0] — 2026-04-14
 
 ### 기능 개선 — 인사이트 데이터 풀 연결 + 상권 벤치마킹 (Steps 1–7)
