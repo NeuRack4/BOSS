@@ -13,45 +13,108 @@ from backend.core.constants import FounderSubStage
 _BASE_URL = "https://www.law.go.kr/DRF"
 _OC = "kimjaehyun9605"
 
-# 마포구 카페 창업에 직접 적용되는 법령 + 조문 화이트리스트
-REGULATION_TARGETS = [
+# ── 인허가 (license) — 창업 전 신고·허가·건축 인허가 ─────────────────────────
+# article_whitelist = None → 법령 전체 조문 수집
+LICENSE_TARGETS = [
     {
         "name": "식품위생법",
-        "article_whitelist": [
-            "제36조",  # 영업의 종류 (휴게음식점/일반음식점/제과점)
-            "제37조",  # 영업허가 등
-            "제41조",  # 식품위생교육
-            "제44조",  # 영업자 준수사항
-            "제88조",  # 집단급식소
-        ],
-        "stage": [
-            FounderSubStage.LICENSE_APPLICATION,
-            FounderSubStage.PRE_OPEN,
-        ],
+        "article_whitelist": None,  # 전체 수집
+        "stage": [FounderSubStage.LICENSE_APPLICATION, FounderSubStage.PRE_OPEN],
         "topic": "food_license",
     },
     {
         "name": "화재예방, 소방시설 설치 및 관리에 관한 법률",
-        "article_whitelist": [
-            "제12조",  # 소방시설의 설치 및 관리
-            "제15조",  # 피난시설, 방화구획
-            "제22조",  # 소방안전관리자 선임
-        ],
-        "stage": [
-            FounderSubStage.INTERIOR,
-            FounderSubStage.PRE_OPEN,
-        ],
+        "article_whitelist": None,
+        "stage": [FounderSubStage.INTERIOR, FounderSubStage.PRE_OPEN],
         "topic": "fire_safety",
     },
     {
         "name": "건축법",
         "article_whitelist": [
             "제19조",  # 용도변경
+            "제20조",  # 가설건축물
+            "제22조",  # 건축물의 사용승인
         ],
-        "stage": [
-            FounderSubStage.LEASE_REVIEW,
-        ],
+        "stage": [FounderSubStage.LEASE_REVIEW],
         "topic": "building_usage",
+    },
+]
+
+# ── 규제법령 (regulation) — 오픈 후 운영 중 준수 규제 ────────────────────────
+REGULATION_TARGETS = [
+    {
+        "name": "개인정보 보호법",
+        "article_whitelist": None,
+        "stage": [FounderSubStage.OPEN],
+        "topic": "privacy",
+    },
+]
+
+# ── 근로 (labor) ─────────────────────────────────────────────────────────────
+LABOR_TARGETS = [
+    {
+        "name": "근로기준법",
+        "article_whitelist": None,  # 전체 수집
+        "stage": [FounderSubStage.HIRING_PREPARATION, FounderSubStage.HIRING_CONTRACT],
+        "topic": "labor_standard",
+    },
+    {
+        "name": "최저임금법",
+        "article_whitelist": None,
+        "stage": [FounderSubStage.HIRING_PREPARATION],
+        "topic": "minimum_wage",
+    },
+    {
+        "name": "근로자퇴직급여 보장법",
+        "article_whitelist": None,
+        "stage": [FounderSubStage.HIRING_CONTRACT],
+        "topic": "retirement_pay",
+    },
+    {
+        "name": "고용보험법",
+        "article_whitelist": [
+            "제6조",   # 피보험자격
+            "제7조",   # 취득신고
+            "제8조",   # 상실신고
+            "제69조",  # 고용보험료
+        ],
+        "stage": [FounderSubStage.HIRING_CONTRACT],
+        "topic": "employment_insurance",
+    },
+    {
+        "name": "산업재해보상보험법",
+        "article_whitelist": [
+            "제6조",   # 적용범위
+            "제7조",   # 보험관계 성립
+        ],
+        "stage": [FounderSubStage.HIRING_CONTRACT],
+        "topic": "workers_compensation",
+    },
+]
+
+# ── 임대차 (lease) ───────────────────────────────────────────────────────────
+LEASE_TARGETS = [
+    {
+        "name": "상가건물 임대차보호법",
+        "article_whitelist": None,  # 전체 수집
+        "stage": [FounderSubStage.LEASE_REVIEW],
+        "topic": "commercial_lease",
+    },
+]
+
+# ── 지원사업 (subsidy) ────────────────────────────────────────────────────────
+SUBSIDY_TARGETS = [
+    {
+        "name": "소상공인 보호 및 지원에 관한 법률",
+        "article_whitelist": None,
+        "stage": [FounderSubStage.SUBSIDY_ACTIVE],
+        "topic": "small_business_support",
+    },
+    {
+        "name": "중소기업창업 지원법",
+        "article_whitelist": None,
+        "stage": [FounderSubStage.LOCATION_SEARCH],
+        "topic": "startup_support",
     },
 ]
 
@@ -116,22 +179,38 @@ async def _fetch_articles(lsi_seq: str, client: httpx.AsyncClient) -> list[dict]
     return units
 
 
+def _to_str(value) -> str:
+    """API 응답값을 문자열로 변환 (list/dict/str 모두 처리)"""
+    if value is None:
+        return ""
+    if isinstance(value, list):
+        return " ".join(_to_str(v) for v in value)
+    if isinstance(value, dict):
+        return " ".join(_to_str(v) for v in value.values())
+    return str(value)
+
+
 def _build_hang_content(hang: dict) -> str:
     """항 dict → 항내용 + 호 + 목 전체 텍스트로 조립"""
-    parts = [hang["항내용"]]
+    hang_text = _to_str(hang.get("항내용") or hang.get("조문내용", ""))
+    parts = [hang_text]
 
     ho_list = hang.get("호", [])
     if isinstance(ho_list, dict):
         ho_list = [ho_list]
     for ho in ho_list:
-        parts.append(f"  {ho['호내용']}")
+        ho_text = _to_str(ho.get("호내용", ""))
+        if ho_text:
+            parts.append(f"  {ho_text}")
         mok_list = ho.get("목", [])
         if isinstance(mok_list, dict):
             mok_list = [mok_list]
         for mok in mok_list:
-            parts.append(f"    {mok['목내용']}")
+            mok_text = _to_str(mok.get("목내용", ""))
+            if mok_text:
+                parts.append(f"    {mok_text}")
 
-    return "\n".join(parts)
+    return "\n".join(p for p in parts if p)
 
 
 def _parse_article_hierarchical(
@@ -204,7 +283,8 @@ def _parse_article_hierarchical(
     for idx, hang in enumerate(hang_list, 1):
         hang_char = hang.get("항번호", f"①")
         hang_text = _build_hang_content(hang)
-        # 검색 결과에서 어느 조/항인지 즉시 알 수 있도록 prefix 삽입
+        if not hang_text.strip():
+            continue  # 빈 항 스킵
         content = f"[{law_name} {article_label} {hang_char}항]\n{hang_text}"
 
         chunks.append({
@@ -231,9 +311,9 @@ async def fetch_regulation(target: dict) -> list[dict]:
     반환: [{"source", "chunk_index", "content", "chunk_type", "article_key",
              "paragraph_no", "paragraph_char", "metadata"}]
     """
-    whitelist_jo_nos = {
-        _article_name_to_jo_no(a) for a in target["article_whitelist"]
-    }
+    # article_whitelist 가 None 또는 빈 리스트이면 전체 조문 수집
+    whitelist = target.get("article_whitelist") or []
+    whitelist_jo_nos = {_article_name_to_jo_no(a) for a in whitelist} if whitelist else None
 
     async with httpx.AsyncClient(timeout=15.0) as client:
         lsi_seq = await _search_lsi_seq(target["name"], client)
@@ -246,7 +326,8 @@ async def fetch_regulation(target: dict) -> list[dict]:
     results: list[dict] = []
     for unit in all_units:
         jo_no = unit.get("조문번호", "")
-        if jo_no not in whitelist_jo_nos:
+        # whitelist_jo_nos 가 None 이면 전체 수집
+        if whitelist_jo_nos is not None and jo_no not in whitelist_jo_nos:
             continue
 
         chunks = _parse_article_hierarchical(unit, target["name"], lsi_seq, target)
@@ -259,29 +340,24 @@ async def fetch_regulation(target: dict) -> list[dict]:
     return results
 
 
-# 카페 창업자에게 직접 관련된 세금 법령 + 조문 화이트리스트
+# ── 세금 (tax) ───────────────────────────────────────────────────────────────
 TAX_TARGETS = [
     {
         "name": "부가가치세법",
-        "article_whitelist": [
-            "제2조",   # 정의 (과세대상)
-            "제3조",   # 납세의무자
-            "제14조",  # 세금계산서 발급
-            "제48조",  # 예정신고와 납부
-            "제49조",  # 확정신고와 납부
-            "제61조",  # 간이과세자 납부의무 면제
-            "제62조",  # 간이과세자 신고와 납부
-        ],
+        "article_whitelist": None,  # 전체 수집
         "stage": [],
         "topic": "vat",
     },
     {
         "name": "소득세법",
         "article_whitelist": [
-            "제19조",  # 사업소득
-            "제70조",  # 종합소득과세표준 확정신고
-            "제76조",  # 납부
-            "제160조", # 장부의 비치·기장
+            "제19조",   # 사업소득
+            "제24조",   # 총수입금액
+            "제27조",   # 필요경비
+            "제70조",   # 종합소득 확정신고
+            "제76조",   # 납부
+            "제143조",  # 원천징수
+            "제160조",  # 장부 비치·기장
         ],
         "stage": [],
         "topic": "income_tax",
@@ -289,33 +365,65 @@ TAX_TARGETS = [
     {
         "name": "국세기본법",
         "article_whitelist": [
-            "제47조",  # 가산세
+            "제45조의2",  # 경정청구
+            "제47조",     # 가산세
             "제47조의2",  # 무신고가산세
             "제47조의3",  # 과소신고가산세
             "제47조의4",  # 납부지연가산세
-            "제45조의2",  # 경정 등의 청구
         ],
         "stage": [],
         "topic": "tax_penalty",
     },
+    {
+        "name": "조세특례제한법",
+        "article_whitelist": [
+            "제6조",    # 창업중소기업 세액감면
+            "제7조",    # 중소기업 특별세액감면
+            "제86조의3", # 간이과세자 납부면제
+        ],
+        "stage": [],
+        "topic": "tax_exemption",
+    },
 ]
 
 
-async def fetch_all_regulations() -> list[dict]:
-    """전체 규제법령 수집 (REGULATION_TARGETS 전체)"""
+async def _fetch_all(targets: list[dict]) -> list[dict]:
+    """targets 목록 전체 수집 (공통 로직)"""
     all_docs = []
-    for target in REGULATION_TARGETS:
+    for target in targets:
+        print(f"  [{target['name']}] 수집 중...")
         docs = await fetch_regulation(target)
+        print(f"  [{target['name']}] → {len(docs)}개 청크")
         all_docs.extend(docs)
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(0.5)  # 법제처 API 레이트 리밋
     return all_docs
+
+
+async def fetch_all_licenses() -> list[dict]:
+    """인허가 법령 전체 수집 (식품위생법·소방법·건축법)"""
+    return await _fetch_all(LICENSE_TARGETS)
+
+
+async def fetch_all_regulations() -> list[dict]:
+    """규제법령 전체 수집 (개인정보보호법 등 운영 중 규제)"""
+    return await _fetch_all(REGULATION_TARGETS)
 
 
 async def fetch_all_tax_laws() -> list[dict]:
-    """세금 법령 수집 (TAX_TARGETS 전체)"""
-    all_docs = []
-    for target in TAX_TARGETS:
-        docs = await fetch_regulation(target)
-        all_docs.extend(docs)
-        await asyncio.sleep(0.5)
-    return all_docs
+    """세금 법령 전체 수집"""
+    return await _fetch_all(TAX_TARGETS)
+
+
+async def fetch_all_labor_laws() -> list[dict]:
+    """근로 법령 전체 수집"""
+    return await _fetch_all(LABOR_TARGETS)
+
+
+async def fetch_all_lease_laws() -> list[dict]:
+    """임대차 법령 전체 수집"""
+    return await _fetch_all(LEASE_TARGETS)
+
+
+async def fetch_all_subsidy_laws() -> list[dict]:
+    """지원사업 법령 전체 수집"""
+    return await _fetch_all(SUBSIDY_TARGETS)

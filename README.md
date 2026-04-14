@@ -4,7 +4,7 @@
 
 > 서울 F&B 소상공인을 위한 Proactive AI 비서
 
-[![version](https://img.shields.io/badge/version-0.4.2-blue.svg)](https://semver.org)
+[![version](https://img.shields.io/badge/version-0.4.3-blue.svg)](https://semver.org)
 [![license](https://img.shields.io/badge/license-MIT-green.svg)]()
 
 창업자가 요청하지 않아도 에이전트가 먼저 챙깁니다.  
@@ -300,18 +300,19 @@
 
 [SemVer](https://semver.org) 형식을 따릅니다: `MAJOR.MINOR.PATCH`
 
-| 버전   | 내용                                                                                                                                                                                           |
-| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| v0.1.0 | 백엔드 초기 구조, 메인 페이지, 대시보드/로그인/회원가입                                                                                                                                        |
-| v0.2.0 | 규제법령 RAG (법제처 + BGE-M3), 입지분석 시뮬레이션, 세금 스케줄링, 채용 자동화, Sales API                                                                                                     |
-| v0.3.0 | 창업자 온보딩 위저드 (4단계), 입지분석 UI (차트·리포트), 매출 입력 페이지, Supabase Auth 연동 완성                                                                                             |
-| v0.3.1 | 입지분석 9개 상권 확대, 서울 열린데이터 API 전환, 검색 이력 UI, 인증 없이 분석 허용                                                                                                            |
-| v0.3.2 | RAG API 라우터 추가 (ingest/search/summarize/stats), 세금 초안 PDF 다운로드 (ReportLab)                                                                                                        |
-| v0.4.0 | 부가가치세 신고서 국세청 공식 서식 PDF (PyMuPDF 좌표 오버레이), 매출 인사이트 강화, 법령 계층적 청킹, DB 마이그레이션 004·005                                                                  |
-| v0.4.1 | 창업자 상태머신 활성화 — `GET /founders/me/state`, 상태 전이 트리거 연결, 오케스트레이터 DB 로드, 사이드바 현재 단계 표시, 온보딩 필수 항목 최소화                                             |
-| v0.4.2 | 서류 초안 폼 UI — PDF 오버레이 방식 4종 (사업자등록신청서·식품영업신고서·표준근로계약서·상가임대차계약서), 프로필 페이지 `/dashboard/profile`, 온보딩 UX 개선, html2pdf 클라이언트 사이드 출력 |
+| 버전   | 내용                                                                                                                                                                                                                         |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| v0.1.0 | 백엔드 초기 구조, 메인 페이지, 대시보드/로그인/회원가입                                                                                                                                                                      |
+| v0.2.0 | 규제법령 RAG (법제처 + BGE-M3), 입지분석 시뮬레이션, 세금 스케줄링, 채용 자동화, Sales API                                                                                                                                   |
+| v0.3.0 | 창업자 온보딩 위저드 (4단계), 입지분석 UI (차트·리포트), 매출 입력 페이지, Supabase Auth 연동 완성                                                                                                                           |
+| v0.3.1 | 입지분석 9개 상권 확대, 서울 열린데이터 API 전환, 검색 이력 UI, 인증 없이 분석 허용                                                                                                                                          |
+| v0.3.2 | RAG API 라우터 추가 (ingest/search/summarize/stats), 세금 초안 PDF 다운로드 (ReportLab)                                                                                                                                      |
+| v0.4.0 | 부가가치세 신고서 국세청 공식 서식 PDF (PyMuPDF 좌표 오버레이), 매출 인사이트 강화, 법령 계층적 청킹, DB 마이그레이션 004·005                                                                                                |
+| v0.4.1 | 창업자 상태머신 활성화 — `GET /founders/me/state`, 상태 전이 트리거 연결, 오케스트레이터 DB 로드, 사이드바 현재 단계 표시, 온보딩 필수 항목 최소화                                                                           |
+| v0.4.2 | 서류 초안 폼 UI — PDF 오버레이 방식 4종 (사업자등록신청서·식품영업신고서·표준근로계약서·상가임대차계약서), 프로필 페이지 `/dashboard/profile`, 온보딩 UX 개선, html2pdf 클라이언트 사이드 출력                               |
+| v0.4.3 | 법령 검색 카테고리 필터 버그 수정 — `hybrid_search` RPC 파라미터 타입 `vector` → `text` 캐스팅, ivfflat → **HNSW** 인덱스 교체, 인허가 법령 `LICENSE`/`REGULATION` 카테고리 분리 (식품위생법·소방법·건축법 ↔ 개인정보보호법) |
 
-현재 버전: **`v0.4.2`**
+현재 버전: **`v0.4.3`**
 
 ---
 
@@ -460,3 +461,79 @@ AI 심화과정 조별과제 | 2026
 
 > ⚠️ 본 서비스가 제공하는 세금·법률·계약 관련 정보는 참고용이며,  
 > 실제 신고 및 계약 전 반드시 전문가 확인을 권장합니다.
+
+---
+
+## 트러블슈팅
+
+### 법령 검색 카테고리 필터가 0건을 반환하는 문제 (v0.4.3 수정)
+
+**증상**
+`/dashboard/rag`에서 `세금` 카테고리를 선택하고 `부가가치세`로 검색하면 결과가 하나도 나오지 않음. 카테고리 없이 검색해도 동일 쿼리에 4건만 반환되는 등 결과가 비정상적으로 적음.
+
+**원인 — 2가지 이슈가 중첩**
+
+1. **PostgREST vector 파라미터 직렬화 실패**
+   Python `list[float]`을 `supabase.rpc("hybrid_search", {"query_embedding": [...]})`로 전달하면 PostgREST가 `vector(1024)` 타입으로 **자동 변환하지 못하고 NULL로 바인딩**됨. 에러 없이 조용히 실패하고 `embedding <=> NULL = NULL`이 되어 WHERE 절이 전부 false 처리.
+
+2. **ivfflat 인덱스의 `probes` 문제**
+   `law_chunks_embedding_idx`가 `ivfflat (lists=100)` 이었고, 기본 `probes=1`은 **100개 클러스터 중 1개만 탐색**. 쿼리 벡터와 가장 가까운 1개 클러스터에 tax 문서가 하나도 없으면 `category='tax'` 필터는 0건 반환. 데이터가 3000~5000행 규모로 작을수록 클러스터 불균형에 취약.
+
+**해결**
+
+- **벡터 파라미터를 text로 전달 + 함수 내부에서 캐스팅**
+
+  ```sql
+  -- 008_fix_vector_text_param
+  CREATE OR REPLACE FUNCTION hybrid_search(
+    query_text text,
+    query_embedding text,          -- vector → text 로 변경
+    match_count integer DEFAULT 10,
+    filter_category text DEFAULT NULL,
+    rrf_k integer DEFAULT 60,
+    min_score double precision DEFAULT 0.3
+  ) ... AS $$
+    WITH q AS (SELECT query_embedding::vector AS vec)
+    SELECT ... FROM law_chunks lc, q
+    WHERE 1 - (lc.embedding <=> q.vec) >= min_score
+    ...
+  $$;
+  ```
+
+  ```python
+  # backend/rag/retriever/pgvector_retriever.py
+  embedding_str = "[" + ",".join(str(v) for v in embedding) + "]"
+  supabase.rpc("hybrid_search", {"query_embedding": embedding_str, ...})
+  ```
+
+- **ivfflat → HNSW 인덱스 교체**
+
+  ```sql
+  -- 009_fix_ivfflat_index
+  DROP INDEX IF EXISTS law_chunks_embedding_idx;
+
+  CREATE INDEX law_chunks_embedding_idx
+    ON law_chunks
+    USING hnsw (embedding vector_cosine_ops)
+    WITH (m = 16, ef_construction = 64);
+  ```
+
+  HNSW는 그래프 기반 ANN으로 카테고리 필터 같은 제한된 검색에서도 안정적인 recall을 보장하며, 수천~수만 행 규모에서 ivfflat 보다 정확도·일관성이 우수.
+
+**학습 포인트**
+
+- Supabase RPC에 `vector` 파라미터를 넘길 땐 **항상 `"[v1,v2,...]"` 텍스트 포맷으로 전달**하고 함수 내부에서 `::vector` 캐스팅.
+- 소규모 데이터(수천 행)에는 `ivfflat (lists=100)` 보다 **HNSW가 기본값으로 안전**. ivfflat을 쓸 거면 `SET LOCAL ivfflat.probes = 10` 같은 튜닝이 필수.
+- 카테고리 필터 같은 pre-filter 가 붙는 벡터 검색은 IVF 계열의 cluster miss에 취약하니 HNSW 권장.
+
+### 법령 카테고리 체계 정리 (v0.4.3)
+
+기존에는 인허가성 법령(식품위생법·소방법·건축법)이 모두 `REGULATION` 카테고리로 저장되어 프론트 `license` 버튼이 항상 0건을 반환했음. 실제 인허가 단계의 법령은 `LICENSE`로, 운영 중 지속 규제(개인정보보호법)는 `REGULATION`으로 분리 재수집.
+
+재수집 명령:
+
+```bash
+python -m backend.scripts.ingest_laws                  # 전체 재수집
+python -m backend.scripts.ingest_laws --category license
+python -m backend.scripts.ingest_laws --category regulation
+```

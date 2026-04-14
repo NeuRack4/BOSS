@@ -136,21 +136,35 @@ export default function RagPage() {
       {/* 검색바 */}
       <form onSubmit={handleSearch} className="flex flex-col gap-3">
         {/* 카테고리 필터 */}
-        <div className="flex gap-2 flex-wrap">
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat.value}
-              type="button"
-              onClick={() => setCategory(cat.value)}
-              className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
-                category === cat.value
-                  ? "bg-brand-500 text-white border-brand-500"
-                  : "bg-white text-gray-600 border-surface-300 hover:border-brand-300"
-              }`}
-            >
-              {cat.label}
-            </button>
-          ))}
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-gray-600">
+              분야 선택
+            </span>
+            {!category && (
+              <span className="text-xs text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                분야를 선택하면 검색 정확도가 높아집니다
+              </span>
+            )}
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat.value}
+                type="button"
+                onClick={() => setCategory(cat.value)}
+                className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
+                  category === cat.value
+                    ? "bg-brand-500 text-white border-brand-500"
+                    : cat.value === ""
+                      ? "bg-white text-gray-400 border-surface-200 hover:border-brand-300"
+                      : "bg-white text-gray-600 border-surface-300 hover:border-brand-300"
+                }`}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* 검색 입력 */}
@@ -159,7 +173,7 @@ export default function RagPage() {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="예: 식품위생법 영업신고, 부가세 신고 기한, 최저임금..."
+            placeholder="예: 영업신고 절차, 부가세 신고 기한, 최저임금..."
             className="flex-1 px-4 py-2.5 text-sm rounded-xl border border-surface-300 bg-white focus:outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-400 placeholder:text-gray-400"
           />
           <button

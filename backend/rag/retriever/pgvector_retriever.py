@@ -1,8 +1,9 @@
 """
 Supabase pgvector 검색
 
-retrieve()      — 기본 벡터 유사도 검색 (backward compat)
-hybrid_retrieve() — 벡터 + FTS 하이브리드 검색 (기본값으로 사용 권장)
+retrieve()            — law_chunks 벡터 유사도 검색 (법령 전용)
+retrieve_mapo_stats() — documents 벡터 유사도 검색 (mapo_stats 전용)
+hybrid_retrieve()     — law_chunks 벡터 + FTS 하이브리드 검색
 
 Hybrid Search 흐름:
   1. 쿼리를 BGE-M3로 임베딩
@@ -26,12 +27,13 @@ async def retrieve(
 ) -> list[dict]:
     """벡터 유사도 전용 검색 (backward compat)"""
     embedding = await embed_single(query)
+    embedding_str = "[" + ",".join(str(v) for v in embedding) + "]"
     supabase = get_supabase()
 
     result = supabase.rpc(
         "match_documents",
         {
-            "query_embedding": embedding,
+            "query_embedding": embedding_str,
             "match_threshold": match_threshold,
             "match_count": match_count,
             "filter_category": category,
@@ -45,10 +47,39 @@ async def retrieve(
     return result.data or []
 
 
+async def retrieve_mapo_stats(
+    query: str,
+    match_count: int = 5,
+    match_threshold: float = 0.5,
+) -> list[dict]:
+    """mapo_stats 전용 — documents 테이블 직접 벡터 검색"""
+    embedding = await embed_single(query)
+    embedding_str = "[" + ",".join(str(v) for v in embedding) + "]"
+    supabase = get_supabase()
+
+    result = (
+        supabase.rpc(
+            "match_mapo_stats",
+            {
+                "query_embedding": embedding_str,
+                "match_threshold": match_threshold,
+                "match_count": match_count,
+            },
+        ).execute()
+    )
+
+    if hasattr(result, "error") and result.error:
+        logger.error("match_mapo_stats RPC 오류: %s", result.error)
+        return []
+
+    return result.data or []
+
+
 async def hybrid_retrieve(
     query: str,
     category: str | None = None,
     match_count: int = 10,
+    min_score: float = 0.3,
     expand_parent: bool = True,
 ) -> list[dict]:
     """
@@ -61,13 +92,21 @@ async def hybrid_retrieve(
     embedding = await embed_single(query)
     supabase = get_supabase()
 
+    effective_min_score = 0.0 if category else min_score
+
+    # PostgREST는 list[float]를 vector 타입으로 자동 변환하지 않음 → 문자열로 전달
+    embedding_str = "[" + ",".join(str(v) for v in embedding) + "]"
+
     result = supabase.rpc(
         "hybrid_search",
         {
             "query_text": query,
-            "query_embedding": embedding,
+            "query_embedding": embedding_str,
             "match_count": match_count,
             "filter_category": category,
+            # 카테고리 지정 시 min_score 불필요 (카테고리 자체가 필터)
+            # 카테고리 없을 때만 임계값 적용해 크로스 카테고리 오염 방지
+            "min_score": effective_min_score,
         },
     ).execute()
 
@@ -90,7 +129,7 @@ async def hybrid_retrieve(
 
     if missing_parent_ids:
         parent_result = (
-            supabase.table("documents")
+            supabase.table("law_chunks")
             .select("id, content, metadata, chunk_type, paragraph_no, paragraph_char, parent_doc_id")
             .in_("id", list(missing_parent_ids))
             .execute()
