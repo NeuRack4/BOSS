@@ -29,7 +29,7 @@ async def retrieve(
 ) -> list[dict]:
     """벡터 유사도 전용 검색 (backward compat)"""
     embedding = await embed_single(query)
-    embedding_str = "[" + ",".join(str(v) for v in embedding) + "]"
+    embedding_str = "[" + ",".join(f"{v:.10f}" for v in embedding) + "]"
     supabase = get_supabase()
 
     result = supabase.rpc(
@@ -56,7 +56,7 @@ async def retrieve_mapo_stats(
 ) -> list[dict]:
     """mapo_stats 전용 — documents 테이블 직접 벡터 검색"""
     embedding = await embed_single(query)
-    embedding_str = "[" + ",".join(str(v) for v in embedding) + "]"
+    embedding_str = "[" + ",".join(f"{v:.10f}" for v in embedding) + "]"
     supabase = get_supabase()
 
     result = (
@@ -85,7 +85,7 @@ async def retrieve_docs(
 ) -> list[dict]:
     """documents 테이블 범용 벡터 검색 — match_docs RPC 사용 (카테고리 지정 필수)"""
     embedding = await embed_single(query)
-    embedding_str = "[" + ",".join(str(v) for v in embedding) + "]"
+    embedding_str = "[" + ",".join(f"{v:.10f}" for v in embedding) + "]"
     supabase = get_supabase()
 
     result = supabase.rpc(
@@ -134,7 +134,7 @@ async def hybrid_retrieve(
     effective_min_score = 0.0 if category else min_score
 
     # PostgREST는 list[float]를 vector 타입으로 자동 변환하지 않음 → 문자열로 전달
-    embedding_str = "[" + ",".join(str(v) for v in embedding) + "]"
+    embedding_str = "[" + ",".join(f"{v:.10f}" for v in embedding) + "]"
 
     result = supabase.rpc(
         "hybrid_search",

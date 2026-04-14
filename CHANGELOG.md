@@ -4,6 +4,34 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
 
 ---
 
+## [v0.8.1] — 2026-04-14
+
+### 버그 수정 — RAG 검색 안정성 + 인사이트 데이터 품질 개선
+
+#### Fixed
+
+- **임베딩 직렬화 정밀도 개선** (`backend/rag/retriever/pgvector_retriever.py`)
+  - `str(v)` → `f"{v:.10f}"` — float 소수점 표현 불일치로 유사도 오차 발생하던 문제 해결
+  - `retrieve`, `retrieve_mapo_stats`, `retrieve_docs`, `hybrid_retrieve` 4개 함수 전체 적용
+- **BGE-M3 멀티스레드 경합 해소** (`backend/rag/embeddings/bge_embeddings.py`)
+  - `threading.Lock()` 추가 — `SentenceTransformer` 동시 호출 시 세그폴트/결과 오염 방지
+  - `_encode_sync` 전체를 Lock 컨텍스트 내로 이동
+- **RAG 중복 제거 로직 버그 수정** (`backend/api/routers/insights.py`)
+  - 단일 `seen_ids`로 전체 카테고리 중복을 제거하던 문제 → 카테고리별 독립 seen 집합으로 분리
+  - 상이한 카테고리의 동일 ID 문서가 누락되지 않도록 수정
+- **RAG 검색 임계값 완화** (`backend/api/routers/insights.py`)
+  - `_search` 함수 기본 threshold `0.4` → `0.25`로 낮춤 — 유동인구·상권·전략 문서 검색 누락 감소
+  - 각 카테고리 별도 threshold 설정: population/commercial `0.25`, strategy `0.25`
+
+#### Changed
+
+- **RAG 검색 디버그 로그 추가** (`backend/api/routers/insights.py`)
+  - 카테고리별 검색 쿼리·반환 건수·주입 청크 내용(120자) 콘솔 출력
+- **FullCalendar 패키지 업그레이드** (`frontend/package.json`)
+  - `@fullcalendar/*` `6.1.15` → `6.1.20` (daygrid, interaction, list, react)
+
+---
+
 ## [v0.8.0] — 2026-04-14
 
 ### 기능 개선 — 서류 초안 PDF 오버레이 UX 전면 고도화

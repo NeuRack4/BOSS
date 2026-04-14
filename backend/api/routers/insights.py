@@ -87,50 +87,57 @@ async def _retrieve_rag_context(month: int, change_pct: float | None) -> str:
 
     commercial_query = f"마포구 상권변화지표 카페 {month}월 상권 등급"
 
-    seen_ids: set = set()
-
-    # 1) mapo_stats 검색
+    # 1) mapo_stats 검색 (카테고리 내 중복 제거)
     stats_chunks: list[str] = []
+    stats_seen: set = set()
     for query in queries:
         try:
             docs = await retrieve_mapo_stats(query=query, match_count=3, match_threshold=0.5)
             for doc in docs:
-                if doc.get("id") not in seen_ids:
-                    seen_ids.add(doc["id"])
+                if doc.get("id") not in stats_seen:
+                    stats_seen.add(doc.get("id"))
                     stats_chunks.append(doc["content"])
         except Exception as e:
             print(f"[insights] mapo_stats RAG 실패 (query={query}): {e}")
 
-    # 2) 유동인구 + 상권변화지표 + strategy 병렬 검색
-    async def _search(query: str, category: str, count: int = 3, threshold: float = 0.4) -> list[dict]:
+    # 2) 유동인구 + 상권변화지표 + strategy 병렬 검색 (카테고리가 다르므로 seen_ids 공유 안 함)
+    async def _search(query: str, category: str, count: int = 3, threshold: float = 0.25) -> list[dict]:
         try:
-            return await retrieve_docs(query=query, category=category, match_count=count, match_threshold=threshold)
+            print(f"[RAG 검색] category={category} query={query[:40]} threshold={threshold}")
+            results = await retrieve_docs(query=query, category=category, match_count=count, match_threshold=threshold)
+            print(f"[RAG 검색] category={category} → {len(results)}개 반환")
+            return results
         except Exception as e:
+            import traceback
             print(f"[insights] {category} RAG 실패: {e}")
+            traceback.print_exc()
             return []
 
     pop_docs, commercial_docs, strategy_docs = await _asyncio.gather(
-        _search(pop_query,        "mapo_population",        count=3, threshold=0.4),
-        _search(commercial_query, "mapo_commercial_change", count=2, threshold=0.35),
-        _search(strategy_query,   "strategy",               count=3, threshold=0.45),
+        _search(pop_query,        "mapo_population",        count=3, threshold=0.25),
+        _search(commercial_query, "mapo_commercial_change", count=2, threshold=0.25),
+        _search(strategy_query,   "strategy",               count=3, threshold=0.25),
     )
 
     pop_chunks: list[str] = []
+    pop_seen: set = set()
     for doc in pop_docs:
-        if doc.get("id") not in seen_ids:
-            seen_ids.add(doc["id"])
+        if doc.get("id") not in pop_seen:
+            pop_seen.add(doc.get("id"))
             pop_chunks.append(doc["content"])
 
     commercial_chunks: list[str] = []
+    comm_seen: set = set()
     for doc in commercial_docs:
-        if doc.get("id") not in seen_ids:
-            seen_ids.add(doc["id"])
+        if doc.get("id") not in comm_seen:
+            comm_seen.add(doc.get("id"))
             commercial_chunks.append(doc["content"])
 
     strategy_chunks: list[str] = []
+    strat_seen: set = set()
     for doc in strategy_docs:
-        if doc.get("id") not in seen_ids:
-            seen_ids.add(doc["id"])
+        if doc.get("id") not in strat_seen:
+            strat_seen.add(doc.get("id"))
             strategy_chunks.append(doc["content"])
 
     # 섹션별로 조합
@@ -143,6 +150,17 @@ async def _retrieve_rag_context(month: int, change_pct: float | None) -> str:
         parts.append("[마포구 상권변화지표]\n" + "\n\n".join(f"• {c}" for c in commercial_chunks))
     if strategy_chunks:
         parts.append("[소상공인 경영 전략 가이드]\n" + "\n\n".join(f"• {c}" for c in strategy_chunks))
+
+    # RAG 주입 청크 요약 로그
+    print(f"[RAG 주입] mapo_stats={len(stats_chunks)}개 / mapo_population={len(pop_chunks)}개 / mapo_commercial_change={len(commercial_chunks)}개 / strategy={len(strategy_chunks)}개")
+    for i, c in enumerate(stats_chunks):
+        print(f"  [mapo_stats {i+1}] {c[:120]}")
+    for i, c in enumerate(pop_chunks):
+        print(f"  [population {i+1}] {c[:120]}")
+    for i, c in enumerate(commercial_chunks):
+        print(f"  [commercial {i+1}] {c[:120]}")
+    for i, c in enumerate(strategy_chunks):
+        print(f"  [strategy  {i+1}] {c[:120]}")
 
     return "\n\n".join(parts)
 
