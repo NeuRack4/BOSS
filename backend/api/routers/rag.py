@@ -144,7 +144,7 @@ async def search(req: SearchRequest):
             id=r["id"],
             content=r["content"],
             metadata=r.get("metadata") or {},
-            similarity=r.get("score") or 0.0,
+            similarity=r.get("similarity") or 0.0,
             disclaimer=LEGAL_DISCLAIMER,
         )
         for r in chunks

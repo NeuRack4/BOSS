@@ -300,7 +300,11 @@ export default function DraftPreviewPage() {
     // localStorage에 저장된 수정 이력이 있으면 우선 사용
     const savedKey = `boss_draft_fields_${type}`;
     const saved = (() => {
-      try { return JSON.parse(localStorage.getItem(savedKey) ?? "null"); } catch { return null; }
+      try {
+        return JSON.parse(localStorage.getItem(savedKey) ?? "null");
+      } catch {
+        return null;
+      }
     })();
     if (saved && typeof saved === "object" && Object.keys(saved).length > 0) {
       // 주종목 등 고정값 강제 적용 (이전 저장값에 잘못된 값이 있어도 덮어씀)
@@ -310,7 +314,8 @@ export default function DraftPreviewPage() {
         title: meta.title,
         content: "",
         fields: saved,
-        disclaimer: "※ 이전에 수정한 내용을 불러왔습니다.\n본 내용은 참고용이며 실제 신고 및 계약 전 전문가 확인을 권장합니다.",
+        disclaimer:
+          "※ 이전에 수정한 내용을 불러왔습니다.\n본 내용은 참고용이며 실제 신고 및 계약 전 전문가 확인을 권장합니다.",
       };
       setDraft(savedDraft);
       setEditedFields(saved);
@@ -369,7 +374,9 @@ export default function DraftPreviewPage() {
       const result = await res.json();
       // mock을 baseline으로, AI 결과로 override
       // 단, AI가 반환한 빈 값('')이 mock 값을 덮어쓰지 않도록 필터링
-      const mergedFields: Record<string, string> = { ...(MOCK_FIELDS[docType] ?? {}) };
+      const mergedFields: Record<string, string> = {
+        ...(MOCK_FIELDS[docType] ?? {}),
+      };
       for (const [k, v] of Object.entries(result.fields ?? {})) {
         const s = typeof v === "string" ? v : String(v ?? "");
         if (s.trim() !== "" && s !== "[직접 입력]") {
@@ -423,8 +430,13 @@ export default function DraftPreviewPage() {
       // 수정 완료: PDF 재렌더 + localStorage에 저장 (새로고침 후에도 유지)
       renderPdf(editedFields);
       try {
-        localStorage.setItem(`boss_draft_fields_${type}`, JSON.stringify(editedFields));
-      } catch { /* 용량 초과 등 무시 */ }
+        localStorage.setItem(
+          `boss_draft_fields_${type}`,
+          JSON.stringify(editedFields),
+        );
+      } catch {
+        /* 용량 초과 등 무시 */
+      }
       // DB 저장 (비동기, 실패해도 UI에는 영향 없음)
       import("@/lib/supabase").then(({ supabase }) => {
         supabase.auth.getUser().then(({ data }) => {
@@ -437,7 +449,9 @@ export default function DraftPreviewPage() {
               "x-user-id": userId,
             },
             body: JSON.stringify({ fields: editedFields }),
-          }).catch(() => { /* 네트워크 오류 무시 */ });
+          }).catch(() => {
+            /* 네트워크 오류 무시 */
+          });
         });
       });
     }
@@ -556,15 +570,19 @@ export default function DraftPreviewPage() {
               {/* 수정 모드 안내 */}
               {editMode && (
                 <div className="no-print mb-3 px-4 py-2 bg-yellow-50 border border-yellow-300 rounded-lg text-xs text-yellow-700">
-                  ✎ 오른쪽 패널에서 값을 수정하세요. 「수정 완료」를 누르면 PDF에 반영됩니다.
+                  ✎ 오른쪽 패널에서 값을 수정하세요. 「수정 완료」를 누르면
+                  PDF에 반영됩니다.
                 </div>
               )}
 
               {/* 메인 레이아웃: PDF 뷰어 + 필드 편집 패널 */}
-              <div className={`flex gap-4 ${editMode ? "flex-col lg:flex-row" : "flex-col"}`}>
-
+              <div
+                className={`flex gap-4 ${editMode ? "flex-col lg:flex-row" : "flex-col"}`}
+              >
                 {/* PDF 뷰어 */}
-                <div className={`${editMode ? "lg:flex-1 min-w-0" : "w-full"} relative`}>
+                <div
+                  className={`${editMode ? "lg:flex-1 min-w-0" : "w-full"} relative`}
+                >
                   {pdfLoading && (
                     <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-10 rounded-xl">
                       <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
@@ -579,8 +597,10 @@ export default function DraftPreviewPage() {
                       title="서류 초안 미리보기"
                     />
                   ) : (
-                    <div className="w-full rounded-xl border border-gray-200 bg-white flex items-center justify-center"
-                         style={{ height: editMode ? "70vh" : "85vh" }}>
+                    <div
+                      className="w-full rounded-xl border border-gray-200 bg-white flex items-center justify-center"
+                      style={{ height: editMode ? "70vh" : "85vh" }}
+                    >
                       <div className="text-center text-gray-400">
                         <div className="w-8 h-8 border-4 border-gray-300 border-t-blue-500 rounded-full animate-spin mx-auto mb-3" />
                         <p className="text-sm">PDF 렌더링 중…</p>
@@ -598,7 +618,8 @@ export default function DraftPreviewPage() {
                       </p>
                       <div className="space-y-3">
                         {Object.entries(displayFields).map(([key, value]) => {
-                          const isLong = (value?.length ?? 0) > 30 || key === "특약사항";
+                          const isLong =
+                            (value?.length ?? 0) > 30 || key === "특약사항";
                           return (
                             <div key={key} className="space-y-1">
                               <label className="block text-xs font-medium text-gray-600">
@@ -607,7 +628,9 @@ export default function DraftPreviewPage() {
                               {isLong ? (
                                 <textarea
                                   value={value ?? ""}
-                                  onChange={(e) => handleFieldChange(key, e.target.value)}
+                                  onChange={(e) =>
+                                    handleFieldChange(key, e.target.value)
+                                  }
                                   rows={3}
                                   className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400/20 resize-y"
                                 />
@@ -615,7 +638,9 @@ export default function DraftPreviewPage() {
                                 <input
                                   type="text"
                                   value={value ?? ""}
-                                  onChange={(e) => handleFieldChange(key, e.target.value)}
+                                  onChange={(e) =>
+                                    handleFieldChange(key, e.target.value)
+                                  }
                                   className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400/20"
                                 />
                               )}
