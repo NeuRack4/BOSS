@@ -19,7 +19,7 @@ from pathlib import Path
 
 async def run(docs_dir: str, target_file: str | None) -> None:
     from backend.rag.document_loader import load_document, load_docs_folder
-    from backend.rag.ingest import ingest_documents
+    from backend.rag.ingest import ingest_law_chunks as ingest_documents
     from backend.core.constants import DocumentCategory
 
     if target_file:

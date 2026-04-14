@@ -19,6 +19,9 @@ async def ingest_documents(
     batch_size: int = 20,
 ) -> int:
     """
+    mapo_stats 전용 — documents 테이블에 저장.
+    법령 데이터는 ingest_law_chunks() 사용.
+
     documents: [{"source": str, "chunk_index": int, "content": str, "metadata": dict}]
     반환: 저장된 청크 수
     """
@@ -44,7 +47,46 @@ async def ingest_documents(
 
         supabase.table("documents").insert(rows).execute()
         total += len(rows)
-        print(f"[ingest] {total + len(rows)}개 저장 완료")
+        print(f"[ingest] {total}개 저장 완료")
+
+    return total
+
+
+async def ingest_law_chunks(
+    documents: list[dict],
+    category: DocumentCategory,
+    batch_size: int = 8,
+) -> int:
+    """
+    법령 전용 — law_chunks 테이블에 저장.
+    (license | tax | labor | lease | subsidy | regulation)
+
+    documents: [{"source": str, "chunk_index": int, "content": str, "metadata": dict}]
+    반환: 저장된 청크 수
+    """
+    supabase = get_supabase()
+    total = 0
+
+    for i in range(0, len(documents), batch_size):
+        batch = documents[i : i + batch_size]
+        texts = [d["content"] for d in batch]
+        vectors = await embed(texts)
+
+        rows = [
+            {
+                "category": category,
+                "source": d["source"],
+                "chunk_index": d["chunk_index"],
+                "content": d["content"],
+                "embedding": v,
+                "metadata": d.get("metadata", {}),
+            }
+            for d, v in zip(batch, vectors)
+        ]
+
+        supabase.table("law_chunks").insert(rows).execute()
+        total += len(rows)
+        print(f"[ingest] {total}개 저장 완료")
 
     return total
 
@@ -75,10 +117,10 @@ async def ingest_from_file(
 async def ingest_law_documents(
     documents: list[dict],
     category: DocumentCategory,
-    batch_size: int = 20,
+    batch_size: int = 8,
 ) -> int:
     """
-    법령 계층 청크 저장 (article → paragraph 2단계 삽입)
+    법령 계층 청크 저장 (article → paragraph 2단계 삽입) — law_chunks 테이블 사용.
 
     documents: fetch_regulation() 반환값
       — chunk_type, article_key, paragraph_no, paragraph_char 포함
@@ -114,7 +156,7 @@ async def ingest_law_documents(
             for d, v in zip(batch, vectors)
         ]
 
-        result = supabase.table("documents").insert(rows).execute()
+        result = supabase.table("law_chunks").insert(rows).execute()
         for chunk, row in zip(batch, result.data):
             article_key_to_id[chunk["article_key"]] = row["id"]
 
@@ -141,7 +183,7 @@ async def ingest_law_documents(
             for d, v in zip(batch, vectors)
         ]
 
-        supabase.table("documents").insert(rows).execute()
+        supabase.table("law_chunks").insert(rows).execute()
 
     print(f"[ingest] paragraph 저장: {len(para_chunks)}개")
     total = len(article_chunks) + len(para_chunks)
@@ -149,13 +191,18 @@ async def ingest_law_documents(
     return total
 
 
-async def ingest_regulations() -> int:
-    """
-    법제처 API에서 규제법령 조문 수집 → Supabase 저장.
-    REGULATION_TARGETS에 정의된 법령·조문만 선별 수집합니다.
-    """
-    from backend.data.crawlers.law_api import fetch_all_regulations
+async def ingest_licenses() -> int:
+    """인허가 법령 수집 (식품위생법·소방법·건축법) → law_chunks 저장"""
+    from backend.data.crawlers.law_api import fetch_all_licenses
+    docs = await fetch_all_licenses()
+    if not docs:
+        return 0
+    return await ingest_law_documents(docs, DocumentCategory.LICENSE)
 
+
+async def ingest_regulations() -> int:
+    """규제법령 수집 (개인정보보호법 등 운영 중 규제) → law_chunks 저장"""
+    from backend.data.crawlers.law_api import fetch_all_regulations
     docs = await fetch_all_regulations()
     if not docs:
         return 0
@@ -163,10 +210,69 @@ async def ingest_regulations() -> int:
 
 
 async def ingest_tax_laws() -> int:
-    """세금 법령 수집 → Supabase 저장"""
+    """세금 법령 수집 → law_chunks 저장"""
     from backend.data.crawlers.law_api import fetch_all_tax_laws
-
     docs = await fetch_all_tax_laws()
     if not docs:
         return 0
     return await ingest_law_documents(docs, DocumentCategory.TAX)
+
+
+async def ingest_labor_laws() -> int:
+    """근로 법령 수집 → law_chunks 저장"""
+    from backend.data.crawlers.law_api import fetch_all_labor_laws
+    docs = await fetch_all_labor_laws()
+    if not docs:
+        return 0
+    return await ingest_law_documents(docs, DocumentCategory.LABOR)
+
+
+async def ingest_lease_laws() -> int:
+    """임대차 법령 수집 → law_chunks 저장"""
+    from backend.data.crawlers.law_api import fetch_all_lease_laws
+    docs = await fetch_all_lease_laws()
+    if not docs:
+        return 0
+    return await ingest_law_documents(docs, DocumentCategory.LEASE)
+
+
+async def ingest_subsidy_laws() -> int:
+    """지원사업 법령 수집 → law_chunks 저장"""
+    from backend.data.crawlers.law_api import fetch_all_subsidy_laws
+    docs = await fetch_all_subsidy_laws()
+    if not docs:
+        return 0
+    return await ingest_law_documents(docs, DocumentCategory.SUBSIDY)
+
+
+async def ingest_all_laws() -> dict[str, int]:
+    """
+    전체 법령 카테고리 일괄 수집.
+    기존 law_chunks 데이터를 truncate 후 재수집.
+    반환: {category: saved_count}
+    """
+    from backend.db.client import get_supabase
+    supabase = get_supabase()
+
+    print("[ingest_all] law_chunks 초기화 중...")
+    supabase.table("law_chunks").delete().neq("id", 0).execute()
+
+    tasks = [
+        ("license",    ingest_licenses),
+        ("regulation", ingest_regulations),
+        ("tax",        ingest_tax_laws),
+        ("labor",      ingest_labor_laws),
+        ("lease",      ingest_lease_laws),
+        ("subsidy",    ingest_subsidy_laws),
+    ]
+
+    results: dict[str, int] = {}
+    for category, fn in tasks:
+        print(f"\n[ingest_all] ── {category} 수집 시작")
+        count = await fn()
+        results[category] = count
+        print(f"[ingest_all] ── {category} 완료: {count}개")
+
+    total = sum(results.values())
+    print(f"\n[ingest_all] 전체 완료 — 총 {total}개 청크")
+    return results
