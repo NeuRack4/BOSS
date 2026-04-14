@@ -42,6 +42,9 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
 
 - RAG 검색 결과 유사도 수치가 내부 RRF 점수로 표시되던 오류
 - 벡터 단독 랭킹에서 제목만 있는 짧은 조문 청크가 상위로 노출되던 오염
+- `weather_crawler` 기상청 API 403 오류 해소 — serviceKey URL 직접 삽입 → params dict 방식 변경
+- 인사이트 API 공휴일 컨텍스트 누락 — `get_month_holidays()` 추가로 Claude 프롬프트에 해당 월 공휴일 자동 주입
+- `seed_strategy` SEMAS 상권분석과 창업 시리즈 5개 PDF 추가 (`docs/strategy/`, 2020~2021년)
 
 ---
 
