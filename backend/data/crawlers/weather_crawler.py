@@ -62,23 +62,22 @@ async def fetch_weather_range(start: date, end: date) -> list[dict]:
             ...
         ]
     """
-    # 공공데이터포털 XML API — serviceKey는 URL에 직접 삽입 (이중 인코딩 방지)
-    url = (
-        f"{_BASE_URL}"
-        f"?serviceKey={_api_key()}"
-        f"&pageNo=1"
-        f"&numOfRows=999"
-        f"&dataType=XML"
-        f"&dataCd=ASOS"
-        f"&dateCd=DAY"
-        f"&startDt={start.strftime('%Y%m%d')}"
-        f"&endDt={end.strftime('%Y%m%d')}"
-        f"&stnIds={_STN_IDS}"
-    )
+    # 기상청 API는 params 딕셔너리 방식으로 전달해야 정상 동작 (URL 직접 삽입 시 403)
+    params = {
+        "serviceKey": _api_key(),
+        "pageNo": 1,
+        "numOfRows": 999,
+        "dataType": "XML",
+        "dataCd": "ASOS",
+        "dateCd": "DAY",
+        "startDt": start.strftime("%Y%m%d"),
+        "endDt": end.strftime("%Y%m%d"),
+        "stnIds": _STN_IDS,
+    }
 
     async with httpx.AsyncClient(timeout=30.0) as client:
         try:
-            resp = await client.get(url)
+            resp = await client.get(_BASE_URL, params=params)
             resp.raise_for_status()
         except httpx.HTTPError as e:
             print(f"[weather] HTTP 오류 ({start}~{end}): {e}")
