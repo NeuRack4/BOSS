@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from backend.core.config import get_settings
 from backend.core.constants import LEGAL_DISCLAIMER, TriggerType
+from backend.core.holidays import get_month_holidays
 from backend.api.routers.sales import get_sales_summary
 from backend.db.client import get_supabase
 from backend.rag.retriever.pgvector_retriever import retrieve_mapo_stats
@@ -128,6 +129,16 @@ async def analyze_sales(req: InsightRequest):
         else ""
     )
 
+    # 해당 월 공휴일 목록 → 프롬프트 컨텍스트
+    month_holidays = get_month_holidays(req.year, req.month)
+    holiday_section = ""
+    if month_holidays:
+        holiday_lines = ", ".join(
+            f"{date[-4:][:2]}일 {name}"
+            for date, name in sorted(month_holidays.items())
+        )
+        holiday_section = f"\n[공휴일 정보] {req.month}월 공휴일: {holiday_lines}\n"
+
     user_message = f"""
 [{req.year}년 {req.month}월 매출 현황]
 - 이번달 총 매출: {summary['current_total']:,}원
@@ -143,7 +154,7 @@ async def analyze_sales(req: InsightRequest):
 
 [시간대별 매출]
 {chr(10).join(f"- {k}: {v:,}원" for k, v in summary['timeslot_breakdown'].items())}
-{rag_section}
+{holiday_section}{rag_section}
 위 데이터를 바탕으로 마포구 카페 창업자에게 실질적인 인사이트와 액션을 제안해주세요.
 """.strip()
 
