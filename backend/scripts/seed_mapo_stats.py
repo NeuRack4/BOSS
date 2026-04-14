@@ -124,10 +124,10 @@ def _change_to_docs(rows: list[dict], quarter: str) -> list[dict]:
     """상권변화지표 API 행 → RAG 텍스트 청크"""
     # HH/HL/LH/LL 코드 설명
     CHANGE_LABELS = {
-        "HH": "지속성장 (유동인구↑ + 점포수↑)",
-        "HL": "성장둔화 (유동인구↑ + 점포수↓)",
-        "LH": "잠재성장 (유동인구↓ + 점포수↑)",
-        "LL": "침체 (유동인구↓ + 점포수↓)",
+        "HH": "정체 (매출 높음 + 점포수 증가)",
+        "HL": "상권축소 (매출 높음 + 점포수 감소)",
+        "LH": "상권확장 (매출 낮음 + 점포수 증가)",
+        "LL": "다이나믹 (매출 낮음 + 점포수 감소)",
     }
     docs = []
     source = f"서울 열린데이터광장 골목상권 변화지표 {quarter} (VwsmTrdarlxQq)"
@@ -173,14 +173,14 @@ async def _seed_quarter(quarter: str, *, debug: bool = False) -> int:
             fetch_mapo_change_index(quarter, debug=debug),
         )
     except Exception as e:
-        print(f"  [{quarter}] ✗ API 크롤링 실패: {e}")
+        print(f"  [{quarter}] FAIL API 크롤링 실패: {e}")
         return 0
 
     if not (sales_rows or store_rows or change_rows):
-        print(f"  [{quarter}] ✗ 데이터 없음 — API 키 또는 분기 코드 확인")
+        print(f"  [{quarter}] FAIL 데이터 없음 - API 키 또는 분기 코드 확인")
         return 0
 
-    print(f"  [{quarter}] 수집 — 매출:{len(sales_rows)} / 점포:{len(store_rows)} / 변화지표:{len(change_rows)}")
+    print(f"  [{quarter}] 수집 - 매출:{len(sales_rows)} / 점포:{len(store_rows)} / 변화지표:{len(change_rows)}")
 
     all_docs = (
         _sales_to_docs(sales_rows, quarter)
@@ -198,7 +198,7 @@ async def _seed_quarter(quarter: str, *, debug: bool = False) -> int:
             .execute()
 
     count = await ingest_documents(all_docs, DocumentCategory.MAPO_STATS)
-    print(f"  [{quarter}] ✓ {count}개 청크 저장")
+    print(f"  [{quarter}] OK {count}개 청크 저장")
     return count
 
 
@@ -218,7 +218,7 @@ async def main() -> None:
     for quarter in quarters:
         total += await _seed_quarter(quarter, debug=debug)
 
-    print(f"\n[seed] 완료 — 총 {total}개 청크 저장 ({len(quarters)}개 분기)")
+    print(f"\n[seed] 완료 - 총 {total}개 청크 저장 ({len(quarters)}개 분기)")
 
 
 if __name__ == "__main__":

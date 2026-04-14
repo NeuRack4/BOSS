@@ -48,8 +48,11 @@ class DocumentCategory(StrEnum):
     LABOR = "labor"
     LEASE = "lease"
     SUBSIDY = "subsidy"
-    REGULATION = "regulation"  # 규제법령 (식품위생법, 소방법, 건축법 등)
-    MAPO_STATS = "mapo_stats"  # 마포구 카페 상권 통계
+    REGULATION = "regulation"           # 규제법령 (식품위생법, 소방법, 건축법 등)
+    MAPO_STATS = "mapo_stats"                          # 마포구 카페 상권 통계
+    MAPO_COMMERCIAL_CHANGE = "mapo_commercial_change"  # 마포구 상권변화지표 (HH/HL/LH/LL)
+    MAPO_POPULATION = "mapo_population"                # 마포구 행정동 유동인구
+    STRATEGY = "strategy"                              # 소상공인 전략 가이드 문서 (매출 전략)
 
 
 class DraftType(StrEnum):
@@ -60,6 +63,32 @@ class DraftType(StrEnum):
     JOB_POSTING = "job_posting"
     WAGE_SIMULATION = "wage_simulation"  # 인건비 시뮬레이션 리포트
 
+
+# 마포구 행정동 코드 전체 목록 (행정안전부 행정동 코드 기준, 2024)
+# key: 행정동 코드 (10자리), value: 행정동 명
+MAPO_ADSTRD_CODE_MAP: dict[str, str] = {
+    "1144056000": "아현동",
+    "1144057000": "공덕동",
+    "1144058000": "신수동",
+    "1144059000": "현석동",
+    "1144060000": "구수동",
+    "1144061000": "토정동",
+    "1144062000": "마포동",
+    "1144063000": "대흥동",
+    "1144064000": "염리동",
+    "1144065000": "용강동",
+    "1144066000": "도화동",
+    "1144067000": "문화동",
+    "1144068000": "성산1동",
+    "1144069000": "성산2동",
+    "1144070000": "망원1동",
+    "1144071000": "망원2동",
+    "1144072000": "연남동",
+    "1144073000": "서교동",
+    "1144074000": "합정동",
+    "1144075000": "상암동",
+    "1144076000": "중동",
+}
 
 # 서울 자치구 목록
 SEOUL_DISTRICTS = [
