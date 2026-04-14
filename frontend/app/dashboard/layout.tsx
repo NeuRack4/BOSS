@@ -18,6 +18,7 @@ const navItems = [
   { label: "세금 관리", href: "/dashboard/tax", icon: "📋" },
   { label: "법령 검색", href: "/dashboard/rag", icon: "⚖" },
   { label: "AI 인사이트", href: "/dashboard/insights", icon: "✦" },
+  { label: "지원사업", href: "/dashboard/subsidies", icon: "📢" },
   { label: "알림", href: "/dashboard/notifications", icon: "🔔" },
   { label: "마이페이지", href: "/dashboard/profile", icon: "👤" },
 ];
