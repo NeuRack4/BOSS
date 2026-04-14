@@ -106,16 +106,21 @@ BIZ_REG: list[FieldCoord] = [
     F("사업장_호",                 488, 269, r=True, cjk=False),  # 호(x=489) 앞 우정렬
 
     # ② 사업장 현황 ─ 업종
-    # 주업태/주종목 헤더 y1=354 → 입력행 probe_y ≈ 355
-    F("주업태",                    137, 355,       cjk=True),
-    F("주종목",                    200, 355,       cjk=True),
+    # 주업태/주종목: label이 셀 좌측, data는 label 끝(x1) 오른쪽, 같은 y (probe_y=label y0)
+    # 주업태 label x=136~163.9, y0=338.7 → data x=165, probe_y=338
+    F("주업태",                    165, 338,       cjk=True),
+    # 주종목 label x=203.8~231.7, y0=338.7 → data x=233, probe_y=338
+    F("주종목",                    233, 338,       cjk=True),
+    # 주업종코드: 셀 내 수평분리선(y=348.6) 아래 data 행 → probe_y=355 유지
     F("주업종코드",                383, 355,       cjk=False),
-    F("개업일",                    440, 355,       cjk=False),
-    F("종업원수",                  491, 355,       cjk=False),
+    # 개업일/종업원수: 병합셀(y=333~397), label y=332~348 → 아래 빈칸 probe_y=365
+    F("개업일",                    437, 365,       cjk=False),
+    F("종업원수",                  477, 365,       cjk=False),
 
-    # 부업태/부종목 헤더 y1=390 → 입력행 probe_y ≈ 391
-    F("부업태",                    137, 391,       cjk=True),
-    F("부종목",                    200, 391,       cjk=True),
+    # 부업태/부종목: 부 행 label y0=374.6 → data x=label끝 오른쪽, probe_y=374
+    F("부업태",                    165, 374,       cjk=True),
+    F("부종목",                    233, 374,       cjk=True),
+    # 부업종코드: 셀 내 수평분리선(y=384.3) 아래 → probe_y=391 유지
     F("부업종코드",                383, 391,       cjk=False),
 
     # 사이버몰 ─ 헤더와 같은 행, "사이버몰 도메인" 라벨 끝 x=311
