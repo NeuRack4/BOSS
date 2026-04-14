@@ -296,6 +296,26 @@ export default function DraftPreviewPage() {
       setError("지원하지 않는 서류 유형입니다.");
       return;
     }
+
+    // localStorage에 저장된 수정 이력이 있으면 우선 사용
+    const savedKey = `boss_draft_fields_${type}`;
+    const saved = (() => {
+      try { return JSON.parse(localStorage.getItem(savedKey) ?? "null"); } catch { return null; }
+    })();
+    if (saved && typeof saved === "object" && Object.keys(saved).length > 0) {
+      const savedDraft: DraftResult = {
+        doc_type: type,
+        title: meta.title,
+        content: "",
+        fields: saved,
+        disclaimer: "※ 이전에 수정한 내용을 불러왔습니다.\n본 내용은 참고용이며 실제 신고 및 계약 전 전문가 확인을 권장합니다.",
+      };
+      setDraft(savedDraft);
+      setEditedFields(saved);
+      renderPdf(saved);
+      return;
+    }
+
     const profile = profileFromStorage();
     if (!profile.name) {
       // 온보딩 미완료 → mock 데이터로 PDF 표시
@@ -392,8 +412,11 @@ export default function DraftPreviewPage() {
 
   function handleEditToggle() {
     if (editMode) {
-      // 수정 완료: 현재 editedFields로 PDF 재렌더
+      // 수정 완료: PDF 재렌더 + localStorage에 저장 (새로고침 후에도 유지)
       renderPdf(editedFields);
+      try {
+        localStorage.setItem(`boss_draft_fields_${type}`, JSON.stringify(editedFields));
+      } catch { /* 용량 초과 등 무시 */ }
     }
     setEditMode((v) => !v);
   }
