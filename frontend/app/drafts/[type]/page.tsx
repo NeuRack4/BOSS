@@ -303,6 +303,8 @@ export default function DraftPreviewPage() {
       try { return JSON.parse(localStorage.getItem(savedKey) ?? "null"); } catch { return null; }
     })();
     if (saved && typeof saved === "object" && Object.keys(saved).length > 0) {
+      // 주종목 등 고정값 강제 적용 (이전 저장값에 잘못된 값이 있어도 덮어씀)
+      if (type === "business-registration") saved["주종목"] = "카페";
       const savedDraft: DraftResult = {
         doc_type: type,
         title: meta.title,
@@ -319,7 +321,9 @@ export default function DraftPreviewPage() {
     const profile = profileFromStorage();
     if (!profile.name) {
       // 온보딩 미완료 → mock 데이터로 PDF 표시
-      const mockFields = MOCK_FIELDS[type] ?? {};
+      const mockFields = { ...(MOCK_FIELDS[type] ?? {}) };
+      // 고정값 강제 적용
+      if (type === "business-registration") mockFields["주종목"] = "카페";
       const mockDraft: DraftResult = {
         doc_type: type,
         title: meta.title,
