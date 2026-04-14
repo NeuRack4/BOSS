@@ -372,6 +372,10 @@ export default function DraftPreviewPage() {
           mergedFields[k] = s;
         }
       }
+      // 고정값: AI가 무엇을 반환하든 덮어쓰기
+      if (docType === "business-registration") {
+        mergedFields["주종목"] = "카페";
+      }
       setDraft({ ...result, fields: mergedFields });
     } catch (e) {
       setError(

@@ -116,7 +116,7 @@ BIZ_REG: list[FieldCoord] = [
 
     # 사이버몰: 명칭 blank x=134.6~240.7, 도메인 blank x=310.7~535
     F("사이버몰_명칭",             136, 401,       cjk=True),
-    F("사이버몰_도메인명",         322, 402,       cjk=False),
+    F("사이버몰_도메인명",         390, 402,       cjk=False),
 
     # ③ 사업장 구분 + 임대차 명세
     # 자가면적: ㎡(x=158) 앞 → 우정렬 x1=157, probe_y=481
@@ -383,7 +383,7 @@ async def fill_pdf(doc_type: str, req: FillPdfRequest):
 
     fields = dict(req.fields)
 
-    # 사업자등록 신청서: 오늘 날짜 + 대리인 자동 주입
+    # 사업자등록 신청서: 오늘 날짜 + 고정값 주입
     if doc_type == "business-registration":
         today = _date.today()
         fields.setdefault("신청_년", str(today.year))
@@ -392,6 +392,8 @@ async def fill_pdf(doc_type: str, req: FillPdfRequest):
         # 신청인_성명 = 성명_대표자 (없으면 빈칸)
         if "신청인_성명" not in fields and "성명_대표자" in fields:
             fields["신청인_성명"] = fields["성명_대표자"]
+        # 주종목 고정 (AI 생성값 무시)
+        fields["주종목"] = "카페"
 
     try:
         pdf_bytes = _fill_pdf(pdf_path, config["coords"], fields, config.get("max_pages"))
