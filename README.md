@@ -4,7 +4,7 @@
 
 > 서울 F&B 소상공인을 위한 Proactive AI 비서
 
-[![version](https://img.shields.io/badge/version-0.5.0-blue.svg)](https://semver.org)
+[![version](https://img.shields.io/badge/version-0.6.0-blue.svg)](https://semver.org)
 [![license](https://img.shields.io/badge/license-MIT-green.svg)]()
 
 창업자가 요청하지 않아도 에이전트가 먼저 챙깁니다.
@@ -68,11 +68,14 @@
 - 레이더 차트·생존율 바 차트 시각화
 - 검색 이력 자동 저장 및 원클릭 재실행
 
-### 3. 지원사업 모니터링
+### 3. 지원사업 모니터링 (v0.6.0 — 캘린더 + 하이브리드 검색)
 
-- 기업마당 공고 실시간 수집
-- 업종 / 지역 / 창업 단계 맞춤 필터링
-- 마감 D-5, D-3 선제 알림 + 신청서 초안 자동 생성
+- 기업마당 공공 API(`crtfcKey`/`jsonArray`) 기반 스냅샷 수집 — 대분류 "창업" 필터 (약 90여 건)
+- **FullCalendar 기반 구글 캘린더 스타일** 월간 뷰 (데스크탑) + `listMonth` (모바일)
+- **누적형 지역 필터** — 숨김 → 마포구 → `+ 서울` → `+ 전국` 순으로 확장
+- 기간 파싱 불가 공고 ("예산 소진시까지" 등) 는 별도 **상시 모집 섹션** 으로 분리
+- 페이지 진입 시 `subsidy_fetch_log(fetch_date PK)` 선점으로 하루 1회 증분 동기화
+- **공고 전용 하이브리드 검색** — `subsidy_programs.embedding(vector 1024)` + FTS + `pg_trgm` 3-way RRF (`search_subsidies` RPC)
 
 ### 4. 세금 · 행정 관리
 

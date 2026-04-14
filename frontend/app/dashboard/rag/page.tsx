@@ -12,7 +12,7 @@ const CATEGORIES = [
   { value: "tax", label: "세금" },
   { value: "labor", label: "근로" },
   { value: "lease", label: "임대차" },
-  { value: "subsidy", label: "지원사업" },
+  { value: "subsidy", label: "지원사업 법령" },
   { value: "regulation", label: "규제법령" },
 ];
 

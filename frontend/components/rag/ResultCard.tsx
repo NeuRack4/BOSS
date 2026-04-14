@@ -11,7 +11,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   tax: "세금",
   labor: "근로",
   lease: "임대차",
-  subsidy: "지원사업",
+  subsidy: "지원사업 법령",
+  subsidy_program: "지원사업 공고",
   regulation: "규제법령",
 };
 
@@ -21,6 +22,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   labor: "bg-green-50 text-green-700 border-green-200",
   lease: "bg-purple-50 text-purple-700 border-purple-200",
   subsidy: "bg-brand-50 text-brand-700 border-brand-200",
+  subsidy_program: "bg-pink-50 text-pink-700 border-pink-200",
   regulation: "bg-gray-50 text-gray-700 border-gray-200",
 };
 

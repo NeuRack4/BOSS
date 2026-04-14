@@ -48,6 +48,7 @@ class DocumentCategory(StrEnum):
     LABOR = "labor"
     LEASE = "lease"
     SUBSIDY = "subsidy"
+    SUBSIDY_PROGRAM = "subsidy_program" # 기업마당 지원사업 공고 (법령이 아닌 실제 공고)
     REGULATION = "regulation"           # 규제법령 (식품위생법, 소방법, 건축법 등)
     MAPO_STATS = "mapo_stats"                          # 마포구 카페 상권 통계
     MAPO_COMMERCIAL_CHANGE = "mapo_commercial_change"  # 마포구 상권변화지표 (HH/HL/LH/LL)

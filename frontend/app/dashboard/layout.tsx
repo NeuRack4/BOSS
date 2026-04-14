@@ -116,7 +116,7 @@ export default function DashboardLayout({
           >
             BOSS
           </Link>
-          <span className="ml-2 text-xs text-gray-400 font-medium">v0.4.1</span>
+          <span className="ml-2 text-xs text-gray-400 font-medium">v0.6.0</span>
         </div>
 
         {/* 카페 정보 + 현재 단계 */}
