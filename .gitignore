@@ -7,6 +7,7 @@ node_modules/
 frontend/.next/
 frontend/out/
 frontend/build/
+frontend/tsconfig.tsbuildinfo
 
 # Env files
 .env
@@ -50,3 +51,11 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+
+# PDF.js worker (npm install로 자동 생성되는 대용량 파일)
+frontend/public/pdf.worker.min.js
+frontend/public/pdf.worker.min.mjs
+
+# Script temp output (캘리브레이션 이미지, 테스트 PDF)
+scripts/test_output/
+scripts/calibrate/

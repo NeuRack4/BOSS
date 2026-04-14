@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.core.config import get_settings
-from backend.api.routers import health, founders, triggers, drafts, subsidies, tax, location, sales, insights, rag
+from backend.api.routers import health, founders, triggers, drafts, subsidies, tax, location, sales, insights, rag, pdf_forms
 from backend.triggers.scheduler import start_scheduler, stop_scheduler
 
 
@@ -42,6 +42,7 @@ def create_app() -> FastAPI:
     app.include_router(sales.router, prefix="/sales", tags=["sales"])
     app.include_router(insights.router, prefix="/insights", tags=["insights"])
     app.include_router(rag.router, prefix="/rag", tags=["rag"])
+    app.include_router(pdf_forms.router)  # prefix="/drafts" 내부 정의
 
     return app
 

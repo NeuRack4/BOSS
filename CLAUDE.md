@@ -33,35 +33,44 @@ Claude Code가 이 레포지토리에서 작업할 때 참고하는 가이드입
 
 ### AI / LLM
 
-- **LLM**: Claude API (`claude-sonnet-4-6`) — 초안 생성, 추론 기반 트리거
+- **메인 LLM**: Claude API (`claude-sonnet-4-6`) — 초안 생성, 추론 기반 트리거, 법령 브리프 요약
+- **보조 LLM**: Google Gemini (`backend/agents/gemini.py`) — 실험적 에이전트 통합
 - **멀티에이전트**: LangGraph — 상태머신 + 에이전트 오케스트레이션
 - **RAG 파이프라인**: LangChain + LlamaIndex
 
-### RAG / 임베딩
+### RAG / 임베딩 / 검색
 
 - **벡터 DB**: Supabase pgvector (유료 플랜 내장 — ChromaDB 사용 안 함)
 - **임베딩 모델**: `BAAI/bge-m3` (1024차원, 로컬 GPU/CPU — sentence-transformers)
 - **폴백 임베딩**: OpenAI `text-embedding-3-small` (1536차원)
-- **이점**: 관계형 데이터(창업자 프로파일)와 벡터 검색을 단일 DB에서 처리 가능
+- **하이브리드 검색 (3-way RRF)**: 벡터 유사도 + FTS(`simple` 토크나이저) + `pg_trgm` word_similarity
+  - HNSW 인덱스 (`m=16, ef_construction=64`) — 카테고리 pre-filter 안정성
+  - trigram GIN 인덱스 (`gin_trgm_ops`) — 한국어 복합어 대응
+  - `min_score=0.3`(벡터), `min_trgm_score=0.5`(트라이그램), `min_content_len=40`(제목-only 제외)
+  - 응답 컬럼: `score`(RRF 정렬용) + `similarity`(사용자 표시용 코사인 %)
 
 ### 데이터베이스 (Supabase 유료)
 
-- **Supabase PostgreSQL**: 창업자 프로파일, 상태머신 데이터, 트리거 로그
-- **Supabase pgvector**: 법령·공고 문서 벡터 저장 및 유사도 검색 (별도 벡터DB 불필요)
+- **Supabase PostgreSQL**: 창업자 프로파일, 상태머신 데이터, 트리거 로그, 기상·공휴일·유동인구·상권변화 데이터
+- **Supabase pgvector**: 법령·공고 문서 벡터 저장 및 유사도 검색
 - **Supabase Realtime**: 트리거 알림 실시간 스트리밍
 - **Supabase Storage**: 생성된 서류 초안 파일 저장
 - **Supabase Auth**: 사용자 인증 / 세션 관리
 
 ### 백엔드
 
-- **API 서버**: FastAPI (Python)
+- **API 서버**: FastAPI (Python 3.11+)
 - **스케줄러**: APScheduler (시간 기반 트리거)
+- **PDF 처리**: PyMuPDF(좌표 오버레이), ReportLab(한글 CID 폴백), pdfplumber, pypdf
 
 ### 프론트엔드
 
 - **프레임워크**: Next.js 14 (App Router)
 - **언어**: TypeScript
-- **스타일**: Tailwind CSS
+- **스타일**: Tailwind CSS + `@tailwindcss/typography` (마크다운 프로즈)
+- **마크다운 렌더**: `react-markdown` + `remark-gfm` (Claude 법령 브리프 표시용)
+- **차트**: Recharts
+- **PDF 클라이언트**: pdfjs-dist, html2pdf.js
 - **앱 지원**: PWA (Progressive Web App) — 웹/앱 공용
 
 ### 인프라
@@ -76,74 +85,114 @@ Claude Code가 이 레포지토리에서 작업할 때 참고하는 가이드입
 
 ```
 BOSS/
-├── frontend/                # Next.js 14 (웹/앱 공용)
+├── frontend/                      # Next.js 14 (웹/앱 공용)
 │   ├── app/
-│   │   ├── auth/            # 로그인 / 회원가입 (Supabase Auth)
-│   │   ├── dashboard/       # 대시보드
-│   │   │   ├── page.tsx     # 메인 대시보드
-│   │   │   ├── sales/       # 매출 입력·조회
-│   │   │   ├── insights/    # AI 인사이트 (전년 동월 대비·상권 평균)
-│   │   │   ├── tax/         # 세금 기한 + 부가세 신고서 초안
-│   │   │   ├── rag/         # 법령 검색
-│   │   │   ├── profile/     # 창업자 정보 및 사업자 정보 관리
-│   │   │   └── notifications/ # 알림 이력
-│   │   ├── location/        # 입지분석 페이지
-│   │   ├── onboarding/      # 4단계 창업자 등록 위저드
-│   │   ├── drafts/[type]/   # 서류 초안 PDF 오버레이 폼 (4종)
-│   │   └── page.tsx         # 랜딩 페이지
+│   │   ├── auth/                  # 로그인 / 회원가입 (Supabase Auth)
+│   │   ├── dashboard/
+│   │   │   ├── page.tsx           # 메인 대시보드
+│   │   │   ├── sales/             # 매출 입력·조회
+│   │   │   ├── insights/          # AI 인사이트 (전년 동월·상권 평균·기상·공휴일)
+│   │   │   ├── tax/               # 세금 기한 + 부가세 신고서 초안
+│   │   │   ├── rag/               # 법령 검색 (하이브리드 3-way + Claude 브리프, 마크다운)
+│   │   │   ├── profile/           # 창업자 / 사업자 정보 관리
+│   │   │   └── notifications/     # 알림 이력
+│   │   ├── location/              # 입지분석 페이지
+│   │   ├── onboarding/            # 4단계 창업자 등록 위저드
+│   │   ├── drafts/[type]/         # 서류 초안 PDF 좌표 오버레이 폼 (4종)
+│   │   └── page.tsx               # 랜딩 페이지
 │   ├── components/
-│   │   ├── location/        # DistrictSelector / LlmReportPanel / 차트
-│   │   ├── onboarding/      # Step1~4 / StepIndicator
-│   │   ├── rag/             # ResultCard / LlmSummaryPanel
-│   │   └── tax/             # TaxDeadlineList
+│   │   ├── location/              # DistrictSelector / LlmReportPanel / 차트
+│   │   ├── onboarding/            # Step1~4 / StepIndicator
+│   │   ├── rag/                   # ResultCard / LlmSummaryPanel (ReactMarkdown)
+│   │   └── tax/                   # TaxDeadlineList
 │   └── lib/
-│       └── supabase.ts      # Supabase 클라이언트
+│       └── supabase.ts            # Supabase 클라이언트
 ├── backend/
-│   ├── api/                 # FastAPI 서버
+│   ├── api/
 │   │   ├── main.py
-│   │   ├── routers/         # founders / triggers / drafts / subsidies / tax / location / sales / insights / rag
-│   │   └── schemas/         # Pydantic 스키마
+│   │   ├── routers/               # 11개 엔드포인트 모듈
+│   │   │   ├── health.py          # /health
+│   │   │   ├── founders.py        # 창업자 프로파일 CRUD / 상태
+│   │   │   ├── triggers.py        # 트리거 로그·수동 실행
+│   │   │   ├── drafts.py          # ReportLab 마크다운→PDF 초안
+│   │   │   ├── subsidies.py       # 기업마당 지원사업 매칭
+│   │   │   ├── tax.py             # 세금 기한·부가세 계산·PDF
+│   │   │   ├── location.py        # 마포 입지 시뮬레이터
+│   │   │   ├── sales.py           # 매출 CRUD·월별 요약
+│   │   │   ├── insights.py        # AI 인사이트 (실데이터 RAG)
+│   │   │   ├── rag.py             # 하이브리드 검색·요약·수집·통계
+│   │   │   └── pdf_forms.py       # PyMuPDF 좌표 오버레이 (정부 서식 4종)
+│   │   └── schemas/               # Pydantic 스키마
 │   ├── agents/
-│   │   ├── orchestrator.py  # LangGraph 오케스트레이터 + 상태머신
-│   │   ├── subsidy.py       # 지원사업 에이전트
-│   │   ├── tax.py           # 세금/일정 에이전트
-│   │   ├── location.py      # 마포구 입지분석 에이전트
-│   │   └── hiring.py        # 채용/서류 에이전트
+│   │   ├── orchestrator.py        # LangGraph 오케스트레이터 + 상태머신
+│   │   ├── subsidy.py             # 지원사업 에이전트
+│   │   ├── tax.py                 # 세금/일정 에이전트
+│   │   ├── location.py            # 마포구 입지분석 에이전트
+│   │   ├── hiring.py              # 채용/서류 에이전트
+│   │   └── gemini.py              # Google Gemini 보조 에이전트
 │   ├── analysis/
-│   │   └── simulator.py     # 입지 시뮬레이션 엔진 (5개 지표 + 위험도)
+│   │   └── simulator.py           # 입지 시뮬레이션 엔진 (5지표 + 위험도)
 │   ├── core/
-│   │   ├── config.py        # pydantic-settings 환경 변수
-│   │   └── constants.py     # 업종·단계·마포구 상수
+│   │   ├── config.py              # pydantic-settings 환경 변수
+│   │   ├── constants.py           # 업종·단계·마포구·카테고리 상수
+│   │   └── holidays.py            # 공휴일 판정 유틸
 │   ├── db/
-│   │   ├── client.py        # Supabase 클라이언트
-│   │   └── migrations/      # SQL 마이그레이션 (001~005)
+│   │   ├── client.py              # Supabase 클라이언트
+│   │   └── migrations/            # SQL 마이그레이션 001~012
 │   ├── notifications/
-│   │   ├── email.py         # 이메일 알림
-│   │   ├── kakao.py         # 카카오톡 알림
-│   │   └── realtime.py      # Supabase Realtime 알림
+│   │   ├── email.py
+│   │   ├── kakao.py
+│   │   └── realtime.py            # Supabase Realtime 알림
 │   ├── rag/
-│   │   ├── ingest.py        # 문서·법령 청킹 → 임베딩 → Supabase
-│   │   ├── embeddings/      # BGE-M3 (로컬) + OpenAI 임베딩
-│   │   └── retriever/       # pgvector 유사도 검색
+│   │   ├── document_loader.py     # PDF/MD/TXT 로더
+│   │   ├── ingest.py              # 청킹 → 임베딩 → pgvector
+│   │   ├── embeddings/            # BGE-M3 (로컬) + OpenAI 폴백
+│   │   └── retriever/
+│   │       └── pgvector_retriever.py  # 3-way RRF (vector + FTS + trigram)
 │   ├── tax/
-│   │   ├── vat_calculator.py  # 간이/일반과세자 부가세 계산 엔진
-│   │   ├── pdf_generator.py   # 국세청 서식 PDF 좌표 오버레이 (PyMuPDF)
-│   │   ├── hometax_guide.py   # 홈택스 단계별 입력 가이드 생성
-│   │   └── forms/             # 국세청 공식 서식 PDF (vat_simplified.pdf, vat_general.pdf)
+│   │   ├── vat_calculator.py      # 간이/일반과세자 부가세 계산
+│   │   ├── pdf_generator.py       # 국세청 서식 PyMuPDF 오버레이
+│   │   ├── hometax_guide.py       # 홈택스 단계별 가이드
+│   │   └── forms/                 # 공식 서식 PDF (44호·21호)
 │   ├── triggers/
-│   │   ├── scheduler.py     # APScheduler 시간 기반 트리거
-│   │   ├── state.py         # 상태 전이 트리거
-│   │   ├── inference.py     # LLM 추론 기반 트리거
-│   │   └── hiring_inference.py  # 채용 전용 추론 트리거
+│   │   ├── scheduler.py           # APScheduler
+│   │   ├── state.py               # 상태 전이 트리거
+│   │   ├── inference.py           # LLM 추론 기반 트리거
+│   │   └── hiring_inference.py    # 채용 전용 추론
 │   ├── data/
-│   │   ├── crawlers/        # 기업마당 / 골목상권 / 법제처 / 세금달력 / 서울 열린데이터
-│   │   ├── parsers/         # PDF 파싱
-│   │   └── seeds/           # 세금 기한 / 재무 mock / 마포 카페 통계
-│   └── scripts/             # 규제법령 임베딩 / 마포 통계 시드 스크립트
+│   │   ├── crawlers/
+│   │   │   ├── bizinfo.py              # 기업마당 공고
+│   │   │   ├── law_api.py              # 법제처 Open API
+│   │   │   ├── seoul_open.py           # 서울 열린데이터
+│   │   │   ├── seoul_alley.py / alley.py  # 골목상권
+│   │   │   ├── tax_calendar.py         # 세금 기한
+│   │   │   ├── holiday_crawler.py      # 공휴일
+│   │   │   ├── weather_crawler.py      # 기상청
+│   │   │   └── mapo_population_crawler.py  # 마포구 유동인구
+│   │   ├── parsers/
+│   │   │   ├── pdf_parser.py
+│   │   │   └── commercial_change_parser.py  # 마포구 개폐업 CSV
+│   │   └── seeds/
+│   │       ├── holidays.json
+│   │       ├── mapo_stats.json
+│   │       └── commercial_change/         # 개폐업 CSV
+│   └── scripts/
+│       ├── ingest_docs.py
+│       ├── ingest_laws.py                 # 법제처 법령 수집·임베딩
+│       ├── seed_holidays.py
+│       ├── seed_weather.py
+│       ├── seed_mapo_population.py
+│       ├── seed_commercial_change.py
+│       ├── seed_mapo_stats.py
+│       └── seed_strategy.py
 ├── backtest/
-│   └── evaluate.py          # 백테스트 평가 (Precision/Recall)
-├── docs/                    # 창업/운영/채용/폐업 표준서식 PDF
+│   └── evaluate.py                # Precision/Recall 백테스트
+├── scripts/
+│   └── test_pdf_fill.py           # PDF 좌표 오버레이 테스트
+├── docs/                          # 표준서식 PDF + 분석 문서
+│   └── feature-9-10-analysis.md
 ├── docker-compose.yml
+├── CHANGELOG.md
 ├── CLAUDE.md
 └── README.md
 ```
@@ -158,7 +207,7 @@ BOSS/
 - 창업자 상태(셋업/초기운영/성장)를 Supabase에 저장 및 추적
 - 상태에 따라 적절한 하위 에이전트로 라우팅
 
-### 하위 에이전트 4종
+### 하위 에이전트
 
 | 에이전트   | 담당                                                   |
 | ---------- | ------------------------------------------------------ |
@@ -166,6 +215,7 @@ BOSS/
 | `tax`      | 세금 기한 관리, 신고서 초안, 인허가 일정               |
 | `location` | 골목상권 데이터 기반 입지 분석, 생존율 시뮬레이션      |
 | `hiring`   | 채용공고 초안 생성, 근로계약서 초안, 주휴수당 계산     |
+| `gemini`   | Google Gemini 기반 보조 추론 (멀티 LLM 실험용)         |
 
 ### Proactive 트리거 4종
 
@@ -190,16 +240,21 @@ BOSS/
 | 표준 근로계약서    | 고용노동부                                           | PDF 파싱                 |
 | 표준 임대차계약서  | 법제처                                               | PDF 파싱                 |
 | 최저임금 / 4대보험 | 고용노동부, 건강보험공단                             | 하드코딩 (연 1회 갱신)   |
+| 공휴일 데이터      | 공공데이터포털 특일정보                              | API 호출 + 시드 JSON     |
+| 기상 데이터        | 기상청 단기예보 API                                  | API 호출 + Supabase 저장 |
+| 마포구 유동인구    | 서울 열린데이터 (상권별 유동인구)                    | API 호출                 |
+| 마포구 개폐업 통계 | 서울 열린데이터 (상권변화지표)                       | CSV 파싱                 |
 
 ---
 
 ## Supabase 테이블 설계
 
-### pgvector 활성화
+### pgvector / pg_trgm 활성화
 
 ```sql
 -- Supabase SQL Editor에서 최초 1회 실행
 create extension if not exists vector;
+create extension if not exists pg_trgm;  -- 한국어 복합어 대응
 ```
 
 ### 관계형 테이블
@@ -227,50 +282,62 @@ founder_financials (id, user_id, year, month, sales_card, sales_cash, sales_deli
 -- 사업자 기본 정보
 founder_business_info (user_id, business_name, owner_name, business_number,
                        business_type, tax_type, address, updated_at)
+
+-- 기상 데이터 (migrations/010_weather.sql)
+weather (date, region_code, temp_avg, rainfall, ...)
 ```
 
-### 벡터 테이블 (pgvector)
+### 벡터 테이블 (pgvector + 하이브리드 인덱스)
 
 ```sql
--- RAG 문서 저장
-create table documents (
-  id          bigserial primary key,
-  category    text,        -- 'license' | 'tax' | 'labor' | 'lease' | 'subsidy'
-  source      text,        -- '식품위생법 시행규칙', '근로기준법' 등
-  chunk_index int,
-  content     text,        -- 원문 청크
-  embedding   vector(1024),-- BAAI/bge-m3 기준 (OpenAI 폴백 시 1536)
-  metadata    jsonb,       -- 업종·조항 등 필터용
-  created_at  timestamptz default now()
+-- 법령 청크 (계층: article + paragraph)
+create table law_chunks (
+  id             bigserial primary key,
+  category       text,        -- 'license' | 'tax' | 'labor' | 'lease' | 'subsidy' | 'regulation'
+  source         text,        -- '식품위생법', '근로기준법' 등
+  chunk_index    int,
+  chunk_type     text,        -- 'article' | 'paragraph'
+  paragraph_no   int,
+  paragraph_char text,
+  parent_doc_id  bigint,
+  content        text,
+  embedding      vector(1024),-- BAAI/bge-m3 (OpenAI 폴백 시 1536)
+  metadata       jsonb,
+  created_at     timestamptz default now()
 );
 
--- 벡터 검색 인덱스
-create index on documents
-using ivfflat (embedding vector_cosine_ops)
-with (lists = 100);
+-- 벡터 검색 인덱스 (HNSW — 카테고리 pre-filter 안정)
+create index law_chunks_embedding_idx
+  on law_chunks using hnsw (embedding vector_cosine_ops)
+  with (m = 16, ef_construction = 64);
+
+-- Trigram 인덱스 (한국어 복합어 대응)
+create index law_chunks_content_trgm_idx
+  on law_chunks using gin (content gin_trgm_ops);
 ```
 
-### 유사도 검색 함수
+### 하이브리드 검색 함수 (3-way RRF)
+
+`migrations/012_hybrid_search_trigram.sql` — 벡터 + FTS + trigram 랭커를 Reciprocal Rank Fusion으로 결합.
 
 ```sql
-create or replace function match_documents (
-  query_embedding  vector(1024),  -- BGE-M3 기준
-  match_threshold  float,
-  match_count      int,
-  filter_category  text default null
+create or replace function hybrid_search(
+  query_text       text,
+  query_embedding  text,              -- PostgREST 직렬화 대응: text로 받아 내부 ::vector 캐스팅
+  match_count      integer          default 10,
+  filter_category  text             default null,
+  rrf_k            integer          default 60,
+  min_score        double precision default 0.3,   -- 벡터 최소 코사인 유사도
+  min_trgm_score   double precision default 0.5,   -- trigram word_similarity 하한
+  min_content_len  integer          default 40     -- 제목만 있는 청크 제외
 )
-returns table (id bigint, content text, metadata jsonb, similarity float)
-language sql stable as $$
-  select
-    id, content, metadata,
-    1 - (embedding <=> query_embedding) as similarity
-  from documents
-  where
-    (filter_category is null or category = filter_category)
-    and 1 - (embedding <=> query_embedding) > match_threshold
-  order by embedding <=> query_embedding
-  limit match_count;
-$$;
+returns table (
+  id bigint, content text, metadata jsonb, chunk_type text,
+  paragraph_no integer, paragraph_char text, parent_doc_id bigint,
+  score double precision,      -- RRF 점수 (정렬용)
+  similarity double precision  -- 실제 코사인 유사도 % (사용자 표시용)
+)
+...
 ```
 
 ### 청킹 전략
@@ -286,6 +353,25 @@ metadata 예시:
     "paragraph_no": 1, "business_type": ["카페"] }
 ```
 
+### 마이그레이션 목록
+
+| 파일                                                  | 목적                                                |
+| ----------------------------------------------------- | --------------------------------------------------- |
+| `001_initial.sql`                                     | 기본 테이블                                         |
+| `002_bge_m3_vector.sql` / `002_bge_vector.sql`        | pgvector 확장 + 임베딩 설정                         |
+| `002_location.sql`                                    | 입지 리포트 테이블                                  |
+| `002_tax_deadlines.sql`                               | 세금 기한 시드                                      |
+| `003_bge_m3_dimension.sql` / `003_vector_dim_bge.sql` | 벡터 차원 확정 (1024)                               |
+| `004_hybrid_law_chunks.sql`                           | law_chunks + FTS 인덱스                             |
+| `005_financials.sql`                                  | 창업자 재무 테이블 + mock                           |
+| `006_fix_hybrid_search.sql`                           | 초기 RRF 함수                                       |
+| `007_law_chunks_table.sql`                            | 스키마 리파인                                       |
+| `008_fix_vector_text_param.sql`                       | `vector` → `text` 파라미터 (PostgREST 워크어라운드) |
+| `009_fix_ivfflat_index.sql`                           | ivfflat → HNSW 교체                                 |
+| `010_weather.sql`                                     | 기상 데이터 테이블                                  |
+| `011_hybrid_search_cosine_similarity.sql`             | RRF score ↔ 실제 cosine similarity 컬럼 분리        |
+| `012_hybrid_search_trigram.sql`                       | pg_trgm 3-way RRF + `char_length > 40` 필터         |
+
 ---
 
 ## 버전 관리
@@ -296,7 +382,7 @@ metadata 예시:
 - **MINOR**: 하위 호환 기능 추가
 - **PATCH**: 버그 수정
 
-현재 버전: `v0.4.3`
+현재 버전: `v0.5.0`
 
 커밋 메시지 컨벤션:
 
@@ -308,6 +394,8 @@ refactor: 리팩터링
 test:     테스트
 chore:    빌드/설정
 ```
+
+자세한 변경 이력은 [CHANGELOG.md](./CHANGELOG.md) 참조.
 
 ---
 
@@ -345,3 +433,4 @@ chore:    빌드/설정
 | 지원사업 추천 정확도 | Precision / Recall (과거 공고 vs AI 추천)              |
 | 입지 분석 정확도     | 추천 입지 vs 실제 개폐업 생존율 (골목상권 과거 데이터) |
 | 트리거 타이밍        | D-5 vs D-3 알림 → 신청 완료율 A/B 비교                 |
+| RAG 검색 품질        | 벡터 단독 vs 3-way RRF 정답 포함률 (recall@5)          |
