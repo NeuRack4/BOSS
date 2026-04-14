@@ -210,19 +210,114 @@ BIZ_REG: list[FieldCoord] = [
 
 
 # ──────────────────────────────────────────────────────────────────────
-# 식품영업 신고서 (food-biz.pdf, 2페이지, A4 595×841pt)
+# 식품영업 신고서 (food-biz.pdf, A4 595×841pt)
+#
+# 셀 경계 (수평선):
+#   접수영역   y=111~126.7 / y=126.7~132.9
+#   신고인 row1 (성명+주민번호)    y=132.9~150.9
+#   신고인 row2 (주소+전화번호)    y=150.9~169.0
+#   신고사항 header               y=169.0~175.7
+#   신고사항 row1 (명칭+전화번호)  y=175.7~191.0
+#   영업의 종류                   y=191.0~276.3
+#   영업장 면적                   y=276.3~291.3 (approx)
+#   영업장 소재지                 y=291.3~~310
+#   식품용수                      y=368.4~416.5
+#   공유주방/공동조리장            y=416.5~488.5
+#   신고일                        y=513.4~522.4
+#
+# 수직 구분선: x=113 (신고인 label 분리), x=317 (좌우 셀 분리, y=132~191)
+#
+# 좌표 원칙:
+#   - 셀 안 label text 끝 x 이후에 값 삽입 → x 겹침 없음
+#   - label과 y가 겹치는 경우: probe_y를 label_y1 아래로 설정 + fs=7.5
+#   - checkbox "[  ]" blank: "[" x1 위치에서 시작, fs=6.0
+#   - 면적 "[  ㎡]": "[" x1 = 269.2(내부) / 384.2(외부), 숫자를 그 안에 삽입
 # ──────────────────────────────────────────────────────────────────────
 FOOD_BIZ: list[FieldCoord] = [
-    F("신고인_성명",               116, 144,       cjk=True),
-    F("신고인_주민등록번호",        365, 144,       cjk=False),
-    F("신고인_주소",               116, 162,       cjk=True),
-    F("신고인_전화번호",            365, 162,       cjk=False),
-    F("명칭_상호",                 116, 186,       cjk=True),
-    F("영업장_전화번호",            365, 186,       cjk=False),
-    F("영업장_내부면적_㎡",        260, 289,       cjk=False),
-    F("영업장_외부면적_㎡",        363, 289,       cjk=False),
-    F("영업장_소재지",             116, 304,       cjk=True),
-    F("신고일",                     61, 531,       cjk=False),
+    # ① 신고인
+    # Row1 y=132.9~150.9  (label y=136.9~146.8)
+    # probe_y=149: baseline=153.3 → label 아래 5pt 여유, 겹침 최소화
+    F("신고인_성명",               116, 149, fs=7.5,  cjk=True),
+    # 주민번호 label 끝 x=407.4 → x=408부터
+    F("신고인_주민등록번호",        408, 149, fs=7.5,  cjk=False),
+    # Row2 y=150.9~169.0  (label y=154.9~164.8)
+    # probe_y=167: baseline=171.3 → label 아래 5pt 여유
+    F("신고인_주소",               116, 167, fs=7.5,  cjk=True),
+    # 전화번호 label 끝 x=359.9 → x=361부터
+    F("신고인_전화번호",            361, 167, fs=7.5,  cjk=False),
+
+    # ② 신고사항 - 명칭/전화 row  y=175.7~191.0  (label y=179.6~189.6)
+    # 명칭(상호) label 끝 x=163.3 → x=164부터
+    F("명칭_상호",                 164, 184, fs=8.0,  cjk=True),
+    # 전화번호 label 끝 x=359.9 → x=361부터
+    F("영업장_전화번호",            361, 184, fs=8.0,  cjk=False),
+
+    # ③ 영업의 종류 체크박스  y=191~276.3
+    # "[" x1 위치에 "V" 삽입 (fs=6.0)
+    # y=193.9~203.8: 즉석판매제조가공업 / 집단급식소식품판매업 / 일반음식점영업
+    F("영업종류_즉석판매제조ㆍ가공업", 162, 197, fs=6.0, cjk=False),
+    F("영업종류_집단급식소식품판매업", 295, 197, fs=6.0, cjk=False),
+    F("영업종류_일반음식점영업",      424, 197, fs=6.0, cjk=False),
+    # y=208.2~218.1: 식품운반업 / 기타식품판매업 / 위탁급식영업
+    F("영업종류_식품운반업",          162, 211, fs=6.0, cjk=False),
+    F("영업종류_기타식품판매업",      295, 211, fs=6.0, cjk=False),
+    F("영업종류_위탁급식영업",        424, 211, fs=6.0, cjk=False),
+    # y=222.3~232.3: 식품소분업 / 식품냉동냉장업 / 제과점영업
+    F("영업종류_식품소분업",          162, 225, fs=6.0, cjk=False),
+    F("영업종류_식품냉동ㆍ냉장업",   295, 225, fs=6.0, cjk=False),
+    F("영업종류_제과점영업",          424, 225, fs=6.0, cjk=False),
+    # y=236.6~246.6: 식용얼음판매업 / 용기포장지제조업
+    F("영업종류_식용얼음판매업",      162, 239, fs=6.0, cjk=False),
+    F("영업종류_용기ㆍ포장지제조업", 295, 239, fs=6.0, cjk=False),
+    # y=250.9~260.8: 식품자동판매기영업 / 옹기류제조업
+    F("영업종류_식품자동판매기영업",  162, 253, fs=6.0, cjk=False),
+    F("영업종류_옹기류제조업",        295, 253, fs=6.0, cjk=False),
+    # y=265.0~275.0: 유통전문판매업 / 휴게음식점영업
+    # 휴게음식점 "[" x=289.7~294.7 → blank x=294.7~304.7 → V at x=295
+    F("영업종류_유통전문판매업",      162, 268, fs=6.0, cjk=False),
+    F("영업종류_휴게음식점영업",      295, 268, fs=6.0, cjk=False),
+
+    # ④ 영업장 면적  label y=280.3~290.2
+    # 내부: "[" x=264.2~269.2 → blank x=269.2~284.3
+    F("영업장_내부면적_㎡",          270, 283, fs=8.0, cjk=False),
+    # 외부: "[" x=379.2~384.2 → blank x=384.2~399.2
+    F("영업장_외부면적_㎡",          385, 283, fs=8.0, cjk=False),
+
+    # ⑤ 영업장 소재지  label 끝 x=194.2 → x=196부터
+    F("영업장_소재지",               196, 298, fs=8.0, cjk=True),
+
+    # ⑥ 식품용수 체크박스  y=372.6~382.5
+    F("식품용수_수돗물",             207, 375, fs=6.0, cjk=False),
+    F("식품용수_먹는샘물",           267, 375, fs=6.0, cjk=False),
+    F("식품용수_먹는염지하수",       342, 375, fs=6.0, cjk=False),
+    F("식품용수_지하수",             207, 387, fs=6.0, cjk=False),
+    F("식품용수_먹는해양심층수",     207, 397, fs=6.0, cjk=False),
+    F("식품용수_그밖의먹는물",       342, 397, fs=6.0, cjk=False),
+
+    # ⑦ 공유주방 / 공동조리장  y=416.5~458.0
+    # 공유주방: 해당 "[" x=221.9~226.9 → blank x=226.9, 미해당 "[" x=271.8~276.8 → blank x=276.8
+    F("공유주방_해당",               227, 424, fs=6.0, cjk=False),
+    F("공유주방_미해당",             277, 424, fs=6.0, cjk=False),
+    # 공동조리장: 해당 "[" x=226.8~231.8 → blank x=231.8, 미해당 "[" x=276.8~281.8 → blank x=281.8
+    F("공동조리장_해당",             232, 439, fs=6.0, cjk=False),
+    F("공동조리장_미해당",           282, 439, fs=6.0, cjk=False),
+    # 공동조리장 업소정보
+    F("공동조리장_업소정보",          411, 450, fs=7.5, cjk=True),
+
+    # ⑧ 식품자동판매기 혼합처리기능여부  y=462.3~472.3
+    # 해당 "[" x=351.8~356.8 → blank x=356.8, 미해당 "[" x=401.9~406.9 → blank x=406.9
+    F("식품자동판매기_기능여부_해당",   357, 465, fs=6.0, cjk=False),
+    F("식품자동판매기_기능여부_미해당", 407, 465, fs=6.0, cjk=False),
+
+    # ⑨ 반려동물 출입여부  y=477.6~487.5
+    # 해당 "[" x=323.2~328.1 → blank x=328.1, 미해당 "[" x=373.1~378.1 → blank x=378.1
+    F("반려동물_출입여부_해당",        329, 480, fs=6.0, cjk=False),
+    F("반려동물_출입여부_미해당",      374, 480, fs=6.0, cjk=False),
+
+    # ⑩ 신고일  y=513.4~522.4
+    F("신고_년",                     442, 516, r=True,  cjk=False),
+    F("신고_월",                     483, 516, r=True,  cjk=False),
+    F("신고_일",                     523, 516, r=True,  cjk=False),
 ]
 
 
@@ -304,6 +399,49 @@ class FillPdfRequest(BaseModel):
 # 핵심 PDF 채우기 함수 (세금관리 기법 적용)
 # ──────────────────────────────────────────────────────────────────────
 
+def _patch_food_biz_rows(page: fitz.Page) -> None:
+    """
+    식품영업신고서 레이아웃 보정:
+    1. 하단 '210mm×297mm 백상지 80g/㎡ 재활용품' 문구 삭제
+    2. 신고인 성명/주소 row 각 +5pt 확장
+       Row1: y=132.9~150.9 → y=132.9~155.9  (18pt → 23pt)
+       Row2: y=150.9~169.0 → y=155.9~174.0  (18pt → 18pt, 하단 +5)
+    """
+    W = (1.0, 1.0, 1.0)    # 흰색 — 기존 선 덮기
+    G = (0.60, 0.60, 0.60)  # 회색 — 내부 구분선 색 (원본과 동일)
+    K = (0.0, 0.0, 0.0)    # 검정 — 외곽선 색
+
+    # ── 1. '210mm×297mm...' 문구 삭제 ────────────────────────────────
+    page.add_redact_annot(fitz.Rect(368, 792, 537, 808))
+    page.apply_redactions()
+
+    # ── 2. 신고인 row 확장 ───────────────────────────────────────────
+    # 기존 row1/row2 구분선(y=150.9, 회색 0.36pt) → 흰 박스로 삭제
+    page.draw_rect(fitz.Rect(111, 150.2, 539, 151.7), color=W, fill=W, width=0)
+    # 기존 신고인 하단선(y=169.0, 검정 0.84pt) → 흰 박스로 삭제
+    page.draw_rect(fitz.Rect(55, 168.2, 539, 169.9), color=W, fill=W, width=0)
+
+    # x=113, x=317 수직선 y=132.9~174.0으로 재그리기
+    # (흰 박스가 y=150.2~151.7 구간을 지웠으므로 전체 다시 그림)
+    page.draw_line(fitz.Point(113.0, 132.9), fitz.Point(113.0, 174.0),
+                   color=G, width=0.36)
+    page.draw_line(fitz.Point(317.0, 132.9), fitz.Point(317.0, 174.0),
+                   color=G, width=0.36)
+
+    # 새 row1/row2 구분선 (y=155.9, 회색)
+    page.draw_line(fitz.Point(112.9, 155.9), fitz.Point(538.0, 155.9),
+                   color=G, width=0.36)
+    # 새 신고인 하단선 (y=174.0, 검정 굵은선)
+    page.draw_line(fitz.Point(57.3, 174.0), fitz.Point(538.0, 174.0),
+                   color=K, width=0.84)
+
+    # 외곽 세로선 y=168.2~174.0 구간 재그리기 (흰박스로 지워진 부분 복원)
+    page.draw_line(fitz.Point(57.3, 168.2), fitz.Point(57.3, 174.0),
+                   color=K, width=0.84)
+    page.draw_line(fitz.Point(538.0, 168.2), fitz.Point(538.0, 174.0),
+                   color=K, width=0.84)
+
+
 def _fill_pdf(pdf_path: Path, coords: list[FieldCoord], fields: dict[str, str], max_pages: int | None = None) -> bytes:
     """
     PyMuPDF로 PDF에 텍스트 삽입 후 bytes 반환.
@@ -318,6 +456,10 @@ def _fill_pdf(pdf_path: Path, coords: list[FieldCoord], fields: dict[str, str], 
     doc = fitz.open(str(pdf_path))
     if max_pages and doc.page_count > max_pages:
         doc.select(list(range(max_pages)))
+
+    # 식품영업 신고서 레이아웃 보정 (row 확장 + 210mm 문구 삭제)
+    if "food-biz" in str(pdf_path):
+        _patch_food_biz_rows(doc[0])
 
     for coord in coords:
         value = fields.get(coord.key, "")
@@ -382,6 +524,46 @@ async def fill_pdf(doc_type: str, req: FillPdfRequest):
         raise HTTPException(status_code=404, detail=f"PDF 서식 파일 없음: {config['pdf']}")
 
     fields = dict(req.fields)
+
+    # 식품영업 신고서: 신고일 분리 + 체크박스 값 변환 + 휴게음식점 기본 체크
+    if doc_type == "food-business-license":
+        # 신고일 "YYYY-MM-DD" → 신고_년/월/일 분리
+        raw_date = fields.get("신고일", "")
+        if raw_date:
+            parts = raw_date.replace(".", "-").split("-")
+            if len(parts) == 3:
+                fields.setdefault("신고_년", parts[0])
+                fields.setdefault("신고_월", parts[1].zfill(2))
+                fields.setdefault("신고_일", parts[2].zfill(2))
+        else:
+            today = _date.today()
+            fields.setdefault("신고_년", str(today.year))
+            fields.setdefault("신고_월", str(today.month).zfill(2))
+            fields.setdefault("신고_일", str(today.day).zfill(2))
+        # 체크박스: "해당"/"V" 모두 "V"로 통일 (FoodBusinessLicenseForm에서 "해당" 사용)
+        for k in list(fields.keys()):
+            if fields[k] in ("해당", "V"):
+                fields[k] = "V"
+        # 공유주방_사용여부 → 해당/미해당 별도 좌표 키로 분리
+        sw = fields.get("공유주방_사용여부", "")
+        if sw == "V":
+            fields["공유주방_해당"] = "V"
+        elif sw in ("미해당", ""):
+            fields["공유주방_미해당"] = "V"
+        # 공동조리장_이용여부 → 별도 키로 분리
+        cw = fields.get("공동조리장_이용여부", "")
+        if cw == "V":
+            fields["공동조리장_해당"] = "V"
+        elif cw in ("미해당", ""):
+            fields["공동조리장_미해당"] = "V"
+        # 카페 = 휴게음식점영업 기본 체크
+        fields.setdefault("영업종류_휴게음식점영업", "V")
+        # 식품용수 기본: 수돗물 체크
+        fields.setdefault("식품용수_수돗물", "V")
+        # 식품자동판매기 기능여부: 기본 미해당
+        fields.setdefault("식품자동판매기_기능여부_미해당", "V")
+        # 반려동물 출입여부: 기본 해당
+        fields.setdefault("반려동물_출입여부_해당", "V")
 
     # 사업자등록 신청서: 오늘 날짜 + 고정값 주입
     if doc_type == "business-registration":
@@ -448,3 +630,30 @@ async def save_draft_fields(
         ).execute()
 
     return {"ok": True}
+
+
+@router.get("/load-fields/{doc_type}", summary="DB에서 서류 필드 불러오기")
+async def load_draft_fields(
+    doc_type: str,
+    user_id: str = Depends(get_current_user_id),
+    supabase=Depends(db),
+):
+    """drafts 테이블에서 저장된 필드값 반환 (없으면 null)"""
+    config = DOC_CONFIG.get(doc_type)
+    if not config:
+        raise HTTPException(status_code=404, detail=f"지원하지 않는 서류 유형: {doc_type}")
+
+    result = (
+        supabase.table("drafts")
+        .select("metadata")
+        .eq("user_id", user_id)
+        .eq("type", doc_type)
+        .order("id", desc=True)
+        .limit(1)
+        .execute()
+    )
+
+    row = result.data[0] if result.data else None
+    if row and row.get("metadata", {}).get("fields"):
+        return {"fields": row["metadata"]["fields"]}
+    return {"fields": None}
