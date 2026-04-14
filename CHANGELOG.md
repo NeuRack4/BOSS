@@ -4,6 +4,53 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
 
 ---
 
+## [v0.6.0] — 2026-04-14
+
+### 기능 — 지원사업 공고 캘린더 + 전용 하이브리드 검색
+
+#### Added
+
+- **지원사업 공고 캘린더** (`frontend/app/dashboard/subsidies/page.tsx`)
+  - FullCalendar 기반 구글 캘린더 스타일 월간 뷰 (데스크탑) + `listMonth` 뷰 (모바일 자동 전환)
+  - 누적형 지역 필터 버튼 그룹: `숨김 → 마포구 → + 서울 → + 전국`
+  - 기간 파싱 가능한 공고는 캘린더 bar, 불가 공고("예산 소진시까지" 등)는 **상시 모집 섹션** 분리
+  - 공고 클릭 시 사이드 드로어 — 접수 기간·지원 대상·분야·설명·기업마당 원문/주관기관 홈페이지 링크
+  - 이벤트 bar 얇게 스타일 튜닝 (11px · line-height 1.25 · 여백 축소)
+- **기업마당 API 통합 정상화** (`backend/data/crawlers/bizinfo.py`)
+  - 기존 코드가 잘못된 파라미터(`authKey`/`items`)를 사용해 미동작 상태였던 문제 수정 — `crtfcKey`/`jsonArray` 로 교체
+  - 기간 필드 `reqstBeginEndDe` 단일 문자열 파싱 (YYYY-MM-DD / YYYY.MM.DD) 및 상시 모집 자동 분류
+  - HTML 태그가 섞인 `bsnsSumryCn` 설명 본문 정리
+  - `pldirSportRealmLclasCodeNm == '창업'` 대분류 필터로 범위 좁힘 (약 90여 건)
+- **DB 스키마** (`migrations/013_subsidy_programs.sql`, `014_subsidy_programs_search.sql`)
+  - `subsidy_programs` 테이블 — `external_id UNIQUE` 중복 방지, `is_ongoing`·`period_raw`·`program_kind`·`sub_kind` 등 확장 컬럼
+  - `subsidy_fetch_log(fetch_date PK)` — 하루 1회 동기화 멱등성 확보 (동시 호출 경합은 PK 선점 insert 로 방지)
+  - `subsidy_programs.embedding vector(1024)` + HNSW 인덱스 + `pg_trgm` GIN 인덱스
+  - `search_subsidies()` RPC — 벡터 + FTS + trigram 3-way RRF 하이브리드 검색
+- **지원사업 전용 임베딩 파이프라인** (`backend/rag/subsidy_ingest.py`)
+  - 제목 + 분야 + 대상 + 지역 + 주관 + 기간 + 태그 + 내용을 구조화해 한 번의 BGE-M3 임베딩
+  - 법령 RAG(`law_chunks`) 와 독립된 자체 테이블에 저장 — 카테고리 오염 방지
+  - `embedded_at` 타임스탬프로 증분 재임베딩 지원
+- **API 엔드포인트** (`backend/api/routers/subsidies.py`)
+  - `GET /subsidies/calendar?from=&to=` — 기간 내 공고
+  - `GET /subsidies/ongoing` — 상시 모집 공고
+  - `POST /subsidies/search` — 공고 전용 하이브리드 검색
+  - `POST /subsidies/sync-today` — 일일 증분 동기화
+- **CLI 스크립트**
+  - `backend/scripts/backfill_subsidies.py` — 스냅샷 1회 수집
+  - `backend/scripts/ingest_subsidies.py` — 임베딩 (`--incremental` 옵션)
+
+#### Changed
+
+- 사이드바: "AI 인사이트" 와 "알림" 사이에 **지원사업** 메뉴 추가 (`frontend/app/dashboard/layout.tsx`)
+- 법령 RAG 드롭다운에서 "지원사업 공고" 제거 — 전용 페이지로 분리
+- 프론트 의존성: `@fullcalendar/react`, `daygrid`, `list`, `interaction`, `core` 6종 추가
+
+#### Fixed
+
+- 기존 bizinfo 크롤러가 런타임에 실패하던 문제 (API 응답 구조 변경 반영)
+
+---
+
 ## [v0.5.0] — 2026-04-14
 
 ### 기능 개선 — RAG 하이브리드 검색 정확도 강화 + 인사이트 데이터 확장 + 서류 자동화 고도화
