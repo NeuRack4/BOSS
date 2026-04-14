@@ -10,6 +10,7 @@ PyMuPDF(fitz)로 정부 공식 서식 PDF에 사용자 데이터를 정확한 �
 from __future__ import annotations
 
 import io
+from datetime import date as _date
 from pathlib import Path
 from typing import Any
 
@@ -98,8 +99,11 @@ BIZ_REG: list[FieldCoord] = [
     F("부동산등기용등록번호",       191, 249,       cjk=False),
     F("팩스번호",                  382, 249,       cjk=False),
 
-    # "사업장(단체) 소재지" y0=268
+    # "사업장(단체) 소재지" y0=268 — 주소 본문 (층/호 제외)
+    # 층 라벨 x0=448, 호 라벨 x0=489 → 각각 우정렬로 숫자 삽입
     F("사업장_소재지",             157, 268,       cjk=True),
+    F("사업장_층",                 447, 269, r=True, cjk=False),  # 층(x=448) 앞 우정렬
+    F("사업장_호",                 488, 269, r=True, cjk=False),  # 호(x=489) 앞 우정렬
 
     # ② 사업장 현황 ─ 업종
     # 주업태/주종목 헤더 y1=354 → 입력행 probe_y ≈ 355
@@ -118,8 +122,7 @@ BIZ_REG: list[FieldCoord] = [
     F("사이버몰_도메인명",         313, 402,       cjk=True),
 
     # ③ 사업장 구분 + 임대차 명세
-    # "㎡ ㎡ ... 원 원" 행: probe_y=481
-    # 자가면적: ㎡(x=158) 앞 → 우정렬 x1=157
+    # 자가면적: ㎡(x=158) 앞 → 우정렬 x1=157, probe_y=481
     F("자가면적_㎡",              157, 481, r=True,  cjk=False),
     # 타가면적: ㎡(x=185) 앞 → 우정렬 x1=184
     F("타가면적_㎡",              184, 481, r=True,  cjk=False),
@@ -127,7 +130,9 @@ BIZ_REG: list[FieldCoord] = [
     F("임대인_성명",               200, 481,        cjk=True),
     F("임대인_사업자등록번호",     242, 481,        cjk=False),
     F("임대인_주민법인등록번호",   297, 481,        cjk=False),
-    F("임대차계약기간",            350, 481,        cjk=False),
+    # 임대차계약기간: 두 줄 (시작 y=476, 종료 y=487) — 예: 시작="2025.04", 종료="2027.04"
+    F("임대차계약기간_시작",       350, 476,        cjk=False),  # ". . ." 점선 위 첫 줄
+    F("임대차계약기간_종료",       362, 487,        cjk=False),  # "~" 이후 둘째 줄
     # 금액: 원(x=444) 앞 → 우정렬 x1=443
     F("전세보증금",               443, 481, r=True,  cjk=False),
     # 월세: 원(x=525) 앞 → 우정렬 x1=524
@@ -139,9 +144,17 @@ BIZ_REG: list[FieldCoord] = [
     # "타인자금" 라벨 y0=611, 원(x=524) 앞 → 우정렬 x1=523
     F("사업자금_타인자금",        523, 611, r=True,  cjk=False),
 
-    # ⑤ 전자우편
-    # "전자우편주소" 라벨 y0=668, 라벨 끝 x=117 직후
-    F("전자우편주소",              120, 668,        cjk=False),
+    # ⑤ 전자우편 — 입력 셀 x=134.6~257.1, 시작 x≈137
+    F("전자우편주소",              137, 668,        cjk=False),
+
+    # ⑥ 서명란 (2페이지 — 뒤쪽)
+    # "년 월 일" 행 probe_y=520 — 오늘 날짜 자동 입력
+    F("신청_년",                   434, 520, page=2, r=True, cjk=False),  # 년(x=435) 앞
+    F("신청_월",                   479, 520, page=2, r=True, cjk=False),  # 월(x=480) 앞
+    F("신청_일",                   524, 520, page=2, r=True, cjk=False),  # 일(x=525) 앞
+    # 신청인/대리인 probe_y=532/545
+    F("신청인_성명",               376, 532, page=2,         cjk=True),
+    F("대리인_성명",               376, 545, page=2,         cjk=True),
 ]
 
 
@@ -222,7 +235,7 @@ LEASE_CONTRACT: list[FieldCoord] = [
 # 서류 타입 → PDF 파일 + 좌표 매핑
 # ──────────────────────────────────────────────────────────────────────
 DOC_CONFIG: dict[str, dict[str, Any]] = {
-    "business-registration":  {"pdf": "biz-reg.pdf",    "coords": BIZ_REG},
+    "business-registration":  {"pdf": "biz-reg.pdf",    "coords": BIZ_REG,        "max_pages": 2},
     "food-business-license":  {"pdf": "food-biz.pdf",   "coords": FOOD_BIZ},
     "employment-contract":    {"pdf": "employment.pdf",  "coords": EMP_CONTRACT},
     "lease-contract":         {"pdf": "lease.pdf",       "coords": LEASE_CONTRACT},
@@ -240,7 +253,7 @@ class FillPdfRequest(BaseModel):
 # 핵심 PDF 채우기 함수 (세금관리 기법 적용)
 # ──────────────────────────────────────────────────────────────────────
 
-def _fill_pdf(pdf_path: Path, coords: list[FieldCoord], fields: dict[str, str]) -> bytes:
+def _fill_pdf(pdf_path: Path, coords: list[FieldCoord], fields: dict[str, str], max_pages: int | None = None) -> bytes:
     """
     PyMuPDF로 PDF에 텍스트 삽입 후 bytes 반환.
 
@@ -252,6 +265,8 @@ def _fill_pdf(pdf_path: Path, coords: list[FieldCoord], fields: dict[str, str]) 
         insert_point.x = x0
     """
     doc = fitz.open(str(pdf_path))
+    if max_pages and doc.page_count > max_pages:
+        doc.select(list(range(max_pages)))
 
     for coord in coords:
         value = fields.get(coord.key, "")
@@ -278,9 +293,9 @@ def _fill_pdf(pdf_path: Path, coords: list[FieldCoord], fields: dict[str, str]) 
                 pt = fitz.Point(coord.x, by)
                 page.insert_text(pt, text, fontname="helv", fontsize=fs, color=(0, 0, 0))
             else:
-                # 좌정렬 한글 — CJK 폰트 삽입
+                # 좌정렬 한글 — CJK 폰트 삽입 (fontfile + fontname 둘 다 필요)
                 pt = fitz.Point(coord.x, by)
-                page.insert_text(pt, text, fontfile=_CJK_FONT, fontsize=fs, color=(0, 0, 0))
+                page.insert_text(pt, text, fontfile=_CJK_FONT, fontname="malgun", fontsize=fs, color=(0, 0, 0))
         except Exception:
             # 폰트 오류 폴백
             try:
@@ -315,8 +330,21 @@ async def fill_pdf(doc_type: str, req: FillPdfRequest):
     if not pdf_path.exists():
         raise HTTPException(status_code=404, detail=f"PDF 서식 파일 없음: {config['pdf']}")
 
+    fields = dict(req.fields)
+
+    # 사업자등록 신청서: 오늘 날짜 + 대리인 자동 주입
+    if doc_type == "business-registration":
+        today = _date.today()
+        fields.setdefault("신청_년", str(today.year))
+        fields.setdefault("신청_월", str(today.month).zfill(2))
+        fields.setdefault("신청_일", str(today.day).zfill(2))
+        fields.setdefault("대리인_성명", "김희영")
+        # 신청인_성명 = 성명_대표자 (없으면 빈칸)
+        if "신청인_성명" not in fields and "성명_대표자" in fields:
+            fields["신청인_성명"] = fields["성명_대표자"]
+
     try:
-        pdf_bytes = _fill_pdf(pdf_path, config["coords"], req.fields)
+        pdf_bytes = _fill_pdf(pdf_path, config["coords"], fields, config.get("max_pages"))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"PDF 생성 오류: {e}")
 
