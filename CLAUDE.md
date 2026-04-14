@@ -121,6 +121,7 @@ BOSS/
 │   │   │   ├── sales.py           # 매출 CRUD·월별 요약
 │   │   │   ├── insights.py        # AI 인사이트 (실데이터 RAG)
 │   │   │   ├── rag.py             # 하이브리드 검색·요약·수집·통계
+│   │   │   ├── subsidies.py       # 지원사업 캘린더·상시·전용 하이브리드 검색
 │   │   │   └── pdf_forms.py       # PyMuPDF 좌표 오버레이 (정부 서식 4종)
 │   │   └── schemas/               # Pydantic 스키마
 │   ├── agents/
@@ -138,7 +139,7 @@ BOSS/
 │   │   └── holidays.py            # 공휴일 판정 유틸
 │   ├── db/
 │   │   ├── client.py              # Supabase 클라이언트
-│   │   └── migrations/            # SQL 마이그레이션 001~012
+│   │   └── migrations/            # SQL 마이그레이션 001~014
 │   ├── notifications/
 │   │   ├── email.py
 │   │   ├── kakao.py
@@ -146,6 +147,7 @@ BOSS/
 │   ├── rag/
 │   │   ├── document_loader.py     # PDF/MD/TXT 로더
 │   │   ├── ingest.py              # 청킹 → 임베딩 → pgvector
+│   │   ├── subsidy_ingest.py      # 지원사업 공고 → subsidy_programs.embedding
 │   │   ├── embeddings/            # BGE-M3 (로컬) + OpenAI 폴백
 │   │   └── retriever/
 │   │       └── pgvector_retriever.py  # 3-way RRF (vector + FTS + trigram)
@@ -184,7 +186,9 @@ BOSS/
 │       ├── seed_mapo_population.py
 │       ├── seed_commercial_change.py
 │       ├── seed_mapo_stats.py
-│       └── seed_strategy.py
+│       ├── seed_strategy.py
+│       ├── backfill_subsidies.py         # 기업마당 '창업' 스냅샷 백필
+│       └── ingest_subsidies.py           # 지원사업 공고 임베딩
 ├── backtest/
 │   └── evaluate.py                # Precision/Recall 백테스트
 ├── scripts/
@@ -371,6 +375,8 @@ metadata 예시:
 | `010_weather.sql`                                     | 기상 데이터 테이블                                  |
 | `011_hybrid_search_cosine_similarity.sql`             | RRF score ↔ 실제 cosine similarity 컬럼 분리        |
 | `012_hybrid_search_trigram.sql`                       | pg_trgm 3-way RRF + `char_length > 40` 필터         |
+| `013_subsidy_programs.sql`                            | 지원사업 공고 테이블 + fetch_log 멱등성             |
+| `014_subsidy_programs_search.sql`                     | 공고 전용 embedding + `search_subsidies` RPC        |
 
 ---
 
@@ -382,7 +388,7 @@ metadata 예시:
 - **MINOR**: 하위 호환 기능 추가
 - **PATCH**: 버그 수정
 
-현재 버전: `v0.5.0`
+현재 버전: `v0.6.0`
 
 커밋 메시지 컨벤션:
 
