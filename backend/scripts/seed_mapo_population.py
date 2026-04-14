@@ -47,9 +47,9 @@ def _population_to_docs(rows: list[dict], quarter: str) -> list[dict]:
     chunk 구조:
       [마포구 유동인구] 상권: {area} | 행정동: {dong} | 기준분기: {quarter}
       총 유동인구: {tot}명 | 남성: {ml}명 | 여성: {fml}명
-      시간대별 — 새벽(0~6시):{t1}명 | 오전(6~11시):{t2}명 | ...
-      요일별 — 월:{mon}명 화:{tue}명 ... 일:{sun}명
-      연령대별 — 10대:{a10}명 | 20대:{a20}명 | ...
+      시간대별 -새벽(0~6시):{t1}명 | 오전(6~11시):{t2}명 | ...
+      요일별 -월:{mon}명 화:{tue}명 ... 일:{sun}명
+      연령대별 -10대:{a10}명 | 20대:{a20}명 | ...
     """
     docs = []
     source = f"서울 열린데이터광장 골목상권 행정동 유동인구 {quarter} (VwsmAdstrdFlpopW)"
@@ -106,7 +106,7 @@ def _population_to_docs(rows: list[dict], quarter: str) -> list[dict]:
             if r.get(field)
         ]
         if time_parts:
-            lines.append("시간대별 — " + " | ".join(time_parts))
+            lines.append("시간대별 -" + " | ".join(time_parts))
 
         day_parts = [
             f"{label}:{int(r.get(field, 0)):,}"
@@ -114,7 +114,7 @@ def _population_to_docs(rows: list[dict], quarter: str) -> list[dict]:
             if r.get(field)
         ]
         if day_parts:
-            lines.append("요일별 — " + " ".join(day_parts) + "명")
+            lines.append("요일별 -" + " ".join(day_parts) + "명")
 
         age_parts = [
             f"{label}:{int(r.get(field, 0)):,}명"
@@ -122,7 +122,7 @@ def _population_to_docs(rows: list[dict], quarter: str) -> list[dict]:
             if r.get(field)
         ]
         if age_parts:
-            lines.append("연령대별 — " + " | ".join(age_parts))
+            lines.append("연령대별 -" + " | ".join(age_parts))
 
         docs.append({
             "source":      source,
@@ -153,7 +153,7 @@ async def _seed_quarter(quarter: str, *, debug: bool = False) -> int:
         return 0
 
     if not rows:
-        print(f"  [{quarter}] FAIL 데이터 없음 — API 키 또는 분기 코드 확인")
+        print(f"  [{quarter}] FAIL 데이터 없음 -API 키 또는 분기 코드 확인")
         return 0
 
     print(f"  [{quarter}] 수집 - 행정동 유동인구: {len(rows)}건")

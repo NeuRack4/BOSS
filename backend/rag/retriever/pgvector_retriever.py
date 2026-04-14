@@ -1,9 +1,11 @@
 """
 Supabase pgvector 검색
 
-retrieve()            — law_chunks 벡터 유사도 검색 (법령 전용)
-retrieve_mapo_stats() — documents 벡터 유사도 검색 (mapo_stats 전용)
-hybrid_retrieve()     — law_chunks 벡터 + FTS 하이브리드 검색
+retrieve()                — law_chunks 벡터 유사도 검색 (법령 전용)
+retrieve_mapo_stats()     — documents 테이블 mapo_stats 전용
+retrieve_docs()           — documents 테이블 범용 (카테고리 지정)
+retrieve_strategy()       — documents 테이블 strategy 전용
+hybrid_retrieve()         — law_chunks 벡터 + FTS 하이브리드 검색
 
 Hybrid Search 흐름:
   1. 쿼리를 BGE-M3로 임베딩
@@ -73,6 +75,43 @@ async def retrieve_mapo_stats(
         return []
 
     return result.data or []
+
+
+async def retrieve_docs(
+    query: str,
+    category: str,
+    match_count: int = 5,
+    match_threshold: float = 0.4,
+) -> list[dict]:
+    """documents 테이블 범용 벡터 검색 — match_docs RPC 사용 (카테고리 지정 필수)"""
+    embedding = await embed_single(query)
+    embedding_str = "[" + ",".join(str(v) for v in embedding) + "]"
+    supabase = get_supabase()
+
+    result = supabase.rpc(
+        "match_docs",
+        {
+            "query_embedding": embedding_str,
+            "filter_category": category,
+            "match_threshold": match_threshold,
+            "match_count": match_count,
+        },
+    ).execute()
+
+    if hasattr(result, "error") and result.error:
+        logger.error("retrieve_docs RPC 오류 (category=%s): %s", category, result.error)
+        return []
+
+    return result.data or []
+
+
+async def retrieve_strategy(
+    query: str,
+    match_count: int = 3,
+    match_threshold: float = 0.45,
+) -> list[dict]:
+    """strategy 카테고리 전용"""
+    return await retrieve_docs(query, "strategy", match_count, match_threshold)
 
 
 async def hybrid_retrieve(
