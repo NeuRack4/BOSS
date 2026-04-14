@@ -63,7 +63,9 @@ export default function OnboardingPage() {
     try {
       await apiFetch("/founders/me", {
         method: "PUT",
-        body: JSON.stringify(formDataToProfile(formData as unknown as Record<string, unknown>)),
+        body: JSON.stringify(
+          formDataToProfile(formData as unknown as Record<string, unknown>),
+        ),
       });
     } catch {
       // 비로그인 상태면 localStorage만 사용
@@ -80,10 +82,10 @@ export default function OnboardingPage() {
       "lease-contract",
     ];
     const DRAFT_META: Record<string, { icon: string; label: string }> = {
-      "business-registration":  { icon: "🏢", label: "사업자등록 신청서" },
-      "food-business-license":  { icon: "🍽", label: "식품영업 신고서" },
-      "employment-contract":    { icon: "📋", label: "표준 근로계약서" },
-      "lease-contract":         { icon: "🔑", label: "상가 임대차계약서" },
+      "business-registration": { icon: "🏢", label: "사업자등록 신청서" },
+      "food-business-license": { icon: "🍽", label: "식품영업 신고서" },
+      "employment-contract": { icon: "📋", label: "표준 근로계약서" },
+      "lease-contract": { icon: "🔑", label: "상가 임대차계약서" },
     };
     const draftDocs = formData.selectedDocuments.filter((d) =>
       DRAFT_SUPPORTED.includes(d),

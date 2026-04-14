@@ -5,11 +5,11 @@ import Script from "next/script";
 
 export interface FieldDef {
   key: string;
-  page?: number;       // 1-indexed, default 1
-  top: number;         // % from page top
-  left: number;        // % from page left
-  width: number;       // % of page width
-  height: number;      // % of page height
+  page?: number; // 1-indexed, default 1
+  top: number; // % from page top
+  left: number; // % from page left
+  width: number; // % of page width
+  height: number; // % of page height
   placeholder?: string;
   multiline?: boolean;
 }
@@ -54,7 +54,10 @@ export default function PdfOverlayForm({
 
   // If window.pdfjsLib is already present (e.g. back-navigation), mark ready immediately
   useEffect(() => {
-    if (typeof window !== "undefined" && (window as Window & { pdfjsLib?: PdfjsLib }).pdfjsLib) {
+    if (
+      typeof window !== "undefined" &&
+      (window as Window & { pdfjsLib?: PdfjsLib }).pdfjsLib
+    ) {
       setScriptReady(true);
     }
   }, []);
@@ -70,8 +73,10 @@ export default function PdfOverlayForm({
 
     async function load() {
       try {
-        const pdfjsLib: PdfjsLib = (window as Window & { pdfjsLib?: PdfjsLib }).pdfjsLib;
-        if (!pdfjsLib) throw new Error("pdf.js 라이브러리를 불러올 수 없습니다.");
+        const pdfjsLib: PdfjsLib = (window as Window & { pdfjsLib?: PdfjsLib })
+          .pdfjsLib;
+        if (!pdfjsLib)
+          throw new Error("pdf.js 라이브러리를 불러올 수 없습니다.");
 
         // Worker loaded from CDN — no webpack/bundler interference
         pdfjsLib.GlobalWorkerOptions.workerSrc = WORKER_CDN;
@@ -117,7 +122,9 @@ export default function PdfOverlayForm({
     }
 
     load();
-    return () => { mountedRef.current = false; };
+    return () => {
+      mountedRef.current = false;
+    };
   }, [pdfUrl, scriptReady]);
 
   return (
@@ -150,7 +157,9 @@ export default function PdfOverlayForm({
         <div id={formId} className="space-y-1">
           {pages.map((page, pageIdx) => {
             const pageNum = pageIdx + 1;
-            const pageDefs = fieldDefs.filter((fd) => (fd.page ?? 1) === pageNum);
+            const pageDefs = fieldDefs.filter(
+              (fd) => (fd.page ?? 1) === pageNum,
+            );
 
             return (
               <div
@@ -180,7 +189,8 @@ export default function PdfOverlayForm({
                     width: `${fd.width}%`,
                     height: `${fd.height}%`,
                     boxSizing: "border-box",
-                    fontFamily: "'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif",
+                    fontFamily:
+                      "'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif",
                     fontSize: "1.15vw",
                     lineHeight: 1.3,
                   };

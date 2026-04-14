@@ -67,15 +67,20 @@ export default function DashboardPage() {
       if (!user) return;
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-      const res = await fetch(
-        `${apiUrl}/sales/summary?year=${today.getFullYear()}&month=${today.getMonth() + 1}`,
-        { headers: { "X-User-Id": user.id } },
-      );
-      if (res.ok) {
-        const data = await res.json();
-        setSummary(data);
+      try {
+        const res = await fetch(
+          `${apiUrl}/sales/summary?year=${today.getFullYear()}&month=${today.getMonth() + 1}`,
+          { headers: { "X-User-Id": user.id } },
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setSummary(data);
+        }
+      } catch {
+        // 백엔드 미실행 시 조용히 처리 — 통계 카드는 "-" 표시
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
     fetchSummary();
   }, []);
@@ -289,10 +294,16 @@ export default function DashboardPage() {
       <div>
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-base font-bold text-gray-900">BOSS 서류 초안</h2>
-            <p className="text-xs text-gray-400 mt-0.5">창업에 필요한 서류를 AI가 자동 작성합니다</p>
+            <h2 className="text-base font-bold text-gray-900">
+              BOSS 서류 초안
+            </h2>
+            <p className="text-xs text-gray-400 mt-0.5">
+              창업에 필요한 서류를 AI가 자동 작성합니다
+            </p>
           </div>
-          <span className="text-xs font-semibold text-brand-500 bg-brand-50 px-2 py-1 rounded-full">Proactive</span>
+          <span className="text-xs font-semibold text-brand-500 bg-brand-50 px-2 py-1 rounded-full">
+            Proactive
+          </span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {DRAFT_CARDS.map((card) => {
@@ -310,12 +321,18 @@ export default function DashboardPage() {
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-3">
                     <span className="text-xl">{card.icon}</span>
-                    <h3 className="font-bold text-gray-900 text-sm">{card.label}</h3>
+                    <h3 className="font-bold text-gray-900 text-sm">
+                      {card.label}
+                    </h3>
                   </div>
                   {isSelected ? (
-                    <span className="text-xs font-semibold text-brand-600 bg-brand-100 px-2 py-0.5 rounded-full">선택됨</span>
+                    <span className="text-xs font-semibold text-brand-600 bg-brand-100 px-2 py-0.5 rounded-full">
+                      선택됨
+                    </span>
                   ) : (
-                    <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{card.category}</span>
+                    <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                      {card.category}
+                    </span>
                   )}
                 </div>
                 <p className="text-xs text-gray-500 ml-8">{card.desc}</p>

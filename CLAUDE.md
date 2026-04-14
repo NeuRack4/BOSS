@@ -85,9 +85,11 @@ BOSS/
 │   │   │   ├── insights/    # AI 인사이트 (전년 동월 대비·상권 평균)
 │   │   │   ├── tax/         # 세금 기한 + 부가세 신고서 초안
 │   │   │   ├── rag/         # 법령 검색
+│   │   │   ├── profile/     # 창업자 정보 및 사업자 정보 관리
 │   │   │   └── notifications/ # 알림 이력
 │   │   ├── location/        # 입지분석 페이지
 │   │   ├── onboarding/      # 4단계 창업자 등록 위저드
+│   │   ├── drafts/[type]/   # 서류 초안 PDF 오버레이 폼 (4종)
 │   │   └── page.tsx         # 랜딩 페이지
 │   ├── components/
 │   │   ├── location/        # DistrictSelector / LlmReportPanel / 차트
@@ -294,7 +296,7 @@ metadata 예시:
 - **MINOR**: 하위 호환 기능 추가
 - **PATCH**: 버그 수정
 
-현재 버전: `v0.4.1`
+현재 버전: `v0.4.2`
 
 커밋 메시지 컨벤션:
 

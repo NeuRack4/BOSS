@@ -116,7 +116,9 @@ export default function Step1Personal({ data, onChange }: Props) {
             }
             className="w-32 px-3 py-3 rounded-xl border border-surface-300 bg-white text-gray-800 text-sm text-center tracking-widest placeholder-gray-300 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all"
           />
-          <span className="text-gray-400 font-bold text-lg flex-shrink-0">-</span>
+          <span className="text-gray-400 font-bold text-lg flex-shrink-0">
+            -
+          </span>
           {/* 성별 1자리 */}
           <input
             type="text"

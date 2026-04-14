@@ -13,7 +13,10 @@ import {
 import type { FieldDef } from "./PdfOverlayForm";
 
 /* ─── 서류 메타 ─── */
-const DOC_META: Record<string, { title: string; subtitle: string; pdfUrl: string; fieldDefs: FieldDef[] }> = {
+const DOC_META: Record<
+  string,
+  { title: string; subtitle: string; pdfUrl: string; fieldDefs: FieldDef[] }
+> = {
   "business-registration": {
     title: "사업자등록 신청서",
     subtitle: "개인사업자용 · 국세청 제출",
@@ -75,7 +78,9 @@ function profileFromStorage(): Record<string, unknown> {
       tax_type: p.taxType ?? "simplified",
       has_hygiene_edu: p.hasHygieneEdu ?? false,
     };
-  } catch { return {}; }
+  } catch {
+    return {};
+  }
 }
 
 /* ─── 메인 페이지 ─── */
@@ -102,7 +107,7 @@ export default function DraftPreviewPage() {
       return;
     }
     generateDraft(type, profile);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type]);
 
   // draft.fields가 바뀌면 editedFields 초기화
@@ -112,7 +117,10 @@ export default function DraftPreviewPage() {
     }
   }, [draft?.fields]);
 
-  async function generateDraft(docType: string, profile: Record<string, unknown>) {
+  async function generateDraft(
+    docType: string,
+    profile: Record<string, unknown>,
+  ) {
     setLoading(true);
     setError(null);
     try {
@@ -128,7 +136,9 @@ export default function DraftPreviewPage() {
       }
       setDraft(await res.json());
     } catch (e) {
-      setError(e instanceof Error ? e.message : "초안 생성 중 오류가 발생했습니다.");
+      setError(
+        e instanceof Error ? e.message : "초안 생성 중 오류가 발생했습니다.",
+      );
     } finally {
       setLoading(false);
     }
@@ -138,7 +148,9 @@ export default function DraftPreviewPage() {
     setEditedFields((prev) => ({ ...prev, [key]: value }));
   }
 
-  function handlePrint() { window.print(); }
+  function handlePrint() {
+    window.print();
+  }
 
   async function handlePdfSave() {
     const el = document.getElementById("pdf-form-area");
@@ -180,24 +192,32 @@ export default function DraftPreviewPage() {
                 ← 뒤로
               </button>
               <span className="text-gray-200">|</span>
-              <span className="text-sm font-semibold text-gray-700">{meta?.title ?? type}</span>
+              <span className="text-sm font-semibold text-gray-700">
+                {meta?.title ?? type}
+              </span>
               {editMode && (
                 <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-medium">
                   수정 중
                 </span>
               )}
             </div>
-            <Link href="/dashboard" className="text-xl font-black gradient-text">BOSS</Link>
+            <Link
+              href="/dashboard"
+              className="text-xl font-black gradient-text"
+            >
+              BOSS
+            </Link>
           </div>
         </div>
 
         <div className="max-w-4xl mx-auto px-6 pt-24 pb-32">
-
           {/* 로딩 */}
           {loading && (
             <div className="flex flex-col items-center justify-center py-24 gap-4">
               <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-              <p className="text-sm text-gray-500">AI가 서류 초안을 작성하고 있습니다…</p>
+              <p className="text-sm text-gray-500">
+                AI가 서류 초안을 작성하고 있습니다…
+              </p>
               <p className="text-xs text-gray-400">RAG 검색 → 필드 자동 입력</p>
             </div>
           )}
@@ -230,8 +250,12 @@ export default function DraftPreviewPage() {
             <>
               {/* 서류 헤더 */}
               <div className="text-center mb-4 no-print">
-                <h1 className="text-2xl font-black text-gray-900">{draft.title}</h1>
-                {meta && <p className="text-xs text-gray-400 mt-1">{meta.subtitle}</p>}
+                <h1 className="text-2xl font-black text-gray-900">
+                  {draft.title}
+                </h1>
+                {meta && (
+                  <p className="text-xs text-gray-400 mt-1">{meta.subtitle}</p>
+                )}
                 <p className="text-xs text-gray-400 mt-1">
                   BOSS AI 생성 초안 · 정부 PDF 서식에 직접 입력됩니다
                 </p>
@@ -240,7 +264,8 @@ export default function DraftPreviewPage() {
               {/* 수정 모드 안내 */}
               {editMode && (
                 <div className="no-print mb-3 px-4 py-2 bg-yellow-50 border border-yellow-300 rounded-lg text-xs text-yellow-700">
-                  ✎ 노란색 칸을 클릭해 내용을 수정할 수 있습니다. 완료 후 「수정 완료」를 누르세요.
+                  ✎ 노란색 칸을 클릭해 내용을 수정할 수 있습니다. 완료 후 「수정
+                  완료」를 누르세요.
                 </div>
               )}
 
@@ -267,7 +292,9 @@ export default function DraftPreviewPage() {
 
               {/* 면책 고지 */}
               <div className="no-print mt-4 bg-amber-50 border border-amber-200 rounded-xl p-4">
-                <p className="text-xs text-amber-700 leading-relaxed">{draft.disclaimer}</p>
+                <p className="text-xs text-amber-700 leading-relaxed">
+                  {draft.disclaimer}
+                </p>
               </div>
 
               {/* 액션 버튼 3개 */}
@@ -276,9 +303,10 @@ export default function DraftPreviewPage() {
                 <button
                   onClick={() => setEditMode((v) => !v)}
                   className={`flex-1 px-6 py-3 rounded-xl border-2 font-bold text-sm transition-all
-                    ${editMode
-                      ? "border-green-500 text-green-600 bg-green-50 hover:bg-green-100"
-                      : "border-blue-500 text-blue-500 hover:bg-blue-50"
+                    ${
+                      editMode
+                        ? "border-green-500 text-green-600 bg-green-50 hover:bg-green-100"
+                        : "border-blue-500 text-blue-500 hover:bg-blue-50"
                     }`}
                 >
                   {editMode ? "✓ 수정 완료" : "✎ 수정하기"}

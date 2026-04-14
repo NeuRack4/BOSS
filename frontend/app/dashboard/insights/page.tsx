@@ -44,21 +44,27 @@ export default function InsightsPage() {
     }
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-    const res = await fetch(`${apiUrl}/insights/analyze`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: user.id, year, month }),
-    });
+    try {
+      const res = await fetch(`${apiUrl}/insights/analyze`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: user.id, year, month }),
+      });
 
-    if (!res.ok) {
-      setError("분석 중 오류가 발생했습니다. 백엔드 서버를 확인해주세요.");
+      if (!res.ok) {
+        setError("분석 중 오류가 발생했습니다. 백엔드 서버를 확인해주세요.");
+        return;
+      }
+
+      const data = await res.json();
+      setResult(data);
+    } catch {
+      setError(
+        "백엔드 서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.",
+      );
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const data = await res.json();
-    setResult(data);
-    setLoading(false);
   };
 
   const changeColor =

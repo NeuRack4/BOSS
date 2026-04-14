@@ -26,16 +26,20 @@ export default function LoginPage() {
       setLoading(false);
     } else {
       // 프로필 존재 여부 확인 → 있으면 대시보드, 없으면 온보딩
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (user) {
         try {
-          const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+          const apiUrl =
+            process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
           const res = await fetch(`${apiUrl}/founders/me`, {
             headers: { "x-user-id": user.id },
           });
           if (res.ok) {
             const data = await res.json();
-            const hasProfile = data.profile && Object.keys(data.profile).length > 0;
+            const hasProfile =
+              data.profile && Object.keys(data.profile).length > 0;
             router.push(hasProfile ? "/dashboard" : "/onboarding");
             return;
           }
