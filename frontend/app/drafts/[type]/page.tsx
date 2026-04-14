@@ -120,6 +120,113 @@ const FIELD_LABELS: Record<string, string> = {
   공동조리장_업소정보: "공동조리장 업소정보",
 };
 
+/* ─── Mock 데이터 (온보딩 미완료 사용자용 가이드 예시) ─── */
+const MOCK_FIELDS: Record<string, Record<string, string>> = {
+  "business-registration": {
+    // ① 인적사항
+    상호_단체명: "연남 브루잉 카페",
+    사업장_전화번호: "02-3456-7890",
+    성명_대표자: "홍길동",
+    주소지_전화번호: "02-1111-2222",
+    주민등록번호: "900101-1234567",
+    휴대전화번호: "010-1234-5678",
+    사업장_소재지: "서울시 마포구 연남동 567-8",
+    사업장_층: "1",
+    사업장_호: "101",
+    주소자동정정_부: "V",
+    // ② 업종
+    주업태: "음식점업",
+    주종목: "커피전문점",
+    주업종코드: "562110",
+    개업일: "2026-06-01",
+    종업원수: "2",
+    사이버몰_명칭: "연남커피",
+    사이버몰_도메인명: "www.yncafe.co.kr",
+    // ③ 사업장 구분 + 임대차
+    "자가면적_㎡": "0",
+    "타가면적_㎡": "33",
+    임대인_성명: "김임대인",
+    임대인_사업자등록번호: "123-45-67890",
+    임대차계약기간_시작: "2025.04",
+    임대차계약기간_종료: "2027.04",
+    전세보증금: "0",
+    월세_차임: "1,500,000",
+    // ④ 사업자금
+    사업자금_자기자금: "5,000,000",
+    사업자금_타인자금: "20,000,000",
+    // ⑤ 전자우편
+    전자우편주소: "hello@boss-ai.kr",
+    // 체크박스 기본값
+    투자조합여부_부: "V",
+    허가등사업여부_신고: "V",
+    주류면허신청_부: "V",
+    사업자단위과세_부: "V",
+    간이과세적용_부: "V",
+    간이과세포기_부: "V",
+    수신동의_문자: "V",
+    확정일자_여: "V",
+    현금영수증_여: "V",
+  },
+  "food-business-license": {
+    신고인_성명: "홍길동",
+    신고인_주민등록번호: "900101-1234567",
+    신고인_주소: "서울시 마포구 연남동 567-8",
+    신고인_전화번호: "010-1234-5678",
+    명칭_상호: "연남 브루잉 카페",
+    영업장_전화번호: "02-1234-5678",
+    "영업장_내부면적_㎡": "26.4",
+    "영업장_외부면적_㎡": "6.6",
+    영업장_소재지: "서울시 마포구 연남동 567-8 1층",
+    신고일: "2026-06-01",
+  },
+  "employment-contract": {
+    채용기관장_사업장명: "연남 브루잉 카페",
+    근로자_성명: "김아무개",
+    근로자_성별: "여",
+    근로자_생년월일: "1998-03-15",
+    근무형태: "파트타임",
+    근로자_연락처: "010-0000-1111",
+    근로자_주소: "서울시 마포구 합정동 123",
+    계약기간_시작: "2026-06-01",
+    계약기간_종료: "2027-05-31",
+    근무장소: "연남 브루잉 카페 (마포구 연남동 567-8)",
+    직종_업무내용: "바리스타 / 음료 제조 및 홀 서빙",
+    근무요일_시작: "월",
+    근무요일_종료: "금",
+    근무시작시간: "09:00",
+    근무종료시간: "18:00",
+    휴게시작시간: "12:00",
+    휴게종료시간: "13:00",
+    기본급: "2,096,270",
+    급식비: "200,000",
+    임금지급일: "25",
+    은행명: "국민은행",
+    계좌번호: "123-456-789012",
+    계약일: "2026-05-20",
+  },
+  "lease-contract": {
+    소재지: "서울시 마포구 연남동 567-8 1층 101호",
+    토지_지목: "대",
+    "토지_면적_㎡": "99.2",
+    건물_구조용도: "철근콘크리트 / 근린생활시설",
+    "건물_면적_㎡": "33.0",
+    "임차할부분_면적_㎡": "33.0",
+    보증금: "50,000,000",
+    계약금: "5,000,000",
+    잔금: "45,000,000",
+    잔금_지급일: "2025-04-30",
+    차임_월세: "1,500,000",
+    차임_지급일: "매월 1일",
+    입금계좌: "국민은행 123-456-789012 김임대인",
+    임대차기간_인도일: "2025-04-01",
+    임대차기간_종료: "2027-03-31",
+    임차목적_업종: "휴게음식점 (카페)",
+    임대인_성명: "김임대인",
+    임차인_성명: "홍길동",
+    계약체결일: "2025-03-15",
+  },
+};
+
 /* ─── 타입 ─── */
 interface DraftResult {
   doc_type: string;
@@ -191,27 +298,33 @@ export default function DraftPreviewPage() {
     }
     const profile = profileFromStorage();
     if (!profile.name) {
-      setError("온보딩 정보가 없습니다. 먼저 정보를 입력해주세요.");
+      // 온보딩 미완료 → mock 데이터로 PDF 표시
+      const mockFields = MOCK_FIELDS[type] ?? {};
+      const mockDraft: DraftResult = {
+        doc_type: type,
+        title: meta.title,
+        content: "",
+        fields: mockFields,
+        disclaimer:
+          "※ 온보딩 정보가 입력되지 않아 예시 데이터로 표시됩니다. 수정하기를 눌러 실제 정보로 변경하세요.\n본 내용은 참고용이며 실제 신고 및 계약 전 전문가 확인을 권장합니다.",
+      };
+      setDraft(mockDraft);
+      setEditedFields({ ...mockFields });
+      renderPdf(mockFields);
       return;
     }
     generateDraft(type, profile);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type]);
 
-  /* draft.fields 바뀌면 editedFields 초기화 */
+  /* draft.fields 바뀌면 editedFields 초기화 + PDF 첫 렌더 (API 응답 시에만) */
   useEffect(() => {
-    if (draft?.fields) {
+    if (draft?.fields && !pdfUrl) {
       setEditedFields({ ...draft.fields });
-    }
-  }, [draft?.fields]);
-
-  /* editedFields 바뀌면 PDF 재렌더 */
-  useEffect(() => {
-    if (Object.keys(editedFields).length > 0) {
-      renderPdf(editedFields);
+      renderPdf(draft.fields);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editedFields]);
+  }, [draft?.fields]);
 
   async function generateDraft(
     docType: string,
@@ -229,7 +342,17 @@ export default function DraftPreviewPage() {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.detail ?? `서버 오류 (${res.status})`);
       }
-      setDraft(await res.json());
+      const result = await res.json();
+      // mock을 baseline으로, AI 결과로 override
+      // 단, AI가 반환한 빈 값('')이 mock 값을 덮어쓰지 않도록 필터링
+      const mergedFields: Record<string, string> = { ...(MOCK_FIELDS[docType] ?? {}) };
+      for (const [k, v] of Object.entries(result.fields ?? {})) {
+        const s = typeof v === "string" ? v : String(v ?? "");
+        if (s.trim() !== "" && s !== "[직접 입력]") {
+          mergedFields[k] = s;
+        }
+      }
+      setDraft({ ...result, fields: mergedFields });
     } catch (e) {
       setError(
         e instanceof Error ? e.message : "초안 생성 중 오류가 발생했습니다.",
@@ -263,7 +386,16 @@ export default function DraftPreviewPage() {
   }
 
   function handleFieldChange(key: string, value: string) {
+    // 상태만 업데이트, PDF는 수정완료 시에만 재렌더
     setEditedFields((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function handleEditToggle() {
+    if (editMode) {
+      // 수정 완료: 현재 editedFields로 PDF 재렌더
+      renderPdf(editedFields);
+    }
+    setEditMode((v) => !v);
   }
 
   function handlePrint() {
@@ -324,12 +456,7 @@ export default function DraftPreviewPage() {
           </div>
         </div>
 
-<<<<<<< HEAD
         <div className="max-w-6xl mx-auto px-4 pt-24 pb-24">
-
-=======
-        <div className="max-w-4xl mx-auto px-6 pt-24 pb-32">
->>>>>>> origin/dev
           {/* 로딩 */}
           {loading && (
             <div className="flex flex-col items-center justify-center py-24 gap-4">
@@ -380,18 +507,15 @@ export default function DraftPreviewPage() {
                 </p>
               </div>
 
-<<<<<<< HEAD
-              {/* 메인 레이아웃: PDF 뷰어 + 필드 편집 패널 */}
-              <div className={`flex gap-4 ${editMode ? "flex-col lg:flex-row" : "flex-col"}`}>
-=======
               {/* 수정 모드 안내 */}
               {editMode && (
                 <div className="no-print mb-3 px-4 py-2 bg-yellow-50 border border-yellow-300 rounded-lg text-xs text-yellow-700">
-                  ✎ 노란색 칸을 클릭해 내용을 수정할 수 있습니다. 완료 후 「수정
-                  완료」를 누르세요.
+                  ✎ 오른쪽 패널에서 값을 수정하세요. 「수정 완료」를 누르면 PDF에 반영됩니다.
                 </div>
               )}
->>>>>>> origin/dev
+
+              {/* 메인 레이아웃: PDF 뷰어 + 필드 편집 패널 */}
+              <div className={`flex gap-4 ${editMode ? "flex-col lg:flex-row" : "flex-col"}`}>
 
                 {/* PDF 뷰어 */}
                 <div className={`${editMode ? "lg:flex-1 min-w-0" : "w-full"} relative`}>
@@ -469,7 +593,7 @@ export default function DraftPreviewPage() {
               <div className="no-print mt-4 flex flex-col sm:flex-row gap-3">
                 {/* 수정하기 / 완료 */}
                 <button
-                  onClick={() => setEditMode((v) => !v)}
+                  onClick={handleEditToggle}
                   className={`flex-1 px-6 py-3 rounded-xl border-2 font-bold text-sm transition-all
                     ${
                       editMode
