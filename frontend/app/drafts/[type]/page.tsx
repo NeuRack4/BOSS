@@ -131,12 +131,12 @@ const MOCK_FIELDS: Record<string, Record<string, string>> = {
     주민등록번호: "900101-1234567",
     휴대전화번호: "010-1234-5678",
     사업장_소재지: "서울시 마포구 연남동 567-8",
-    사업장_층: "1",
-    사업장_호: "101",
+    사업장_층: "2",
+    사업장_호: "202",
     주소자동정정_부: "V",
     // ② 업종
     주업태: "음식점업",
-    주종목: "커피전문점",
+    주종목: "카페",
     주업종코드: "562110",
     개업일: "2026-06-01",
     종업원수: "2",
@@ -417,6 +417,21 @@ export default function DraftPreviewPage() {
       try {
         localStorage.setItem(`boss_draft_fields_${type}`, JSON.stringify(editedFields));
       } catch { /* 용량 초과 등 무시 */ }
+      // DB 저장 (비동기, 실패해도 UI에는 영향 없음)
+      import("@/lib/supabase").then(({ supabase }) => {
+        supabase.auth.getUser().then(({ data }) => {
+          const userId = data.user?.id;
+          if (!userId) return;
+          fetch(`${apiUrl}/drafts/save-fields/${type}`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-user-id": userId,
+            },
+            body: JSON.stringify({ fields: editedFields }),
+          }).catch(() => { /* 네트워크 오류 무시 */ });
+        });
+      });
     }
     setEditMode((v) => !v);
   }

@@ -15,9 +15,11 @@ from pathlib import Path
 from typing import Any
 
 import fitz  # PyMuPDF
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+
+from backend.api.dependencies import db, get_current_user_id
 
 router = APIRouter(prefix="/drafts", tags=["pdf-forms"])
 
@@ -102,8 +104,9 @@ BIZ_REG: list[FieldCoord] = [
 
     # ② 사업장 현황 ─ 업종
     # 주업태/주종목: label 우측 빈칸 (label y0=338.7)
+    # 주종목 blank: x=202.3~273.6, 오른쪽 여백 확보 위해 x=250
     F("주업태",                    165, 338,       cjk=True),
-    F("주종목",                    233, 338,       cjk=True),
+    F("주종목",                    250, 338,       cjk=True),
     # 주업종코드: 셀 내 수평분리선(y=348.6) 아래
     F("주업종코드",                383, 355,       cjk=False),
     # 개업일/종업원수: 병합셀(y=333~397), 아래 빈칸 probe_y=365
@@ -403,3 +406,43 @@ async def fill_pdf(doc_type: str, req: FillPdfRequest):
             "Cache-Control": "no-store",
         },
     )
+
+
+@router.post("/save-fields/{doc_type}", summary="서류 필드 DB 저장")
+async def save_draft_fields(
+    doc_type: str,
+    req: FillPdfRequest,
+    user_id: str = Depends(get_current_user_id),
+    supabase=Depends(db),
+):
+    """필드값을 drafts 테이블 metadata에 upsert (type+user_id 기준)"""
+    config = DOC_CONFIG.get(doc_type)
+    if not config:
+        raise HTTPException(status_code=404, detail=f"지원하지 않는 서류 유형: {doc_type}")
+
+    metadata = {"fields": dict(req.fields)}
+
+    existing = (
+        supabase.table("drafts")
+        .select("id")
+        .eq("user_id", user_id)
+        .eq("type", doc_type)
+        .maybe_single()
+        .execute()
+    )
+
+    if existing.data:
+        supabase.table("drafts").update({"metadata": metadata}).eq(
+            "id", existing.data["id"]
+        ).execute()
+    else:
+        supabase.table("drafts").insert(
+            {
+                "user_id": user_id,
+                "type": doc_type,
+                "storage_path": f"fields/{doc_type}/{user_id}",
+                "metadata": metadata,
+            }
+        ).execute()
+
+    return {"ok": True}
