@@ -27,13 +27,28 @@ def _get_model() -> SentenceTransformer:
 
 def _encode_sync(texts: list[str]) -> list[list[float]]:
     model = _get_model()
-    vectors = model.encode(
-        texts,
-        batch_size=12,
-        normalize_embeddings=True,
-        show_progress_bar=False,
-    )
-    return [v.tolist() for v in vectors]
+
+    try:
+        import torch
+        use_cuda = torch.cuda.is_available()
+    except ImportError:
+        use_cuda = False
+
+    results = []
+    # VRAM OOM 방지: 텍스트 하나씩 처리 후 캐시 비우기
+    for text in texts:
+        vec = model.encode(
+            [text],
+            batch_size=1,
+            normalize_embeddings=True,
+            show_progress_bar=False,
+        )
+        results.append(vec[0].tolist())
+        if use_cuda:
+            import torch
+            torch.cuda.empty_cache()
+
+    return results
 
 
 async def embed(texts: list[str]) -> list[list[float]]:

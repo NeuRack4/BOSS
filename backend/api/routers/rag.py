@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 from backend.core.constants import DocumentCategory, LEGAL_DISCLAIMER
 from backend.core.config import get_settings
 from backend.rag.document_loader import load_document, load_docs_folder
-from backend.rag.ingest import ingest_documents
+from backend.rag.ingest import ingest_law_chunks
 from backend.rag.retriever.pgvector_retriever import retrieve, hybrid_retrieve
 from backend.db.client import get_supabase
 
@@ -95,7 +95,7 @@ async def ingest_all():
              "content": c["content"], "metadata": c["metadata"]}
             for c in group
         ]
-        total += await ingest_documents(docs, DocumentCategory(category))
+        total += await ingest_law_chunks(docs, DocumentCategory(category))
 
     return IngestResult(saved_chunks=total, message=f"{total}개 청크를 pgvector에 저장했습니다.")
 
@@ -119,7 +119,7 @@ async def ingest_file(req: IngestFileRequest):
          "content": c["content"], "metadata": c["metadata"]}
         for c in chunks
     ]
-    saved = await ingest_documents(docs, category)
+    saved = await ingest_law_chunks(docs, category)
 
     return IngestResult(
         saved_chunks=saved,
@@ -137,6 +137,7 @@ async def search(req: SearchRequest):
         query=req.query,
         category=req.category,
         match_count=req.match_count,
+        min_score=req.match_threshold,
     )
     return [
         SearchResult(
@@ -197,21 +198,16 @@ async def summarize(req: SummarizeRequest):
 
 @router.get("/stats", response_model=list[StatsResult], summary="카테고리별 문서 수 조회")
 async def stats():
-    """pgvector documents 테이블의 카테고리별 청크 수를 반환."""
+    """law_chunks 테이블의 카테고리별 청크 수를 반환."""
     supabase = get_supabase()
-    result = supabase.rpc("count_documents_by_category", {}).execute()
-
-    if not result.data:
-        # RPC가 없을 경우 fallback: 카테고리 목록 순회
-        rows = []
-        for cat in DocumentCategory:
-            res = (
-                supabase.table("documents")
-                .select("id", count="exact")
-                .eq("category", cat)
-                .execute()
-            )
-            rows.append(StatsResult(category=cat, count=res.count or 0))
-        return rows
-
-    return [StatsResult(category=r["category"], count=r["count"]) for r in result.data]
+    law_categories = [c for c in DocumentCategory if c != DocumentCategory.MAPO_STATS]
+    rows = []
+    for cat in law_categories:
+        res = (
+            supabase.table("law_chunks")
+            .select("id", count="exact")
+            .eq("category", cat)
+            .execute()
+        )
+        rows.append(StatsResult(category=cat, count=res.count or 0))
+    return rows

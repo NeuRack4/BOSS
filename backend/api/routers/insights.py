@@ -8,10 +8,10 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 from backend.core.config import get_settings
-from backend.core.constants import DocumentCategory, LEGAL_DISCLAIMER, TriggerType
+from backend.core.constants import LEGAL_DISCLAIMER, TriggerType
 from backend.api.routers.sales import get_sales_summary
 from backend.db.client import get_supabase
-from backend.rag.retriever.pgvector_retriever import retrieve
+from backend.rag.retriever.pgvector_retriever import retrieve_mapo_stats
 
 router = APIRouter()
 
@@ -66,9 +66,8 @@ async def _retrieve_rag_context(month: int, change_pct: float | None) -> str:
 
     for query in queries:
         try:
-            docs = await retrieve(
+            docs = await retrieve_mapo_stats(
                 query=query,
-                category=DocumentCategory.MAPO_STATS,
                 match_count=3,
                 match_threshold=0.5,
             )
