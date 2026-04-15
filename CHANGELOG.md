@@ -4,6 +4,88 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
 
 ---
 
+## [v0.11.0] — 2026-04-15
+
+### 기능 — 메뉴 관리 · POS 파일 가져오기 · 메뉴별 AI 분석 · AI 인사이트 마케팅 섹션
+
+#### Added
+
+- **메뉴 관리 API** (`backend/api/routers/menus.py`)
+  - `POST/GET/PUT/DELETE /menus/` — 메뉴 CRUD (카테고리·가격·이미지 URL 관리)
+  - 메뉴판 OCR 연동: `POST /ocr/menu` 결과 → 메뉴 일괄 등록
+- **매출 항목 API** (`backend/api/routers/sales_items.py`)
+  - `POST /sales-items/` — 개별 트랜잭션 저장 (메뉴명·수량·단가·time_slot)
+  - `GET /sales-items/monthly-summary` — 월별 메뉴별 집계
+- **POS 파일 가져오기** (`backend/api/routers/ocr.py`)
+  - `POST /ocr/sales-file` — CSV/Excel 업로드 → Claude API로 컬럼 자동 인식·매핑
+  - 다국어 날짜 포맷 자동 파싱 (20240115 / 2024/01/15 / 2024년1월15일 등)
+  - 시간대 5구간 매핑 (오전·점심·오후·저녁·마감)
+  - EUC-KR / CP949 / UTF-8 인코딩 자동 감지, Excel `.xlsx/.xls` 지원
+- **메뉴별 AI 분석** (`backend/api/routers/insights.py`)
+  - `GET /insights/menu-analysis` — 월별 TOP 메뉴 집계 + Claude 추천 액션 생성
+  - 데이터 없을 때도 `message` 필드로 안내 반환
+- **영업 추천 API** (`backend/api/routers/recommend.py`)
+  - `GET /recommend` — 자본금·업종·나이 기반 창업 추천 (capital: 1~1,000,000만원, age: 1~120세 검증)
+- **입지 지도 API** (`backend/api/routers/map.py`)
+  - `GET /map/districts` — 마포구 9개 상권 GeoJSON 데이터
+- **메뉴 관리 페이지** (`frontend/app/dashboard/menus/page.tsx`)
+  - 메뉴 등록·수정·삭제 UI
+  - "📸 메뉴판 사진으로 등록" — 이미지 업로드 → OCR → 체크박스 선택 후 일괄 등록
+- **입지 지도 페이지** (`frontend/app/dashboard/map/`)
+  - 마포구 9개 상권 시각화
+- **스타트업 온보딩 페이지** (`frontend/app/dashboard/startup/`)
+  - 초기 창업 단계 안내
+- **샘플 POS 파일 5종** (`docs/sample_pos_data/`)
+  - `sample_1_cafe_pos_standard.csv` — 표준 POS 형식
+  - `sample_2_toss_settlement.csv` — 토스페이먼츠 정산 형식
+  - `sample_3_kiosk_english_header.csv` — 영문 헤더 키오스크
+  - `sample_4_manual_excel_style.csv` — 수기 엑셀 8자리 날짜·시간대 텍스트
+  - `sample_5_daily_summary_no_time.csv` — 일별 요약(한글 날짜·금액 따옴표)
+- **`pandas>=2.2.0`, `openpyxl>=3.1.0`** (`backend/requirements.txt`) — Excel/CSV 파싱 의존성 추가
+
+#### Changed
+
+- **AI 인사이트 프롬프트** (`backend/api/routers/insights.py`)
+  - 4섹션 구조 강제: `## 핵심 요약` / `## 원인 분석` / `## 추천 액션` / `## 마케팅 제안`
+  - `## 마케팅 제안` 섹션에 추천 홍보 메뉴·채널·타이밍·콘텐츠 방향 필수 포함
+- **인사이트 페이지** (`frontend/app/dashboard/insights/page.tsx`)
+  - 탭 시스템 추가: "✦ AI 매출 분석" / "☕ 메뉴별 분석"
+  - `parseInsight()` 함수: `## ` 헤더 기준 섹션 분리 파싱
+  - `InsightCard` 컴포넌트: 마케팅 제안 섹션을 오렌지 강조 카드로 분리 렌더링
+  - 오렌지 카드 "콘텐츠 바로 만들기 →" 버튼 → `/dashboard/marketing` 딥링크
+- **매출 관리 페이지** (`frontend/app/dashboard/sales/page.tsx`)
+  - "📊 파일로 가져오기" 버튼 추가 (CSV/Excel 업로드)
+  - 컬럼 매핑 미리보기 + 행별 체크박스 선택 후 일괄 등록
+- **마케팅 페이지** (`frontend/app/dashboard/marketing/page.tsx`)
+  - 강조 메뉴 입력 → `/menus/` API 드롭다운으로 교체 (메뉴 없으면 텍스트 input 폴백)
+- **사이드바** (`frontend/app/dashboard/layout.tsx`)
+  - 하드코딩된 카페명·상권 → `boss_profile` localStorage에서 실제 데이터로 교체
+
+---
+
+## [v0.10.1] — 2026-04-15
+
+### 기능 — 마케팅 AI 콘텐츠 생성
+
+#### Added
+
+- **마케팅 콘텐츠 API** (`backend/api/routers/marketing.py`)
+  - `POST /marketing/generate` — Claude API 기반 SNS 콘텐츠 초안 생성
+  - 콘텐츠 타입 4종: `instagram` / `blog` / `event` / `menu_highlight`
+  - 매출·인기메뉴·계절·공휴일·상권 컨텍스트 자동 반영
+  - 타입별 포맷 지정 (인스타 캡션+해시태그, 블로그 제목+본문 등)
+- **마케팅 콘텐츠 페이지** (`frontend/app/dashboard/marketing/page.tsx`)
+  - 콘텐츠 종류 선택 카드 (2×2 그리드)
+  - 강조 메뉴·특별 내용 입력
+  - 결과 표시 + 복사하기 + 다시 생성 버튼
+
+#### Changed
+
+- **메인 API** (`backend/api/main.py`) — `/marketing` 라우터 등록
+- **사이드바** (`frontend/app/dashboard/layout.tsx`) — 마케팅 메뉴 추가
+
+---
+
 ## [v0.10.0] — 2026-04-15
 
 ### 기능 — 비용 관리 + 순수익 계산 + AI 인사이트 비용 컨텍스트

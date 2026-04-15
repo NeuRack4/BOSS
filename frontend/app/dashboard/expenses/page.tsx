@@ -47,7 +47,7 @@ export default function ExpensesPage() {
 
   const getAuthHeader = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    return user ? { "X-User-Id": user.id } : {};
+    return { "X-User-Id": user?.id ?? "" };
   };
 
   const fetchEntries = async () => {

@@ -14,6 +14,7 @@ from backend.core.constants import LEGAL_DISCLAIMER
 from backend.core.holidays import get_month_holidays
 from backend.api.dependencies import get_current_user_id
 from backend.api.routers.sales import get_sales_summary
+from backend.api.routers.expenses import get_expense_summary
 from backend.db.client import get_supabase
 
 router = APIRouter()
@@ -32,7 +33,7 @@ _SYSTEM_PROMPT = """
 카페 데이터(매출·인기 메뉴·상권·날씨·공휴일)를 바탕으로 SNS 콘텐츠를 작성합니다.
 
 작성 원칙:
-- 실제 데이터 수치를 자연스럽게 녹여 신뢰감 있는 콘텐츠 작성
+- 아래 [카페 정보] 컨텍스트에 제공된 수치와 사실만 사용한다. 컨텍스트에 없는 매출액·방문자수·수치는 절대 언급하거나 만들어내지 않는다.
 - 마포구 지역 특성(홍대·연남·망원 등)을 반영한 감성적 표현
 - 1인 카페 운영자의 진정성 있는 목소리로 작성
 - 과장 없이 솔직하고 친근한 톤
@@ -162,8 +163,9 @@ def _build_cafe_context(
     promotion: str | None,
     year: int,
     month: int,
+    sales_summary: dict | None = None,
+    expense_summary: dict | None = None,
 ) -> str:
-    today = date.today()
     holidays = get_month_holidays(year, month)
     holiday_str = (
         ", ".join(f"{d[-4:][:2]}일 {n}" for d, n in sorted(holidays.items()))
@@ -186,6 +188,27 @@ def _build_cafe_context(
         f"이번달 공휴일: {holiday_str}",
         f"강조할 메뉴: {menu_info}",
     ]
+
+    # 실제 매출 데이터가 있을 때만 주입
+    if sales_summary and sales_summary.get("current_total", 0) > 0:
+        lines.append(f"이번달 총 매출: {sales_summary['current_total']:,}원")
+        if sales_summary.get("change_pct") is not None:
+            direction = "증가" if sales_summary["change_pct"] > 0 else "감소"
+            lines.append(f"전달 대비: {abs(sales_summary['change_pct'])}% {direction}")
+        # 카테고리별 매출 TOP 3 (수치 있는 항목만)
+        cat_breakdown = sales_summary.get("category_breakdown", {})
+        if cat_breakdown:
+            top_cats = sorted(cat_breakdown.items(), key=lambda x: x[1], reverse=True)[:3]
+            cat_str = " / ".join(f"{k} {v:,}원" for k, v in top_cats)
+            lines.append(f"인기 카테고리(이번달): {cat_str}")
+
+    # 실제 비용 데이터가 있을 때만 주입
+    if expense_summary and expense_summary.get("total_expenses", 0) > 0:
+        net = (sales_summary or {}).get("current_total", 0) - expense_summary["total_expenses"]
+        lines.append(f"이번달 총 비용: {expense_summary['total_expenses']:,}원")
+        if net >= 0:
+            lines.append(f"이번달 순수익(추정): {net:,}원")
+
     if promotion:
         lines.append(f"특별 내용: {promotion}")
 
@@ -206,6 +229,16 @@ async def generate_content(
     cafe_info = _get_cafe_info(user_id)
     top_menu = _get_top_menu(user_id, year, month)
 
+    # 실데이터 조회 (실패해도 콘텐츠 생성은 계속)
+    try:
+        sales_summary = await get_sales_summary(user_id, year, month)
+    except Exception:
+        sales_summary = None
+    try:
+        expense_summary = await get_expense_summary(user_id, year, month)
+    except Exception:
+        expense_summary = None
+
     cafe_context = _build_cafe_context(
         cafe_info=cafe_info,
         top_menu=top_menu,
@@ -213,6 +246,8 @@ async def generate_content(
         promotion=req.promotion,
         year=year,
         month=month,
+        sales_summary=sales_summary,
+        expense_summary=expense_summary,
     )
 
     prompt_template = PROMPTS[req.content_type]

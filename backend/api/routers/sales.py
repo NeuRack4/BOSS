@@ -10,8 +10,21 @@ from backend.db.client import get_supabase
 router = APIRouter()
 
 
+def _query_sales_items(supabase, user_id: str, from_date: date, to_date: date) -> list[dict]:
+    """sales_items 테이블에서 날짜 범위 조회"""
+    return (
+        supabase.table("sales_items")
+        .select("amount, date, category, time_slot, receipt_id")
+        .eq("user_id", user_id)
+        .gte("date", str(from_date))
+        .lte("date", str(to_date))
+        .execute()
+        .data or []
+    )
+
+
 async def get_sales_summary(user_id: str, year: int, month: int) -> dict:
-    """월별 매출 요약 — insights 및 dashboard 공용"""
+    """월별 매출 요약 — insights 및 dashboard 공용 (sales_items 기반)"""
     supabase = get_supabase()
 
     # 이번달 날짜 범위
@@ -33,38 +46,10 @@ async def get_sales_summary(user_id: str, year: int, month: int) -> dict:
     yoy_from = date(year - 1, month, 1)
     yoy_to = date(year - 1, month, yoy_last_day)
 
-    # 이번달 매출 조회
-    rows = (
-        supabase.table("sales")
-        .select("*")
-        .eq("user_id", user_id)
-        .gte("date", str(from_date))
-        .lte("date", str(to_date))
-        .execute()
-        .data
-    )
-
-    # 전달 매출 조회
-    prev_rows = (
-        supabase.table("sales")
-        .select("amount")
-        .eq("user_id", user_id)
-        .gte("date", str(prev_from))
-        .lte("date", str(prev_to))
-        .execute()
-        .data
-    )
-
-    # 전년 동월 매출 조회
-    yoy_rows = (
-        supabase.table("sales")
-        .select("amount")
-        .eq("user_id", user_id)
-        .gte("date", str(yoy_from))
-        .lte("date", str(yoy_to))
-        .execute()
-        .data
-    )
+    # sales_items 테이블에서 조회
+    rows = _query_sales_items(supabase, user_id, from_date, to_date)
+    prev_rows = _query_sales_items(supabase, user_id, prev_from, prev_to)
+    yoy_rows = _query_sales_items(supabase, user_id, yoy_from, yoy_to)
 
     current_total = sum(r["amount"] for r in rows)
     prev_total = sum(r["amount"] for r in prev_rows)
@@ -86,13 +71,24 @@ async def get_sales_summary(user_id: str, year: int, month: int) -> dict:
     days_elapsed = today.day if (year == today.year and month == today.month) else last_day
     daily_average = round(current_total / days_elapsed) if days_elapsed > 0 else 0
 
+    # 카테고리·시간대별 집계
     category_breakdown: dict[str, int] = {}
     timeslot_breakdown: dict[str, int] = {}
     for r in rows:
-        cat = r.get("category", "기타")
-        slot = r.get("time_slot", "기타")
+        cat = r.get("category") or "기타"
+        slot = r.get("time_slot") or "기타"
         category_breakdown[cat] = category_breakdown.get(cat, 0) + r["amount"]
         timeslot_breakdown[slot] = timeslot_breakdown.get(slot, 0) + r["amount"]
+
+    # 거래 건수 = 고유 receipt_id 수 (메뉴 항목 수가 아닌 영수증 단위)
+    transaction_count = len({r["receipt_id"] for r in rows if r.get("receipt_id")}) or len(rows)
+
+    # 날씨 상관 분석용 일별 합계
+    daily_map: dict[str, int] = {}
+    for r in rows:
+        d = str(r["date"])[:10]
+        daily_map[d] = daily_map.get(d, 0) + r["amount"]
+    entries = [{"date": d, "amount": a} for d, a in daily_map.items()]
 
     return {
         "current_total": current_total,
@@ -100,11 +96,11 @@ async def get_sales_summary(user_id: str, year: int, month: int) -> dict:
         "change_pct": change_pct,
         "yoy_total": yoy_total,
         "yoy_change_pct": yoy_change_pct,
-        "transaction_count": len(rows),
+        "transaction_count": transaction_count,
         "daily_average": daily_average,
         "category_breakdown": category_breakdown,
         "timeslot_breakdown": timeslot_breakdown,
-        "entries": [{"date": r["date"], "amount": r["amount"]} for r in rows],
+        "entries": entries,
     }
 
 

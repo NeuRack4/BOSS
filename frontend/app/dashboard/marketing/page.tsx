@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 
 type ContentType = "instagram" | "blog" | "event" | "menu_highlight";
@@ -14,10 +14,13 @@ const CONTENT_TYPES: { value: ContentType; label: string; icon: string; desc: st
 
 const today = new Date();
 
+type Menu = { id: string; name: string; category: string; is_active?: boolean };
+
 export default function MarketingPage() {
   const [contentType, setContentType] = useState<ContentType>("instagram");
   const [targetMenu, setTargetMenu] = useState("");
   const [promotion, setPromotion] = useState("");
+  const [menus, setMenus] = useState<Menu[]>([]);
   const [year] = useState(today.getFullYear());
   const [month] = useState(today.getMonth() + 1);
 
@@ -27,6 +30,16 @@ export default function MarketingPage() {
   const [copied, setCopied] = useState(false);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      fetch(`${apiUrl}/menus/`, { headers: { "X-User-Id": user.id } })
+        .then((r) => r.ok ? r.json() : [])
+        .then((data: Menu[]) => setMenus(data.filter((m) => m.is_active !== false)))
+        .catch(() => {});
+    });
+  }, [apiUrl]);
 
   const handleGenerate = async () => {
     setLoading(true);
@@ -111,13 +124,26 @@ export default function MarketingPage() {
             <label className="block text-xs font-medium text-gray-500 mb-1.5">
               강조할 메뉴 <span className="text-gray-400 font-normal">(선택 — 비우면 이번달 인기 메뉴 자동 사용)</span>
             </label>
-            <input
-              type="text"
-              value={targetMenu}
-              onChange={(e) => setTargetMenu(e.target.value)}
-              placeholder="예: 아이스 아메리카노, 딸기 라떼"
-              className="w-full px-3 py-2.5 rounded-lg border border-surface-300 bg-white text-sm text-gray-800 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/30"
-            />
+            {menus.length > 0 ? (
+              <select
+                value={targetMenu}
+                onChange={(e) => setTargetMenu(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-lg border border-surface-300 bg-white text-sm text-gray-800 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/30"
+              >
+                <option value="">이번달 인기 메뉴 자동 선택</option>
+                {menus.map((m) => (
+                  <option key={m.id} value={m.name}>{m.name}</option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="text"
+                value={targetMenu}
+                onChange={(e) => setTargetMenu(e.target.value)}
+                placeholder="예: 아이스 아메리카노, 딸기 라떼"
+                className="w-full px-3 py-2.5 rounded-lg border border-surface-300 bg-white text-sm text-gray-800 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/30"
+              />
+            )}
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1.5">

@@ -36,13 +36,25 @@ _SYSTEM_PROMPT = """
 - 상권 등급(HH/HL/LH/LL)이 있으면 창업자 상황에 맞게 해석
 - 계절성·공휴일·날씨 영향을 반드시 고려
 - 1인 운영 특성 (체력·시간 한계) 감안
-- 실행 가능한 액션 2~3가지 구체적으로 제시
 - 답변은 한국어, 친근하고 간결하게
 
-답변 구조:
-1. 핵심 요약 (1~2문장, 마포구 평균 대비 위치 포함)
-2. 원인 분석 (2~3줄, 참고 데이터 수치 인용)
-3. 추천 액션 (번호 목록)
+답변은 반드시 아래 4개 섹션을 순서대로 작성하세요.
+각 섹션은 정확히 아래 헤더 텍스트로 시작해야 합니다:
+
+## 핵심 요약
+1~2문장. 이번달 매출이 마포구 평균 대비 어느 위치인지 포함.
+
+## 원인 분석
+2~3줄. 참고 데이터 수치를 직접 인용해 근거 제시.
+
+## 추천 액션
+번호 목록으로 2~3가지. 1인 운영자가 당장 실행 가능한 구체적 행동.
+
+## 마케팅 제안
+반드시 아래 3가지를 포함:
+- **추천 홍보 메뉴**: 이번달 매출·카테고리 데이터 기반으로 지금 홍보하면 효과적인 메뉴 1~2개와 이유
+- **채널 & 타이밍**: 인스타그램·블로그·오프라인 중 어떤 채널이 적합한지, 유동인구 피크 시간대를 활용한 게시 타이밍
+- **콘텐츠 방향**: 어떤 각도(계절감·할인·신메뉴·스토리 등)로 만들면 좋을지 1~2줄 제안
 """
 
 
@@ -506,6 +518,113 @@ async def get_benchmark(
         "ratio_pct": ratio_pct,       # 100% = 상권 평균과 동일
         "diff": diff,                  # 양수 = 평균 초과, 음수 = 평균 미달
     }
+
+
+@router.get("/menu-analysis")
+async def analyze_menus(
+    user_id: str = Query(...),
+    year: int = Query(...),
+    month: int = Query(...),
+):
+    """메뉴별 매출 분석 + AI 추천 액션 (sales_items 기반)"""
+    import calendar as _cal
+    from datetime import date as _date
+
+    settings = get_settings()
+    supabase = get_supabase()
+
+    _, last_day = _cal.monthrange(year, month)
+    from_date = _date(year, month, 1)
+    to_date = _date(year, month, last_day)
+
+    rows = (
+        supabase.table("sales_items")
+        .select("menu_name, menu_id, category, quantity, amount, date, time_slot")
+        .eq("user_id", user_id)
+        .gte("date", str(from_date))
+        .lte("date", str(to_date))
+        .execute()
+        .data or []
+    )
+
+    if not rows:
+        return {
+            "insight": None,
+            "summary": {
+                "year": year, "month": month,
+                "total_amount": 0, "total_quantity": 0,
+                "menu_ranking": [], "category_breakdown": {},
+            },
+            "message": "아직 메뉴별 매출 데이터가 없습니다. 매출 입력 시 메뉴를 선택하면 분석이 시작됩니다.",
+        }
+
+    # 집계
+    menu_agg: dict[str, dict] = {}
+    category_agg: dict[str, int] = {}
+    for r in rows:
+        name = r["menu_name"]
+        if name not in menu_agg:
+            menu_agg[name] = {
+                "menu_name": name, "menu_id": r.get("menu_id"),
+                "category": r.get("category", "기타"),
+                "quantity": 0, "amount": 0,
+            }
+        menu_agg[name]["quantity"] += r["quantity"]
+        menu_agg[name]["amount"]   += r["amount"]
+        cat = r.get("category") or "기타"
+        category_agg[cat] = category_agg.get(cat, 0) + r["amount"]
+
+    ranking = sorted(menu_agg.values(), key=lambda x: x["amount"], reverse=True)
+    total_amount = sum(r["amount"] for r in rows)
+    total_quantity = sum(r["quantity"] for r in rows)
+    top_menus = ranking[:7]
+
+    summary = {
+        "year": year, "month": month,
+        "total_amount": total_amount,
+        "total_quantity": total_quantity,
+        "menu_ranking": ranking,
+        "category_breakdown": category_agg,
+    }
+
+    # Claude 분석
+    menu_lines = "\n".join(
+        f"{i+1}. {m['menu_name']} ({m['category']}) — {m['quantity']}잔 · {m['amount']:,}원"
+        f" ({round(m['amount'] / total_amount * 100) if total_amount else 0}%)"
+        for i, m in enumerate(top_menus)
+    )
+    cat_lines = "\n".join(
+        f"- {cat}: {amt:,}원 ({round(amt / total_amount * 100) if total_amount else 0}%)"
+        for cat, amt in sorted(category_agg.items(), key=lambda x: -x[1])
+    )
+
+    user_message = f"""
+[{year}년 {month}월 메뉴별 매출 현황]
+총 매출: {total_amount:,}원 / 총 판매: {total_quantity}개 / 메뉴 종류: {len(ranking)}종
+
+[매출 순위 TOP {len(top_menus)}]
+{menu_lines}
+
+[카테고리별 매출]
+{cat_lines}
+
+위 데이터를 바탕으로 다음을 분석해줘:
+1. 주력 메뉴 집중도 (상위 3개 메뉴 매출 비중)
+2. 카테고리 구성 평가 (음료·디저트 비중이 적절한가)
+3. 판매 다양화 or 집중 전략 중 어떤 방향이 유리한지
+4. 구체적 액션 2~3가지 (메뉴 조정, 가격, 마케팅 포함)
+""".strip()
+
+    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+    message = await client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=800,
+        system=_SYSTEM_PROMPT,
+        messages=[{"role": "user", "content": user_message}],
+    )
+    insight_text = message.content[0].text + f"\n\n---\n{LEGAL_DISCLAIMER}"
+
+    return {"insight": insight_text, "summary": summary}
 
 
 def _insert_sales_change_trigger(user_id: str, change_pct: float, year: int, month: int) -> None:
