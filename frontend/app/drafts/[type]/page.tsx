@@ -466,11 +466,11 @@ const MOCK_FIELDS: Record<string, Record<string, string>> = {
     반려동물_출입여부_미해당: "",
   },
   "employment-contract": {
-    채용기관장_사업장명: "연남카페",          // DB 사업자등록 상호명으로 자동 교체
-    채용기관장_대표성명: "홍길동",             // DB 사업자등록 대표자명으로 자동 교체
+    채용기관장_사업장명: "연남카페", // DB 사업자등록 상호명으로 자동 교체
+    채용기관장_대표성명: "홍길동", // DB 사업자등록 대표자명으로 자동 교체
     근로자_성명: "김민지",
-    근로자_성명_서두: "김민지",               // 서두 ○○○ 위치 (근로자_성명과 동일)
-    근로자_서명_성명: "김민지",               // 서명란 (근로자_성명과 동일)
+    근로자_성명_서두: "김민지", // 서두 ○○○ 위치 (근로자_성명과 동일)
+    근로자_서명_성명: "김민지", // 서명란 (근로자_성명과 동일)
     근로자_성별: "여",
     근로자_생년월일: "1998-03-15",
     근무형태: "정규직",
@@ -598,15 +598,19 @@ export default function DraftPreviewPage() {
       // employment-contract: 서두/서명란 성명 + 상호명 항상 최신값 주입
       if (type === "employment-contract") {
         if (fields["근로자_성명"]) {
-          if (!fields["근로자_성명_서두"]) fields["근로자_성명_서두"] = fields["근로자_성명"];
-          if (!fields["근로자_서명_성명"]) fields["근로자_서명_성명"] = fields["근로자_성명"];
+          if (!fields["근로자_성명_서두"])
+            fields["근로자_성명_서두"] = fields["근로자_성명"];
+          if (!fields["근로자_서명_성명"])
+            fields["근로자_서명_성명"] = fields["근로자_성명"];
         }
         // 상호명: 온보딩 프로필 business_name 우선 (localStorage 구버전 데이터 방지)
-        const profileBizName = (profileFromStorage().business_name as string) || "";
+        const profileBizName =
+          (profileFromStorage().business_name as string) || "";
         if (profileBizName) {
           fields["채용기관장_사업장명"] = profileBizName;
         } else if (!fields["채용기관장_사업장명"]) {
-          fields["채용기관장_사업장명"] = MOCK_FIELDS["employment-contract"]["채용기관장_사업장명"];
+          fields["채용기관장_사업장명"] =
+            MOCK_FIELDS["employment-contract"]["채용기관장_사업장명"];
         }
         if (!fields["수령확인"]) fields["수령확인"] = "V";
       }
@@ -825,7 +829,8 @@ export default function DraftPreviewPage() {
               }
               if (type === "employment-contract") {
                 if (bizName) mapped["채용기관장_사업장명"] = bizName;
-                if (biz["성명_대표자"]) mapped["채용기관장_대표성명"] = biz["성명_대표자"];
+                if (biz["성명_대표자"])
+                  mapped["채용기관장_대표성명"] = biz["성명_대표자"];
                 if (biz["사업장_소재지"]) {
                   const addr = biz["사업장_소재지"];
                   const floor = biz["사업장_층"]

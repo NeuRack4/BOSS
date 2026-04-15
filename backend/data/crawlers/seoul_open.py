@@ -10,7 +10,15 @@
 """
 import asyncio
 import httpx
+from datetime import datetime, timezone, timedelta
 from backend.core.config import get_settings
+from backend.db.client import get_supabase
+
+# ──────────────────────────────────────────────────────────
+# DB cache (seoul_open_cache 테이블, TTL 24h)
+# ──────────────────────────────────────────────────────────
+_CACHE_TTL_HOURS = 24
+_fetch_lock = asyncio.Lock()
 
 _BASE_URL = "http://openapi.seoul.go.kr:8088"
 _DS_STORE  = "VwsmAdstrdStorW"
@@ -40,28 +48,92 @@ _FLPOP_PAGES = [(1, 1000), (1001, 2000), (2001, 3000), (3001, 4000)]
 # ──────────────────────────────────────────────────────────
 
 async def fetch_all_mapo_enriched() -> dict[str, dict]:
-    """마포구 9개 상권 enriched 데이터 일괄 수집"""
-    store_data, flpop_data = await asyncio.gather(
-        _fetch_all_store_data(),
-        _fetch_all_flpop_data(),
-    )
-    result = {}
-    for name, info in _MAPO_DONG_MAP.items():
-        dong = info["dong"]
-        store = store_data.get(dong, {})
-        flpop = flpop_data.get(dong, {})
-        if not store and not flpop:
-            result[name] = _fallback(name)
-        else:
-            result[name] = {
-                "district":         name,
-                "cafe_count":       store.get("cafe_count", _FALLBACK[name]["cafe_count"]),
-                "new_stores_1y":    store.get("new_stores_1y", _FALLBACK[name]["new_stores_1y"]),
-                "closed_stores_1y": store.get("closed_stores_1y", _FALLBACK[name]["closed_stores_1y"]),
-                "survival_rate":    store.get("survival_rate", _FALLBACK[name]["survival_rate"]),
-                "daily_floating_pop": flpop.get("daily_floating_pop", _FALLBACK[name]["daily_floating_pop"]),
+    """마포구 9개 상권 enriched 데이터 일괄 수집 (DB cache, TTL 24h)"""
+    # 1. DB 캐시 조회
+    cached = _load_from_db()
+    if cached is not None:
+        return cached
+
+    # 2. 캐시 미스 — 중복 fetch 방지 후 API 호출
+    async with _fetch_lock:
+        cached = _load_from_db()
+        if cached is not None:
+            return cached
+
+        store_data, flpop_data = await asyncio.gather(
+            _fetch_all_store_data(),
+            _fetch_all_flpop_data(),
+        )
+        result = {}
+        for name, info in _MAPO_DONG_MAP.items():
+            dong = info["dong"]
+            store = store_data.get(dong, {})
+            flpop = flpop_data.get(dong, {})
+            if not store and not flpop:
+                result[name] = _fallback(name)
+            else:
+                result[name] = {
+                    "district":           name,
+                    "cafe_count":         store.get("cafe_count", _FALLBACK[name]["cafe_count"]),
+                    "new_stores_1y":      store.get("new_stores_1y", _FALLBACK[name]["new_stores_1y"]),
+                    "closed_stores_1y":   store.get("closed_stores_1y", _FALLBACK[name]["closed_stores_1y"]),
+                    "survival_rate":      store.get("survival_rate", _FALLBACK[name]["survival_rate"]),
+                    "daily_floating_pop": flpop.get("daily_floating_pop", _FALLBACK[name]["daily_floating_pop"]),
+                }
+
+        _save_to_db(result)
+        return result
+
+
+def _load_from_db() -> dict[str, dict] | None:
+    """DB에서 캐시 조회. TTL 초과 또는 행 수 부족이면 None 반환."""
+    try:
+        rows = get_supabase().table("seoul_open_cache").select("*").execute()
+        if not rows.data or len(rows.data) < len(_MAPO_DONG_MAP):
+            return None
+        # 가장 오래된 fetched_at 기준으로 TTL 체크
+        oldest = min(
+            datetime.fromisoformat(r["fetched_at"].replace("Z", "+00:00"))
+            for r in rows.data
+        )
+        if oldest.tzinfo is None:
+            oldest = oldest.replace(tzinfo=timezone.utc)
+        if datetime.now(timezone.utc) - oldest > timedelta(hours=_CACHE_TTL_HOURS):
+            return None
+        return {
+            r["district"]: {
+                "district":           r["district"],
+                "cafe_count":         r["cafe_count"],
+                "new_stores_1y":      r["new_stores_1y"],
+                "closed_stores_1y":   r["closed_stores_1y"],
+                "survival_rate":      float(r["survival_rate"]),
+                "daily_floating_pop": r["daily_floating_pop"],
             }
-    return result
+            for r in rows.data
+        }
+    except Exception:
+        return None
+
+
+def _save_to_db(data: dict[str, dict]) -> None:
+    """상권별 행으로 upsert."""
+    try:
+        now = datetime.now(timezone.utc).isoformat()
+        rows = [
+            {
+                "district":           name,
+                "cafe_count":         d["cafe_count"],
+                "new_stores_1y":      d["new_stores_1y"],
+                "closed_stores_1y":   d["closed_stores_1y"],
+                "survival_rate":      d["survival_rate"],
+                "daily_floating_pop": d["daily_floating_pop"],
+                "fetched_at":         now,
+            }
+            for name, d in data.items()
+        ]
+        get_supabase().table("seoul_open_cache").upsert(rows, on_conflict="district").execute()
+    except Exception:
+        pass
 
 
 # ──────────────────────────────────────────────────────────

@@ -5,11 +5,26 @@ import { supabase } from "@/lib/supabase";
 
 type ContentType = "instagram" | "blog" | "event" | "menu_highlight";
 
-const CONTENT_TYPES: { value: ContentType; label: string; icon: string; desc: string }[] = [
-  { value: "instagram",      label: "인스타그램", icon: "📸", desc: "캡션 + 해시태그 30개" },
-  { value: "blog",           label: "블로그",     icon: "✍️",  desc: "네이버 블로그 포스팅" },
-  { value: "event",          label: "이벤트",     icon: "🎉", desc: "프로모션·할인 문구" },
-  { value: "menu_highlight", label: "메뉴 소개",  icon: "☕", desc: "메뉴 상세 소개 게시글" },
+const CONTENT_TYPES: {
+  value: ContentType;
+  label: string;
+  icon: string;
+  desc: string;
+}[] = [
+  {
+    value: "instagram",
+    label: "인스타그램",
+    icon: "📸",
+    desc: "캡션 + 해시태그 30개",
+  },
+  { value: "blog", label: "블로그", icon: "✍️", desc: "네이버 블로그 포스팅" },
+  { value: "event", label: "이벤트", icon: "🎉", desc: "프로모션·할인 문구" },
+  {
+    value: "menu_highlight",
+    label: "메뉴 소개",
+    icon: "☕",
+    desc: "메뉴 상세 소개 게시글",
+  },
 ];
 
 const today = new Date();
@@ -25,7 +40,10 @@ export default function MarketingPage() {
   const [month] = useState(today.getMonth() + 1);
 
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ content: string; menu_used: string | null } | null>(null);
+  const [result, setResult] = useState<{
+    content: string;
+    menu_used: string | null;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -35,8 +53,10 @@ export default function MarketingPage() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return;
       fetch(`${apiUrl}/menus/`, { headers: { "X-User-Id": user.id } })
-        .then((r) => r.ok ? r.json() : [])
-        .then((data: Menu[]) => setMenus(data.filter((m) => m.is_active !== false)))
+        .then((r) => (r.ok ? r.json() : []))
+        .then((data: Menu[]) =>
+          setMenus(data.filter((m) => m.is_active !== false)),
+        )
         .catch(() => {});
     });
   }, [apiUrl]);
@@ -46,8 +66,14 @@ export default function MarketingPage() {
     setError(null);
     setResult(null);
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setError("로그인이 필요합니다."); setLoading(false); return; }
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setError("로그인이 필요합니다.");
+      setLoading(false);
+      return;
+    }
 
     try {
       const res = await fetch(`${apiUrl}/marketing/content`, {
@@ -55,8 +81,8 @@ export default function MarketingPage() {
         headers: { "Content-Type": "application/json", "X-User-Id": user.id },
         body: JSON.stringify({
           content_type: contentType,
-          target_menu:  targetMenu || null,
-          promotion:    promotion || null,
+          target_menu: targetMenu || null,
+          promotion: promotion || null,
           year,
           month,
         }),
@@ -101,15 +127,22 @@ export default function MarketingPage() {
           {CONTENT_TYPES.map((ct) => (
             <button
               key={ct.value}
-              onClick={() => { setContentType(ct.value); setResult(null); }}
+              onClick={() => {
+                setContentType(ct.value);
+                setResult(null);
+              }}
               className={`flex items-start gap-3 p-4 rounded-xl border text-left transition-all
-                ${contentType === ct.value
-                  ? "bg-brand-50 border-brand-500/40 glow-blue"
-                  : "border-surface-300 hover:border-brand-300 bg-white"}`}
+                ${
+                  contentType === ct.value
+                    ? "bg-brand-50 border-brand-500/40 glow-blue"
+                    : "border-surface-300 hover:border-brand-300 bg-white"
+                }`}
             >
               <span className="text-2xl flex-shrink-0">{ct.icon}</span>
               <div>
-                <p className={`text-sm font-bold ${contentType === ct.value ? "text-brand-600" : "text-gray-800"}`}>
+                <p
+                  className={`text-sm font-bold ${contentType === ct.value ? "text-brand-600" : "text-gray-800"}`}
+                >
                   {ct.label}
                 </p>
                 <p className="text-xs text-gray-400 mt-0.5">{ct.desc}</p>
@@ -122,7 +155,10 @@ export default function MarketingPage() {
         <div className="space-y-3 pt-2 border-t border-surface-200">
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1.5">
-              강조할 메뉴 <span className="text-gray-400 font-normal">(선택 — 비우면 이번달 인기 메뉴 자동 사용)</span>
+              강조할 메뉴{" "}
+              <span className="text-gray-400 font-normal">
+                (선택 — 비우면 이번달 인기 메뉴 자동 사용)
+              </span>
             </label>
             {menus.length > 0 ? (
               <select
@@ -132,7 +168,9 @@ export default function MarketingPage() {
               >
                 <option value="">이번달 인기 메뉴 자동 선택</option>
                 {menus.map((m) => (
-                  <option key={m.id} value={m.name}>{m.name}</option>
+                  <option key={m.id} value={m.name}>
+                    {m.name}
+                  </option>
                 ))}
               </select>
             ) : (
@@ -147,7 +185,10 @@ export default function MarketingPage() {
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1.5">
-              특별 내용 <span className="text-gray-400 font-normal">(선택 — 할인·이벤트·신메뉴 등)</span>
+              특별 내용{" "}
+              <span className="text-gray-400 font-normal">
+                (선택 — 할인·이벤트·신메뉴 등)
+              </span>
             </label>
             <input
               type="text"
@@ -182,14 +223,18 @@ export default function MarketingPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-lg">{selected.icon}</span>
-              <h2 className="text-base font-bold text-gray-900">{selected.label} 초안</h2>
+              <h2 className="text-base font-bold text-gray-900">
+                {selected.label} 초안
+              </h2>
               {result.menu_used && (
                 <span className="text-xs bg-brand-50 text-brand-600 border border-brand-200 px-2 py-0.5 rounded-full">
                   {result.menu_used} 기반
                 </span>
               )}
             </div>
-            <span className="text-xs text-gray-400">{year}년 {month}월 기준</span>
+            <span className="text-xs text-gray-400">
+              {year}년 {month}월 기준
+            </span>
           </div>
 
           {/* 콘텐츠 본문 */}
@@ -204,9 +249,11 @@ export default function MarketingPage() {
             <button
               onClick={handleCopy}
               className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-all
-                ${copied
-                  ? "bg-green-500 text-white border-green-500"
-                  : "border-brand-500/40 text-brand-600 bg-brand-50 hover:bg-brand-100"}`}
+                ${
+                  copied
+                    ? "bg-green-500 text-white border-green-500"
+                    : "border-brand-500/40 text-brand-600 bg-brand-50 hover:bg-brand-100"
+                }`}
             >
               {copied ? "✓ 복사 완료" : "복사하기"}
             </button>
@@ -236,7 +283,10 @@ export default function MarketingPage() {
               "생성된 초안은 자유롭게 수정해 사용하세요",
               "마음에 들지 않으면 '다시 생성'으로 새로운 버전을 받아보세요",
             ].map((tip, i) => (
-              <li key={i} className="flex items-start gap-2 text-xs text-gray-500">
+              <li
+                key={i}
+                className="flex items-start gap-2 text-xs text-gray-500"
+              >
                 <span className="text-brand-400 flex-shrink-0 mt-0.5">•</span>
                 {tip}
               </li>

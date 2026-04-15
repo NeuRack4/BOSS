@@ -13,11 +13,11 @@ type ExpenseEntry = {
 };
 
 const CATEGORIES = [
-  { value: "rent",       label: "월세·임대료", icon: "🏠" },
-  { value: "ingredient", label: "재료비",      icon: "🧃" },
-  { value: "labor",      label: "인건비",      icon: "👤" },
-  { value: "utility",    label: "공과금",      icon: "💡" },
-  { value: "other",      label: "기타",        icon: "📦" },
+  { value: "rent", label: "월세·임대료", icon: "🏠" },
+  { value: "ingredient", label: "재료비", icon: "🧃" },
+  { value: "labor", label: "인건비", icon: "👤" },
+  { value: "utility", label: "공과금", icon: "💡" },
+  { value: "other", label: "기타", icon: "📦" },
 ];
 
 const CATEGORY_MAP = Object.fromEntries(CATEGORIES.map((c) => [c.value, c]));
@@ -46,8 +46,10 @@ export default function ExpensesPage() {
   }, []);
 
   const getAuthHeader = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    return { "X-User-Id": user?.id ?? "" };
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    return user ? { "X-User-Id": user.id } : {};
   };
 
   const fetchEntries = async () => {
@@ -72,7 +74,10 @@ export default function ExpensesPage() {
     setLoading(true);
     setError(null);
 
-    const headers = { ...(await getAuthHeader()), "Content-Type": "application/json" };
+    const headers = {
+      ...(await getAuthHeader()),
+      "Content-Type": "application/json",
+    };
     const body = JSON.stringify({
       date: form.date,
       amount: Number(form.amount),
@@ -81,7 +86,9 @@ export default function ExpensesPage() {
     });
 
     try {
-      const url = editingId ? `${apiUrl}/expenses/${editingId}` : `${apiUrl}/expenses/`;
+      const url = editingId
+        ? `${apiUrl}/expenses/${editingId}`
+        : `${apiUrl}/expenses/`;
       const method = editingId ? "PUT" : "POST";
       const res = await fetch(url, { method, headers, body });
 
@@ -201,7 +208,9 @@ export default function ExpensesPage() {
           {/* 날짜 + 금액 */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">날짜</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                날짜
+              </label>
               <input
                 type="date"
                 value={form.date}
@@ -211,7 +220,9 @@ export default function ExpensesPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">금액 (원)</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                금액 (원)
+              </label>
               <input
                 type="number"
                 value={form.amount}
@@ -226,7 +237,9 @@ export default function ExpensesPage() {
 
           {/* 카테고리 */}
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1.5">카테고리</label>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">
+              카테고리
+            </label>
             <div className="flex flex-wrap gap-2">
               {CATEGORIES.map((cat) => (
                 <button
@@ -280,8 +293,12 @@ export default function ExpensesPage() {
             {success
               ? "✓ 완료"
               : loading
-                ? editingId ? "수정 중..." : "저장 중..."
-                : editingId ? "수정 저장" : "비용 저장"}
+                ? editingId
+                  ? "수정 중..."
+                  : "저장 중..."
+                : editingId
+                  ? "수정 저장"
+                  : "비용 저장"}
           </button>
         </form>
       </div>
@@ -305,7 +322,9 @@ export default function ExpensesPage() {
           <div className="text-center py-10">
             <p className="text-3xl mb-3 text-gray-300">📦</p>
             <p className="text-sm text-gray-400">아직 입력된 비용이 없습니다</p>
-            <p className="text-xs text-gray-400 mt-1">위 폼에서 첫 지출을 기록해보세요</p>
+            <p className="text-xs text-gray-400 mt-1">
+              위 폼에서 첫 지출을 기록해보세요
+            </p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -330,7 +349,9 @@ export default function ExpensesPage() {
                         {entry.date} · {cat?.label ?? entry.category}
                       </p>
                       {entry.memo && (
-                        <p className="text-xs text-gray-400 truncate">{entry.memo}</p>
+                        <p className="text-xs text-gray-400 truncate">
+                          {entry.memo}
+                        </p>
                       )}
                     </div>
                   </div>
@@ -343,9 +364,18 @@ export default function ExpensesPage() {
                       onClick={() => handleEdit(entry)}
                       className="text-gray-400 hover:text-brand-500 transition-colors p-1"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                        />
                       </svg>
                     </button>
                     <button
@@ -354,14 +384,38 @@ export default function ExpensesPage() {
                       className="text-gray-400 hover:text-red-500 transition-colors p-1 disabled:opacity-40"
                     >
                       {deletingId === entry.id ? (
-                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                        <svg
+                          className="w-4 h-4 animate-spin"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          />
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8v8H4z"
+                          />
                         </svg>
                       ) : (
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
                         </svg>
                       )}
                     </button>

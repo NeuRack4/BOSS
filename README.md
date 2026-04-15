@@ -4,7 +4,7 @@
 
 > 서울 F&B 소상공인을 위한 Proactive AI 비서
 
-[![version](https://img.shields.io/badge/version-0.9.0-blue.svg)](https://semver.org)
+[![version](https://img.shields.io/badge/version-0.12.0-blue.svg)](https://semver.org)
 [![license](https://img.shields.io/badge/license-MIT-green.svg)]()
 
 창업자가 요청하지 않아도 에이전트가 먼저 챙깁니다.
@@ -57,16 +57,17 @@
 - Step 3 — 위치 정보: 주소, 면적
 - Step 4 — 필요 서류 선택 → BOSS에게 초안 위임
 
-### 2. 입지 분석 시뮬레이션
+### 2. 입지 분석 시뮬레이션 + ML 매출 예측 (v0.12.0)
 
-- 마포구 9개 상권(홍대입구·합정·연남동·망원동·공덕·성산동·마포대로·아현동·신수동) 비교 분석
-- 데이터 소스: 서울 열린데이터 `VwsmAdstrdStorW`(상가업소 현황) + `VwsmAdstrdFlpopW`(유동인구) + 마포구 개폐업 통계
+- **서울 전체 25개 자치구** 상권 데이터 기반 ML 매출 예측 (v0.12.0 확장)
+- 마포구 9개 상권(홍대입구·합정·연남동·망원동·공덕·성산동·마포대로·아현동·신수동) 상세 시뮬레이션
+- 데이터 소스: 서울 열린데이터 + 소상공인365 부동산 임대료 + 대중교통 접근성 + 서울시 상권분석서비스 추정매출
 - 5개 지표: 포화도 지수 / 예상 월매출 / 손익분기(BEP) / 생존율 / 성장 잠재력
-- 상권별 위험도 등급 (LOW / MED / HIGH)
+- **개인화 ML 예측**: 좌석 수·영업시간·객단가·영업일 입력 → 상권별 맞춤 월 매출 예측 (RandomForest)
+- 상권 유형 분류: 골목상권 / 발달상권 / 전통시장 / 관광특구
 - Claude LLM 기반 종합 해석 리포트
-- 분석 결과 7일 캐시 (Supabase `location_reports`)
-- 레이더 차트·생존율 바 차트 시각화
-- 검색 이력 자동 저장 및 원클릭 재실행
+- 입지분석 세션 저장 (예산·조건·예측 결과 — `location_analysis_sessions`)
+- 레이더 차트·생존율 바 차트·AI 매출 예측 바 차트 시각화
 
 ### 3. 지원사업 모니터링 + 신청서 초안 자동 작성 (v0.9.0)
 
@@ -269,27 +270,38 @@
 | POST   | `/founders`                         | 창업자 프로파일 생성                               |
 | GET    | `/founders/{id}`                    | 창업자 정보 조회                                   |
 | GET    | `/founders/me/state`                | 창업자 상태머신 조회                               |
-| GET    | `/location/districts`               | 마포구 분석 가능 상권 목록                         |
+| GET    | `/location/districts`               | 분석 가능 상권 목록                                |
 | POST   | `/location/analyze`                 | 상권 비교 분석 실행 (7일 캐시)                     |
 | GET    | `/location/history`                 | 창업자 입지 검색 이력                              |
 | POST   | `/sales`                            | 매출 데이터 입력                                   |
 | GET    | `/sales`                            | 매출 내역 조회                                     |
 | GET    | `/sales/summary`                    | 매출 요약 (카테고리·시간대별)                      |
+| POST   | `/sales-items/bulk`                 | 메뉴별 거래 일괄 저장                              |
+| GET    | `/sales-items/summary`              | 월별 메뉴별 집계                                   |
+| POST   | `/menus/`                           | 메뉴 추가                                          |
+| GET    | `/menus/`                           | 메뉴 목록 조회                                     |
+| PUT    | `/menus/{menu_id}`                  | 메뉴 수정                                          |
+| DELETE | `/menus/{menu_id}`                  | 메뉴 삭제                                          |
+| POST   | `/expenses/`                        | 비용 입력                                          |
+| GET    | `/expenses/summary`                 | 월별 비용 요약                                     |
+| POST   | `/ocr/receipt`                      | 영수증 사진 → 항목 추출                            |
+| POST   | `/ocr/menu`                         | 메뉴판 사진 → 메뉴 목록 추출                       |
+| POST   | `/ocr/sales-file`                   | POS CSV/Excel → Claude 컬럼 자동 인식·매핑         |
+| POST   | `/marketing/content`                | SNS 콘텐츠 초안 생성 (인스타·블로그·이벤트·메뉴)   |
+| GET    | `/recommend/areas`                  | 자본금 기반 상권 추천                              |
+| GET    | `/map/overview`                     | 마포구 9개 상권 GeoJSON                            |
 | GET    | `/insights`                         | AI 인사이트 (전년 동월·상권 평균·공휴일·기상 보정) |
+| GET    | `/insights/menu-analysis`           | 월별 TOP 메뉴 + Claude 추천 액션                   |
 | GET    | `/subsidies`                        | 지원사업 목록                                      |
+| POST   | `/subsidies/{id}/draft`             | 지원사업 신청서 초안 생성 (HWP 파싱)               |
+| PUT    | `/subsidies/{id}/draft/answers`     | 신청서 답변 저장                                   |
 | GET    | `/tax/deadlines`                    | 세금 기한 조회                                     |
-| POST   | `/tax/deadlines/sync`               | 세금 기한 공공데이터 동기화                        |
-| POST   | `/tax/draft`                        | 세금 신고서 초안 생성 (체크리스트)                 |
 | POST   | `/tax/vat-draft`                    | 부가가치세 신고서 PDF 생성 (국세청 서식)           |
 | GET    | `/tax/vat-draft/{id}/download`      | 부가가치세 신고서 PDF 다운로드                     |
 | GET    | `/tax/vat-draft/{id}/hometax-guide` | 홈택스 단계별 입력 가이드 조회                     |
 | POST   | `/triggers/run`                     | 트리거 수동 실행                                   |
 | GET    | `/drafts`                           | 생성된 서류 초안 목록                              |
-| GET    | `/drafts/{id}/download`             | 초안 PDF 다운로드                                  |
 | POST   | `/pdf-forms/fill`                   | 정부 표준서식 PDF 좌표 오버레이 (4종)              |
-| GET    | `/pdf-forms/templates`              | 지원 서식 목록 및 필드 스키마                      |
-| POST   | `/rag/ingest/all`                   | docs/ 전체 문서 pgvector 수집                      |
-| POST   | `/rag/ingest/file`                  | 특정 파일 pgvector 수집                            |
 | POST   | `/rag/search`                       | 법령 하이브리드 검색 (3-way RRF)                   |
 | POST   | `/rag/summarize`                    | 검색 결과 Claude 요약 (마크다운 브리프)            |
 | GET    | `/rag/stats`                        | 카테고리별 저장 문서 수                            |

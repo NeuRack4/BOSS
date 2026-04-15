@@ -61,20 +61,37 @@ async def match_programs(user_id: str) -> list[dict]:
         business_type=BusinessType.CAFE,
         region="마포구",
     )
+    if not programs:
+        return programs
 
     supabase = get_supabase()
+
+    # external_id(text) → subsidy_programs.id(bigint) 변환
+    external_ids = [p["id"] for p in programs]
+    db_rows = (
+        supabase.table("subsidy_programs")
+        .select("id, external_id")
+        .in_("external_id", external_ids)
+        .execute()
+        .data
+    )
+    ext_to_internal: dict[str, int] = {r["external_id"]: r["id"] for r in db_rows}
+
     rows = [
         {
             "user_id": user_id,
-            "program_id": p["id"],
+            "program_id": ext_to_internal[p["id"]],
             "score": p.get("score", 0.0),
-            "deadline": p.get("deadline"),
+            "deadline": p.get("deadline") or None,
             "status": "pending",
         }
         for p in programs
+        if p["id"] in ext_to_internal  # DB에 아직 sync되지 않은 공고는 스킵
     ]
 
     if rows:
-        supabase.table("subsidy_matches").upsert(rows).execute()
+        supabase.table("subsidy_matches").upsert(
+            rows, on_conflict="user_id,program_id"
+        ).execute()
 
     return programs
