@@ -50,9 +50,12 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
   - `## 마케팅 제안` 섹션에 추천 홍보 메뉴·채널·타이밍·콘텐츠 방향 필수 포함
 - **인사이트 페이지** (`frontend/app/dashboard/insights/page.tsx`)
   - 탭 시스템 추가: "✦ AI 매출 분석" / "☕ 메뉴별 분석"
-  - `parseInsight()` 함수: `## ` 헤더 기준 섹션 분리 파싱
   - `InsightCard` 컴포넌트: 마케팅 제안 섹션을 오렌지 강조 카드로 분리 렌더링
   - 오렌지 카드 "콘텐츠 바로 만들기 →" 버튼 → `/dashboard/marketing` 딥링크
+  - `parseInsight()` 제거 → `InsightMarkdown` 컴포넌트로 전체 교체
+- **InsightMarkdown 컴포넌트** (`frontend/components/insights/InsightMarkdown.tsx`) 신규
+  - `react-markdown` + `remark-gfm` + Tailwind `prose` 클래스 기반 마크다운 렌더링
+  - `##` 헤더·굵기·목록·인용·코드 등 Claude 응답 전체 문법 정상 렌더링
 - **매출 관리 페이지** (`frontend/app/dashboard/sales/page.tsx`)
   - "📊 파일로 가져오기" 버튼 추가 (CSV/Excel 업로드)
   - 컬럼 매핑 미리보기 + 행별 체크박스 선택 후 일괄 등록
