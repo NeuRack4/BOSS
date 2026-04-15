@@ -105,7 +105,9 @@ export default function SubsidiesPage() {
   }, [range]);
 
   const fetchAutoMatch = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return;
     setAutoMatchLoading(true);
     try {
@@ -258,10 +260,13 @@ export default function SubsidiesPage() {
       <section className="glass-card rounded-xl p-5 space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-base font-bold text-gray-900">✦ 내 상황에 맞는 추천</h2>
+            <h2 className="text-base font-bold text-gray-900">
+              ✦ 내 상황에 맞는 추천
+            </h2>
             {autoMatch && (
               <p className="text-xs text-gray-400 mt-0.5">
-                검색 쿼리: <span className="text-brand-500">{autoMatch.query}</span>
+                검색 쿼리:{" "}
+                <span className="text-brand-500">{autoMatch.query}</span>
               </p>
             )}
           </div>
@@ -275,11 +280,15 @@ export default function SubsidiesPage() {
         </div>
 
         {autoMatchLoading && !autoMatch && (
-          <p className="text-sm text-gray-400">프로필 기반으로 지원사업을 분석하고 있습니다…</p>
+          <p className="text-sm text-gray-400">
+            프로필 기반으로 지원사업을 분석하고 있습니다…
+          </p>
         )}
 
         {autoMatch && autoMatch.results.length === 0 && (
-          <p className="text-sm text-gray-500">현재 조건에 맞는 추천 지원사업이 없습니다.</p>
+          <p className="text-sm text-gray-500">
+            현재 조건에 맞는 추천 지원사업이 없습니다.
+          </p>
         )}
 
         {autoMatch && autoMatch.results.length > 0 && (
@@ -301,9 +310,14 @@ export default function SubsidiesPage() {
                     </span>
                   )}
                 </div>
-                <p className="text-sm font-medium text-gray-900 mt-0.5 line-clamp-2">{p.title}</p>
+                <p className="text-sm font-medium text-gray-900 mt-0.5 line-clamp-2">
+                  {p.title}
+                </p>
                 <p className="text-xs text-gray-500 mt-1">
-                  {p.period_raw ?? (p.start_date && p.end_date ? `${p.start_date} ~ ${p.end_date}` : "기간 미정")}
+                  {p.period_raw ??
+                    (p.start_date && p.end_date
+                      ? `${p.start_date} ~ ${p.end_date}`
+                      : "기간 미정")}
                   {p.organization ? ` · ${p.organization}` : ""}
                 </p>
               </li>

@@ -359,24 +359,35 @@ metadata 예시:
 
 ### 마이그레이션 목록
 
-| 파일                                                  | 목적                                                |
-| ----------------------------------------------------- | --------------------------------------------------- |
-| `001_initial.sql`                                     | 기본 테이블                                         |
-| `002_bge_m3_vector.sql` / `002_bge_vector.sql`        | pgvector 확장 + 임베딩 설정                         |
-| `002_location.sql`                                    | 입지 리포트 테이블                                  |
-| `002_tax_deadlines.sql`                               | 세금 기한 시드                                      |
-| `003_bge_m3_dimension.sql` / `003_vector_dim_bge.sql` | 벡터 차원 확정 (1024)                               |
-| `004_hybrid_law_chunks.sql`                           | law_chunks + FTS 인덱스                             |
-| `005_financials.sql`                                  | 창업자 재무 테이블 + mock                           |
-| `006_fix_hybrid_search.sql`                           | 초기 RRF 함수                                       |
-| `007_law_chunks_table.sql`                            | 스키마 리파인                                       |
-| `008_fix_vector_text_param.sql`                       | `vector` → `text` 파라미터 (PostgREST 워크어라운드) |
-| `009_fix_ivfflat_index.sql`                           | ivfflat → HNSW 교체                                 |
-| `010_weather.sql`                                     | 기상 데이터 테이블                                  |
-| `011_hybrid_search_cosine_similarity.sql`             | RRF score ↔ 실제 cosine similarity 컬럼 분리        |
-| `012_hybrid_search_trigram.sql`                       | pg_trgm 3-way RRF + `char_length > 40` 필터         |
-| `013_subsidy_programs.sql`                            | 지원사업 공고 테이블 + fetch_log 멱등성             |
-| `014_subsidy_programs_search.sql`                     | 공고 전용 embedding + `search_subsidies` RPC        |
+| 파일                                                  | 목적                                                   |
+| ----------------------------------------------------- | ------------------------------------------------------ |
+| `001_initial.sql`                                     | 기본 테이블                                            |
+| `002_bge_m3_vector.sql` / `002_bge_vector.sql`        | pgvector 확장 + 임베딩 설정                            |
+| `002_location.sql`                                    | 입지 리포트 테이블                                     |
+| `002_tax_deadlines.sql`                               | 세금 기한 시드                                         |
+| `003_bge_m3_dimension.sql` / `003_vector_dim_bge.sql` | 벡터 차원 확정 (1024)                                  |
+| `004_hybrid_law_chunks.sql`                           | law_chunks + FTS 인덱스                                |
+| `005_financials.sql`                                  | 창업자 재무 테이블 + mock                              |
+| `006_fix_hybrid_search.sql`                           | 초기 RRF 함수                                          |
+| `007_law_chunks_table.sql`                            | 스키마 리파인                                          |
+| `008_fix_vector_text_param.sql`                       | `vector` → `text` 파라미터 (PostgREST 워크어라운드)    |
+| `009_fix_ivfflat_index.sql`                           | ivfflat → HNSW 교체                                    |
+| `010_weather.sql`                                     | 기상 데이터 테이블                                     |
+| `011_hybrid_search_cosine_similarity.sql`             | RRF score ↔ 실제 cosine similarity 컬럼 분리           |
+| `012_hybrid_search_trigram.sql`                       | pg_trgm 3-way RRF + `char_length > 40` 필터            |
+| `013_subsidy_programs.sql`                            | 지원사업 공고 테이블 + fetch_log 멱등성                |
+| `014_subsidy_programs_search.sql`                     | 공고 전용 embedding + `search_subsidies` RPC           |
+| `015_expenses.sql`                                    | 비용 관리 테이블 (RLS 4정책)                           |
+| `015_subsidy_attachments.sql`                         | HWP 메타데이터·원문 캐시                               |
+| `016_subsidy_draft_answers.sql`                       | 신청서 답변 저장 테이블                                |
+| `017_menus_and_sales_items.sql`                       | menus + sales_items 테이블                             |
+| `017_seoul_open_cache.sql`                            | 서울 열린데이터 API 캐시                               |
+| `018_fix_subsidy_matches_fk.sql`                      | subsidy_matches FK 제약 수정                           |
+| `018_seoul_raw_data.sql`                              | seoul_store_stats + seoul_flpop_stats + sbiz_tradearea |
+| `019_district_features.sql`                           | 행정동별 ML 피처 테이블                                |
+| `019_founder_financials.sql`                          | 창업자 재무 테이블 보완                                |
+| `020_location_sessions.sql`                           | 입지분석 개인화 세션 저장                              |
+| `021_district_features_rename.sql`                    | district_features 테이블 명칭 정비                     |
 
 ---
 
@@ -388,7 +399,7 @@ metadata 예시:
 - **MINOR**: 하위 호환 기능 추가
 - **PATCH**: 버그 수정
 
-현재 버전: `v0.9.0`
+현재 버전: `v0.12.0`
 
 커밋 메시지 컨벤션:
 

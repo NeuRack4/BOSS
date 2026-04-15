@@ -28,30 +28,28 @@ interface Props {
 export default function ScoreRadarChart({ scores }: Props) {
   if (scores.length === 0) return null;
 
-  // 레이더용 정규화 (매출·BEP)
+  // 레이더용 스케일링 (매출·BEP)
+  // 0 기준 비율 스케일 — min-max 정규화 대신 사용해 극단값(0/100 강제) 방지
   const revenues = scores.map((s) => s.estimated_monthly_revenue);
   const beps = scores.map((s) => Math.min(s.bep_months, 120));
   const maxRev = Math.max(...revenues);
-  const minRev = Math.min(...revenues);
-  const maxBep = Math.max(...beps);
   const minBep = Math.min(...beps);
 
-  const norm = (v: number, mn: number, mx: number) =>
-    mx === mn ? 50 : Math.round(((v - mn) / (mx - mn)) * 100);
-  const normInv = (v: number, mn: number, mx: number) =>
-    mx === mn ? 50 : Math.round((1 - (v - mn) / (mx - mn)) * 100);
+  // 매출: 최대값 대비 비율 (최고 상권만 100)
+  const revScore = (v: number) =>
+    maxRev === 0 ? 50 : Math.round((v / maxRev) * 100);
+
+  // BEP: 최단 기준 비율 역산 (최단 상권만 100, 나머지는 비례)
+  const bepScore = (v: number) =>
+    v === 0 ? 100 : Math.round((minBep / v) * 100);
 
   const data = AXES.map(({ key, label }) => {
     const entry: Record<string, string | number> = { axis: label };
     scores.forEach((s) => {
       if (key === "_rev_score") {
-        entry[s.district] = norm(s.estimated_monthly_revenue, minRev, maxRev);
+        entry[s.district] = revScore(s.estimated_monthly_revenue);
       } else if (key === "_bep_score") {
-        entry[s.district] = normInv(
-          Math.min(s.bep_months, 120),
-          minBep,
-          maxBep,
-        );
+        entry[s.district] = bepScore(Math.min(s.bep_months, 120));
       } else {
         entry[s.district] = (s as unknown as Record<string, number>)[key] ?? 0;
       }

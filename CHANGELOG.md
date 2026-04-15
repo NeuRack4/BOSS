@@ -4,6 +4,58 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
 
 ---
 
+## [v0.12.0] — 2026-04-15
+
+### 기능 — 서울 전체 상권 ML 매출 예측 + 입지분석 고도화
+
+#### Added
+
+- **ML 매출 예측 모듈** (`backend/ml/`)
+  - `features.py` — 상권 단위 피처 엔지니어링 (sbiz_tradearea 매출 레이블 + flpop 유동인구 → district_features)
+  - `train.py` — RandomForest 기반 월 매출 예측 모델 학습 (개인 조건 + 상권 피처 5종)
+  - `predict.py` — `predict_one()`: 개인 조건 + 상권 피처 → 실시간 매출 예측 / `predict_and_store()`: 전체 상권 배치 예측 → DB 저장
+  - `zones.py` — 상권 유형별(골목·발달·전통·관광) 지역 영역 분석
+  - `models/revenue_model.pkl` — 학습된 모델 (서울 전체 상권 기반)
+- **데이터 파서 3종** (`backend/data/parsers/`)
+  - `reb_parser.py` — 소상공인365 부동산 임대료 데이터 파서
+  - `sbiz_parser.py` — 서울시 상권분석서비스 추정매출 파서 (OA-15572 / 15147229)
+  - `transit_parser.py` — 지하철역·버스정류장 반경 접근성 파서
+- **시드 데이터** (`backend/data/seeds/`)
+  - `flpop/`, `sbiz/`, `reb/`, `transit/` 디렉토리 — 서울 전체 상권 데이터
+  - `seoul_flpop_stats.parquet`, `seoul_store_stats.parquet` — 전처리 완료 파케이 파일
+- **서울 전체 크롤러** (`backend/data/crawlers/seoul_open_full.py`)
+  - 마포구 한정 → 서울 전체 25개 자치구 상권 데이터 수집 확장
+- **DB 마이그레이션 5종** (`backend/db/migrations/`)
+  - `017_seoul_open_cache.sql` — 서울 열린데이터 API 캐시 테이블
+  - `018_seoul_raw_data.sql` — `seoul_store_stats` + `seoul_flpop_stats` + `sbiz_tradearea` 테이블
+  - `019_district_features.sql` — 행정동별 ML 피처 테이블 (카페 현황·유동인구·접근성·임대료·레이블)
+  - `020_location_sessions.sql` — 입지분석 개인화 세션 저장 테이블 (예산·조건·예측 결과)
+  - `021_district_features_rename.sql` — 테이블 명칭 정비
+- **입지분석 프론트엔드 컴포넌트 3종** (`frontend/components/location/`)
+  - `AiRevenueChart.tsx` — 서울 전체 상권 AI 매출 예측 바 차트 (상권 유형별 컬러 구분)
+  - `MapoDataViewer.tsx` — 마포구 9개 상권 상세 데이터 뷰어
+  - `PersonalAnalysisForm.tsx` — 개인 조건 입력 폼 (좌석 수·영업시간·객단가·영업일)
+- **입지분석 대시보드 페이지** (`frontend/app/dashboard/location/`)
+  - `/location/` → `/dashboard/location/` 이동 (사이드바 통합)
+  - 서울 전체 상권 AI 매출 예측 탭 추가
+  - 개인 조건 입력 → 상권 맞춤 매출 예측 플로우
+- **시드 스크립트** (`backend/scripts/seed_seoul_ml.py`)
+  - 파케이 + CSV 시드 → `district_features` 테이블 일괄 적재
+
+#### Changed
+
+- **입지분석 에이전트** (`backend/agents/location.py`)
+  - 서울 전체 상권 ML 예측 파이프라인 통합 (기존 마포구 시뮬레이션 유지 + ML 레이어 추가)
+- **위치 라우터** (`backend/api/routers/location.py`)
+  - 개인화 세션 저장/조회 엔드포인트 추가
+  - `recommend` 라우터와 데이터 공유 구조 정비
+- **상수** (`backend/core/constants.py`)
+  - 서울 전체 자치구 코드 맵 추가 (25개 구)
+- **사이드바** (`frontend/app/dashboard/layout.tsx`)
+  - "입지 분석" 메뉴 경로 `/location` → `/dashboard/location` 업데이트
+
+---
+
 ## [v0.11.0] — 2026-04-15
 
 ### 기능 — 메뉴 관리 · POS 파일 가져오기 · 메뉴별 AI 분석 · AI 인사이트 마케팅 섹션
@@ -143,7 +195,7 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
   - 가족수당 행(y=596)에 금액이 삽입되던 문제 해결
 - **임금지급일 pre-print 원복** (`backend/api/routers/pdf_forms.py`)
   - "보수는 매월 25일" 서식 원문 흰 박스로 덮던 로직 제거 — 서식 그대로 보존
-- **근로자_동의 필드 제거** (`backend/api/routers/pdf_forms.py`, `frontend/app/drafts/[type]/page.tsx`)
+- **근로자\_동의 필드 제거** (`backend/api/routers/pdf_forms.py`, `frontend/app/drafts/[type]/page.tsx`)
   - 실제 서식에 없는 단독 체크박스 필드를 잘못 삽입하던 문제 해결 — 해당 필드 전체 삭제
 - **수령확인 V 체크 위치** (`backend/api/routers/pdf_forms.py`)
   - □ 글리프 내부에 정확히 위치하도록 x `396→403` 조정

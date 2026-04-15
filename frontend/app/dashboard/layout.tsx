@@ -23,6 +23,7 @@ const navItems = [
   { label: "AI 인사이트", href: "/dashboard/insights", icon: "✦" },
   { label: "창업 시뮬레이터", href: "/dashboard/startup", icon: "🚀" },
   { label: "상권 지도", href: "/dashboard/map", icon: "🗺️" },
+  { label: "입지 분석", href: "/dashboard/location", icon: "📍" },
   { label: "지원사업", href: "/dashboard/subsidies", icon: "📢" },
   { label: "알림", href: "/dashboard/notifications", icon: "🔔" },
   { label: "마이페이지", href: "/dashboard/profile", icon: "👤" },
@@ -38,8 +39,13 @@ export default function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [founderState, setFounderState] = useState<FounderStateData | null>(null);
-  const [cafeInfo, setCafeInfo] = useState({ name: "마포구 카페", district: "마포구" });
+  const [founderState, setFounderState] = useState<FounderStateData | null>(
+    null,
+  );
+  const [cafeInfo, setCafeInfo] = useState({
+    name: "마포구 카페",
+    district: "마포구",
+  });
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {

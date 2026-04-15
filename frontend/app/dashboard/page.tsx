@@ -51,7 +51,9 @@ export default function DashboardPage() {
   const router = useRouter();
   const today = new Date();
   const [summary, setSummary] = useState<Summary | null>(null);
-  const [expenseSummary, setExpenseSummary] = useState<ExpenseSummary | null>(null);
+  const [expenseSummary, setExpenseSummary] = useState<ExpenseSummary | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
   const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
 
@@ -124,7 +126,11 @@ export default function DashboardPage() {
       ? summary.current_total - expenseSummary.total_expenses
       : null;
   const netProfitColor =
-    netProfit != null ? (netProfit >= 0 ? "text-green-600" : "text-red-500") : "text-gray-400";
+    netProfit != null
+      ? netProfit >= 0
+        ? "text-green-600"
+        : "text-red-500"
+      : "text-gray-400";
 
   const stats = summary
     ? [
@@ -144,9 +150,14 @@ export default function DashboardPage() {
         },
         {
           label: "이번달 지출",
-          value: expenseSummary ? formatAmount(expenseSummary.total_expenses) : "-",
+          value: expenseSummary
+            ? formatAmount(expenseSummary.total_expenses)
+            : "-",
           icon: "↓",
-          color: expenseSummary && expenseSummary.total_expenses > 0 ? "text-red-500" : "text-gray-400",
+          color:
+            expenseSummary && expenseSummary.total_expenses > 0
+              ? "text-red-500"
+              : "text-gray-400",
         },
         {
           label: "순수익",
@@ -266,7 +277,9 @@ export default function DashboardPage() {
               />
               <Tooltip
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                formatter={(v: any) => [`${(v as number).toLocaleString()}원`, "매출"] as any}
+                formatter={(v: any) =>
+                  [`${(v as number).toLocaleString()}원`, "매출"] as any
+                }
                 contentStyle={{
                   fontSize: 12,
                   borderRadius: 8,

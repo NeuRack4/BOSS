@@ -28,9 +28,9 @@ export default function DistrictSelector({ selected, onChange }: Props) {
 
   return (
     <div>
-      <p className="text-slate-300 text-sm font-medium mb-3">
+      <p className="text-gray-700 text-sm font-medium mb-3">
         분석할 상권 선택{" "}
-        <span className="text-slate-500 font-normal">(복수 선택 가능)</span>
+        <span className="text-gray-400 font-normal">(복수 선택 가능)</span>
       </p>
       <div className="flex flex-wrap gap-2">
         {MAPO_DISTRICTS.map((d) => {
@@ -43,7 +43,7 @@ export default function DistrictSelector({ selected, onChange }: Props) {
                 ${
                   active
                     ? "bg-brand-500 border-brand-500 text-white"
-                    : "bg-white/5 border-white/10 text-slate-300 hover:border-brand-500/50 hover:text-white"
+                    : "bg-white border-surface-300 text-gray-600 hover:border-brand-500/50 hover:text-brand-600"
                 }`}
             >
               {d}
@@ -53,7 +53,7 @@ export default function DistrictSelector({ selected, onChange }: Props) {
         {selected.length > 0 && (
           <button
             onClick={() => onChange([])}
-            className="px-4 py-2 rounded-xl text-sm text-slate-500 hover:text-slate-300 transition-colors"
+            className="px-4 py-2 rounded-xl text-sm text-gray-400 hover:text-gray-600 transition-colors"
           >
             초기화
           </button>
