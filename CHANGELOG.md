@@ -4,6 +4,34 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
 
 ---
 
+## [v0.11.0] — 2026-04-15
+
+### 기능 — AI 인사이트 마케팅 강화 및 마크다운 렌더링 수정
+
+#### Added
+
+- **순수 React 마크다운 파서** (`frontend/app/dashboard/insights/page.tsx`)
+  - `Md` 컴포넌트: h1/h2/h3, bold/italic, ul/ol, hr을 라이브러리 없이 파싱
+  - `inline()` 헬퍼: `**bold**`, `*italic*` 인라인 파싱
+  - ReactMarkdown ESM 이슈 우회, `"use client"` 컴포넌트에서 안정적 동작
+
+#### Changed
+
+- **AI 분석 응답 품질** (`backend/api/routers/insights.py`)
+  - `max_tokens` 1024/800 → 8000 상향 (응답 잘림 현상 해소)
+  - 추천 액션: 마케팅 항목 필수 포함 — 플랫폼·요일·시간·해시태그 구체적 명시
+  - 마케팅 제안: 채널 & 타이밍에 구체적 요일·시간대, 콘텐츠 방향에 실제 캡션 예시 추가
+  - 모델 하드코딩 `"claude-sonnet-4-6"` → `get_settings().claude_model` 통일
+- **면책고지 분리 로직 수정** (`frontend/app/dashboard/insights/page.tsx`)
+  - 기존: `\n---\n` 기준 split → Claude가 `---` 섹션 구분자 사용 시 본문 전체가 disclaimer로 처리되는 버그
+  - 수정: `"본 내용은 참고용"` 텍스트 위치 기준 분리
+- **모델 설정 환경변수화** (`backend/core/config.py`)
+  - `claude_model: str = "claude-haiku-4-5-20251001"` 추가 — `.env`로 모델 교체 가능
+- **전체 에이전트 모델 통일** (`backend/agents/hiring.py`, `subsidy.py`, `subsidy_draft.py`, `tax.py`, `location.py`, `backend/api/routers/marketing.py`, `ocr.py`, `rag.py`, `backend/triggers/`)
+  - 하드코딩된 모델명 → `get_settings().claude_model` 로 일괄 변경
+
+---
+
 ## [v0.12.0] — 2026-04-15
 
 ### 기능 — 서울 전체 상권 ML 매출 예측 + 입지분석 고도화
