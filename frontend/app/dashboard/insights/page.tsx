@@ -648,8 +648,12 @@ function InsightCard({
 
   // 면책 고지: "본 내용은 참고용" 문장이 나오는 줄부터 분리
   const disclaimerIdx = normalized.search(/\n본 내용은 참고용/);
-  const body = disclaimerIdx >= 0 ? normalized.slice(0, disclaimerIdx).trim() : normalized.trim();
-  const disclaimer = disclaimerIdx >= 0 ? normalized.slice(disclaimerIdx).trim() : "";
+  const body =
+    disclaimerIdx >= 0
+      ? normalized.slice(0, disclaimerIdx).trim()
+      : normalized.trim();
+  const disclaimer =
+    disclaimerIdx >= 0 ? normalized.slice(disclaimerIdx).trim() : "";
 
   // 마케팅 제안 섹션 분리
   const marketingSplit = body.split(/\n(?=## 마케팅 제안)/);
@@ -724,13 +728,20 @@ function InsightCard({
 function inline(text: string): React.ReactNode[] {
   const out: React.ReactNode[] = [];
   const re = /(\*\*(.+?)\*\*|\*(.+?)\*)/g;
-  let last = 0, m: RegExpExecArray | null;
+  let last = 0,
+    m: RegExpExecArray | null;
   while ((m = re.exec(text))) {
     if (m.index > last) out.push(text.slice(last, m.index));
     out.push(
-      m[0].startsWith("**")
-        ? <strong key={m.index} className="font-semibold text-gray-900">{m[2]}</strong>
-        : <em key={m.index} className="italic">{m[3]}</em>
+      m[0].startsWith("**") ? (
+        <strong key={m.index} className="font-semibold text-gray-900">
+          {m[2]}
+        </strong>
+      ) : (
+        <em key={m.index} className="italic">
+          {m[3]}
+        </em>
+      ),
     );
     last = re.lastIndex;
   }
@@ -742,31 +753,98 @@ function Md({ text }: { text: string | null }) {
   if (!text) return null;
   const lines = text.replace(/\r\n/g, "\n").split("\n");
   const nodes: React.ReactNode[] = [];
-  let ul: string[] = [], ol: string[] = [], k = 0;
+  let ul: string[] = [],
+    ol: string[] = [],
+    k = 0;
 
   const flush = () => {
     if (ul.length) {
-      nodes.push(<ul key={k++} className="my-3 pl-5 list-disc space-y-1.5">{ul.map((t, i) => <li key={i} className="text-sm text-gray-700 leading-7">{inline(t)}</li>)}</ul>);
+      nodes.push(
+        <ul key={k++} className="my-3 pl-5 list-disc space-y-1.5">
+          {ul.map((t, i) => (
+            <li key={i} className="text-sm text-gray-700 leading-7">
+              {inline(t)}
+            </li>
+          ))}
+        </ul>,
+      );
       ul = [];
     }
     if (ol.length) {
-      nodes.push(<ol key={k++} className="my-3 pl-5 list-decimal space-y-1.5">{ol.map((t, i) => <li key={i} className="text-sm text-gray-700 leading-7">{inline(t)}</li>)}</ol>);
+      nodes.push(
+        <ol key={k++} className="my-3 pl-5 list-decimal space-y-1.5">
+          {ol.map((t, i) => (
+            <li key={i} className="text-sm text-gray-700 leading-7">
+              {inline(t)}
+            </li>
+          ))}
+        </ol>,
+      );
       ol = [];
     }
   };
 
   for (const raw of lines) {
     const t = raw.trim();
-    if (!t) { flush(); continue; }
+    if (!t) {
+      flush();
+      continue;
+    }
     let m: RegExpMatchArray | null;
-    if (/^---+$/.test(t)) { flush(); nodes.push(<hr key={k++} className="my-4 border-surface-300" />); continue; }
-    if ((m = t.match(/^# (.+)/)))   { flush(); nodes.push(<h1 key={k++} className="text-base font-bold text-gray-900 mt-5 mb-2">{inline(m[1])}</h1>); continue; }
-    if ((m = t.match(/^## (.+)/)))  { flush(); nodes.push(<h2 key={k++} className="text-sm font-bold text-brand-600 mt-5 mb-2 pl-3 border-l-4 border-brand-500">{inline(m[1])}</h2>); continue; }
-    if ((m = t.match(/^### (.+)/))) { flush(); nodes.push(<h3 key={k++} className="text-xs font-bold text-gray-500 uppercase tracking-wider mt-4 mb-1.5">{inline(m[1])}</h3>); continue; }
-    if ((m = t.match(/^[-*] (.+)/)))  { ol.length && flush(); ul.push(m[1]); continue; }
-    if ((m = t.match(/^\d+\. (.+)/))) { ul.length && flush(); ol.push(m[1]); continue; }
+    if (/^---+$/.test(t)) {
+      flush();
+      nodes.push(<hr key={k++} className="my-4 border-surface-300" />);
+      continue;
+    }
+    if ((m = t.match(/^# (.+)/))) {
+      flush();
+      nodes.push(
+        <h1 key={k++} className="text-base font-bold text-gray-900 mt-5 mb-2">
+          {inline(m[1])}
+        </h1>,
+      );
+      continue;
+    }
+    if ((m = t.match(/^## (.+)/))) {
+      flush();
+      nodes.push(
+        <h2
+          key={k++}
+          className="text-sm font-bold text-brand-600 mt-5 mb-2 pl-3 border-l-4 border-brand-500"
+        >
+          {inline(m[1])}
+        </h2>,
+      );
+      continue;
+    }
+    if ((m = t.match(/^### (.+)/))) {
+      flush();
+      nodes.push(
+        <h3
+          key={k++}
+          className="text-xs font-bold text-gray-500 uppercase tracking-wider mt-4 mb-1.5"
+        >
+          {inline(m[1])}
+        </h3>,
+      );
+      continue;
+    }
+    if ((m = t.match(/^[-*] (.+)/))) {
+      ol.length && flush();
+      ul.push(m[1]);
+      continue;
+    }
+    if ((m = t.match(/^\d+\. (.+)/))) {
+      ul.length && flush();
+      ol.push(m[1]);
+      continue;
+    }
     flush();
-    nodes.push(<p key={k++} className="text-sm text-gray-700 leading-7 my-2">{inline(t)}</p>);
+    nodes.push(
+      <p key={k++} className="text-sm text-gray-700 leading-7 my-2">
+        {inline(t)}
+      </p>,
+    );
   }
   flush();
   return <div className="space-y-0.5">{nodes}</div>;
