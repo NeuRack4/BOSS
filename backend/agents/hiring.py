@@ -118,7 +118,7 @@ async def generate_job_posting_draft(ctx) -> dict:
     neighborhood = getattr(ctx, "region", "마포구")
 
     message = await client.messages.create(
-        model="claude-sonnet-4-6",
+        model=get_settings().claude_model,
         max_tokens=3000,
         system=_POSTING_SYSTEM_PROMPT,
         messages=[
@@ -214,7 +214,7 @@ async def generate_labor_contract_draft(ctx, weekly_hours: float = 20.0) -> dict
     wage_sim = calc_total_labor_cost(MIN_WAGE_2025, weekly_hours)
 
     message = await client.messages.create(
-        model="claude-sonnet-4-6",
+        model=get_settings().claude_model,
         max_tokens=3000,
         system=_CONTRACT_SYSTEM_PROMPT,
         messages=[

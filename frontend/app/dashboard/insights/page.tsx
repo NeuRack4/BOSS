@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import InsightMarkdown from "@/components/insights/InsightMarkdown";
 import { supabase } from "@/lib/supabase";
 
 type Summary = {
@@ -621,7 +620,7 @@ export default function InsightsPage() {
                       {year}년 {month}월
                     </span>
                   </div>
-                  <InsightMarkdown>{menuResult.insight}</InsightMarkdown>
+                  <Md text={menuResult.insight} />
                 </div>
               )}
             </>
@@ -645,15 +644,19 @@ function InsightCard({
   year: number;
   month: number;
 }) {
-  // 면책 고지(---) 앞부분 / 마케팅 제안(## 마케팅 제안) 분리
   const normalized = insight.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-  const [beforeDisclaimer, disclaimerRaw] = normalized.split(/\n---\n/);
-  const marketingSplit = beforeDisclaimer.split(/\n(?=## 마케팅 제안)/);
+
+  // 면책 고지: "본 내용은 참고용" 문장이 나오는 줄부터 분리
+  const disclaimerIdx = normalized.search(/\n본 내용은 참고용/);
+  const body = disclaimerIdx >= 0 ? normalized.slice(0, disclaimerIdx).trim() : normalized.trim();
+  const disclaimer = disclaimerIdx >= 0 ? normalized.slice(disclaimerIdx).trim() : "";
+
+  // 마케팅 제안 섹션 분리
+  const marketingSplit = body.split(/\n(?=## 마케팅 제안)/);
   const mainBody = marketingSplit[0].trim();
   const marketingBody = marketingSplit[1]
     ? marketingSplit[1].replace(/^## 마케팅 제안\n?/, "").trim()
     : null;
-  const disclaimer = disclaimerRaw?.trim() ?? "";
 
   return (
     <div className="space-y-4">
@@ -680,7 +683,7 @@ function InsightCard({
         </div>
 
         {/* 본문 */}
-        <InsightMarkdown>{mainBody}</InsightMarkdown>
+        <Md text={mainBody} />
 
         {/* 면책 고지 */}
         {disclaimer && (
@@ -710,11 +713,63 @@ function InsightCard({
               콘텐츠 바로 만들기 →
             </Link>
           </div>
-          <InsightMarkdown>{marketingBody}</InsightMarkdown>
+          <Md text={marketingBody} />
         </div>
       )}
     </div>
   );
+}
+
+/* ── 마크다운 렌더러 ── */
+function inline(text: string): React.ReactNode[] {
+  const out: React.ReactNode[] = [];
+  const re = /(\*\*(.+?)\*\*|\*(.+?)\*)/g;
+  let last = 0, m: RegExpExecArray | null;
+  while ((m = re.exec(text))) {
+    if (m.index > last) out.push(text.slice(last, m.index));
+    out.push(
+      m[0].startsWith("**")
+        ? <strong key={m.index} className="font-semibold text-gray-900">{m[2]}</strong>
+        : <em key={m.index} className="italic">{m[3]}</em>
+    );
+    last = re.lastIndex;
+  }
+  if (last < text.length) out.push(text.slice(last));
+  return out;
+}
+
+function Md({ text }: { text: string | null }) {
+  if (!text) return null;
+  const lines = text.replace(/\r\n/g, "\n").split("\n");
+  const nodes: React.ReactNode[] = [];
+  let ul: string[] = [], ol: string[] = [], k = 0;
+
+  const flush = () => {
+    if (ul.length) {
+      nodes.push(<ul key={k++} className="my-3 pl-5 list-disc space-y-1.5">{ul.map((t, i) => <li key={i} className="text-sm text-gray-700 leading-7">{inline(t)}</li>)}</ul>);
+      ul = [];
+    }
+    if (ol.length) {
+      nodes.push(<ol key={k++} className="my-3 pl-5 list-decimal space-y-1.5">{ol.map((t, i) => <li key={i} className="text-sm text-gray-700 leading-7">{inline(t)}</li>)}</ol>);
+      ol = [];
+    }
+  };
+
+  for (const raw of lines) {
+    const t = raw.trim();
+    if (!t) { flush(); continue; }
+    let m: RegExpMatchArray | null;
+    if (/^---+$/.test(t)) { flush(); nodes.push(<hr key={k++} className="my-4 border-surface-300" />); continue; }
+    if ((m = t.match(/^# (.+)/)))   { flush(); nodes.push(<h1 key={k++} className="text-base font-bold text-gray-900 mt-5 mb-2">{inline(m[1])}</h1>); continue; }
+    if ((m = t.match(/^## (.+)/)))  { flush(); nodes.push(<h2 key={k++} className="text-sm font-bold text-brand-600 mt-5 mb-2 pl-3 border-l-4 border-brand-500">{inline(m[1])}</h2>); continue; }
+    if ((m = t.match(/^### (.+)/))) { flush(); nodes.push(<h3 key={k++} className="text-xs font-bold text-gray-500 uppercase tracking-wider mt-4 mb-1.5">{inline(m[1])}</h3>); continue; }
+    if ((m = t.match(/^[-*] (.+)/)))  { ol.length && flush(); ul.push(m[1]); continue; }
+    if ((m = t.match(/^\d+\. (.+)/))) { ul.length && flush(); ol.push(m[1]); continue; }
+    flush();
+    nodes.push(<p key={k++} className="text-sm text-gray-700 leading-7 my-2">{inline(t)}</p>);
+  }
+  flush();
+  return <div className="space-y-0.5">{nodes}</div>;
 }
 
 function BenchmarkCard({ benchmark }: { benchmark: BenchmarkResult }) {

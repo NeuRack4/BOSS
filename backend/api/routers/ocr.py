@@ -101,7 +101,7 @@ async def _call_vision(image_b64: str, media_type: str, prompt: str) -> dict:
     settings = get_settings()
     client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
     message = await client.messages.create(
-        model="claude-sonnet-4-6",
+        model=get_settings().claude_model,
         max_tokens=1024,
         messages=[{
             "role": "user",
@@ -354,7 +354,7 @@ async def _detect_column_mapping(headers: list[str], sample_rows: list[dict]) ->
     )
     client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
     msg = await client.messages.create(
-        model="claude-sonnet-4-6",
+        model=get_settings().claude_model,
         max_tokens=512,
         messages=[{"role": "user", "content": prompt}],
     )

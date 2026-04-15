@@ -48,13 +48,16 @@ _SYSTEM_PROMPT = """
 2~3줄. 참고 데이터 수치를 직접 인용해 근거 제시.
 
 ## 추천 액션
-번호 목록으로 2~3가지. 1인 운영자가 당장 실행 가능한 구체적 행동.
+번호 목록으로 3가지. 각 항목은 아래 기준으로 작성:
+- 1인 운영자가 당장 실행 가능한 구체적 행동
+- 마케팅 항목은 반드시 포함: 어떤 플랫폼(인스타그램·블로그 등)에, 어떤 요일과 시간에, 어떤 내용으로 게시할지 구체적으로 명시
+  예시: "인스타그램에 매주 금요일 오전 10시에 주말 특선 음료 사진을 올리세요. 캡션은 '이번 주말 홍대 카페 추천' 해시태그와 함께 3줄 이내로"
 
 ## 마케팅 제안
 반드시 아래 3가지를 포함:
 - **추천 홍보 메뉴**: 이번달 매출·카테고리 데이터 기반으로 지금 홍보하면 효과적인 메뉴 1~2개와 이유
-- **채널 & 타이밍**: 인스타그램·블로그·오프라인 중 어떤 채널이 적합한지, 유동인구 피크 시간대를 활용한 게시 타이밍
-- **콘텐츠 방향**: 어떤 각도(계절감·할인·신메뉴·스토리 등)로 만들면 좋을지 1~2줄 제안
+- **채널 & 타이밍**: 인스타그램·블로그·오프라인 중 어떤 채널이 적합한지, 구체적인 요일과 시간대(예: 목요일 저녁 8시)를 명시해 게시 타이밍 제안
+- **콘텐츠 방향**: 실제 캡션 예시 또는 게시물 구성 방법을 1~2줄로 구체적으로 제안 (해시태그 포함)
 """
 
 
@@ -361,8 +364,8 @@ async def analyze_sales(req: InsightRequest):
 
     client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
     message = await client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=1024,
+        model=get_settings().claude_model,
+        max_tokens=8000,
         system=_SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_message}],
     )
@@ -617,8 +620,8 @@ async def analyze_menus(
 
     client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
     message = await client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=800,
+        model=get_settings().claude_model,
+        max_tokens=8000,
         system=_SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_message}],
     )

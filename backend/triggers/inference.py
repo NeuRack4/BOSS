@@ -30,7 +30,7 @@ async def run_inference_trigger(user_id: str, context: dict) -> bool:
     client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
 
     message = await client.messages.create(
-        model="claude-sonnet-4-6",
+        model=get_settings().claude_model,
         max_tokens=512,
         system=_SYSTEM_PROMPT,
         messages=[
