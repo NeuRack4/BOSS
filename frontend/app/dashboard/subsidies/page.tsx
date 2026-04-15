@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import listPlugin from "@fullcalendar/list";
@@ -425,6 +426,7 @@ const DetailDrawer = ({
   program: Program;
   onClose: () => void;
 }) => {
+  const router = useRouter();
   const period = program.period_raw
     ? program.period_raw
     : program.start_date && program.end_date
@@ -479,27 +481,38 @@ const DetailDrawer = ({
               </p>
             </div>
           )}
-          <div className="flex gap-2 pt-2">
-            {program.detail_url && (
-              <a
-                href={program.detail_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 px-4 py-2 rounded-lg bg-brand-500 text-white text-sm font-medium hover:bg-brand-600"
-              >
-                기업마당 원문 ↗
-              </a>
-            )}
-            {program.external_url && (
-              <a
-                href={program.external_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 px-4 py-2 rounded-lg border border-surface-300 text-sm font-medium hover:bg-surface-100"
-              >
-                주관기관 홈페이지 ↗
-              </a>
-            )}
+          <div className="flex flex-col gap-2 pt-2">
+            <button
+              onClick={() => {
+                onClose();
+                router.push(`/drafts/subsidy?id=${program.id}`);
+              }}
+              className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg bg-brand-500 text-white text-sm font-medium hover:bg-brand-600 transition"
+            >
+              ✦ 신청서 초안 자동 작성
+            </button>
+            <div className="flex gap-2">
+              {program.detail_url && (
+                <a
+                  href={program.detail_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 inline-flex items-center justify-center gap-1 px-4 py-2 rounded-lg border border-surface-300 text-sm font-medium hover:bg-surface-100"
+                >
+                  기업마당 원문 ↗
+                </a>
+              )}
+              {program.external_url && (
+                <a
+                  href={program.external_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 inline-flex items-center justify-center gap-1 px-4 py-2 rounded-lg border border-surface-300 text-sm font-medium hover:bg-surface-100"
+                >
+                  주관기관 ↗
+                </a>
+              )}
+            </div>
           </div>
           <p className="text-[11px] text-gray-400 pt-4 border-t border-surface-200">
             본 내용은 기업마당 공공 API 에서 수집된 공고 참고용이며, 신청 전
