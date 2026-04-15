@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { APP_VERSION } from "@/lib/version";
 import type { User } from "@supabase/supabase-js";
 
 export default function Header() {
@@ -49,7 +50,7 @@ export default function Header() {
             BOSS
           </span>
           <span className="text-xs text-gray-400 font-medium hidden sm:block">
-            v0.1.0
+            v{APP_VERSION}
           </span>
         </div>
 

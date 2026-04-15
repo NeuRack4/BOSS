@@ -1,3 +1,5 @@
+import { APP_VERSION } from "@/lib/version";
+
 export default function Footer() {
   return (
     <footer className="border-t border-gray-100 bg-white py-10 px-6">
@@ -19,7 +21,7 @@ export default function Footer() {
         <p className="text-gray-300 text-xs">
           © 2026 BOSS · AI 심화과정 조별과제
         </p>
-        <p className="text-gray-300 text-xs">v0.1.0 · MIT License</p>
+        <p className="text-gray-300 text-xs">v{APP_VERSION} · MIT License</p>
       </div>
     </footer>
   );
