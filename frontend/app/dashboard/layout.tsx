@@ -15,6 +15,7 @@ import {
 const navItems = [
   { label: "개요", href: "/dashboard", icon: "◈" },
   { label: "매출 관리", href: "/dashboard/sales", icon: "₩" },
+  { label: "비용 관리", href: "/dashboard/expenses", icon: "↓" },
   { label: "세금 관리", href: "/dashboard/tax", icon: "📋" },
   { label: "법령 검색", href: "/dashboard/rag", icon: "⚖" },
   { label: "AI 인사이트", href: "/dashboard/insights", icon: "✦" },

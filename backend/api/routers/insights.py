@@ -12,6 +12,7 @@ from backend.core.config import get_settings
 from backend.core.constants import LEGAL_DISCLAIMER, TriggerType
 from backend.core.holidays import get_month_holidays
 from backend.api.routers.sales import get_sales_summary
+from backend.api.routers.expenses import get_expense_summary
 from backend.db.client import get_supabase
 from backend.rag.retriever.pgvector_retriever import retrieve_mapo_stats, retrieve_strategy, retrieve_docs
 
@@ -269,6 +270,14 @@ async def analyze_sales(req: InsightRequest):
     change_pct = summary["change_pct"]
     yoy_change_pct = summary["yoy_change_pct"]
 
+    # 비용 요약 조회
+    expense_summary = await get_expense_summary(
+        user_id=req.user_id,
+        year=req.year,
+        month=req.month,
+    )
+    net_profit = summary["current_total"] - expense_summary["total_expenses"]
+
     # RAG 검색 — 마포구 카페 통계 + strategy 컨텍스트 수집 (병렬)
     import asyncio as _asyncio
     rag_context, weather_context = await _asyncio.gather(
@@ -290,6 +299,20 @@ async def analyze_sales(req: InsightRequest):
         if yoy_change_pct is not None
         else "전년 데이터 없음"
     )
+
+    # 비용 섹션 구성
+    expense_section = ""
+    if expense_summary["total_expenses"] > 0:
+        breakdown_lines = "\n".join(
+            f"- {cat}: {amt:,}원"
+            for cat, amt in expense_summary["breakdown"].items()
+        )
+        expense_section = f"""
+[이번달 비용 현황]
+- 총 지출: {expense_summary['total_expenses']:,}원
+{breakdown_lines}
+- 순수익: {net_profit:,}원
+"""
 
     rag_section = f"\n{rag_context}\n" if rag_context else ""
 
@@ -320,7 +343,7 @@ async def analyze_sales(req: InsightRequest):
 
 [시간대별 매출]
 {chr(10).join(f"- {k}: {v:,}원" for k, v in summary['timeslot_breakdown'].items())}
-{holiday_section}{weather_section}{rag_section}
+{expense_section}{holiday_section}{weather_section}{rag_section}
 위 데이터를 바탕으로 마포구 카페 창업자에게 실질적인 인사이트와 액션을 제안해주세요.
 """.strip()
 
@@ -354,6 +377,8 @@ async def analyze_sales(req: InsightRequest):
         "triggered": triggered,
         "rag_used": bool(rag_context),
         "weather_used": bool(weather_context),
+        "net_profit": net_profit,
+        "total_expenses": expense_summary["total_expenses"],
     }
 
 

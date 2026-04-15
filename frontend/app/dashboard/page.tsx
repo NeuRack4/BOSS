@@ -24,6 +24,11 @@ type Summary = {
   entries: { date: string; amount: number }[];
 };
 
+type ExpenseSummary = {
+  total_expenses: number;
+  breakdown: Record<string, number>;
+};
+
 function formatAmount(n: number | undefined | null) {
   if (n == null) return "-";
   if (n >= 10000) return `${(n / 10000).toFixed(1)}만원`;
@@ -46,6 +51,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const today = new Date();
   const [summary, setSummary] = useState<Summary | null>(null);
+  const [expenseSummary, setExpenseSummary] = useState<ExpenseSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
 
@@ -76,6 +82,14 @@ export default function DashboardPage() {
           const data = await res.json();
           setSummary(data);
         }
+        const expRes = await fetch(
+          `${apiUrl}/expenses/summary?year=${today.getFullYear()}&month=${today.getMonth() + 1}`,
+          { headers: { "X-User-Id": user.id } },
+        );
+        if (expRes.ok) {
+          const expData = await expRes.json();
+          setExpenseSummary(expData);
+        }
       } catch {
         // 백엔드 미실행 시 조용히 처리 — 통계 카드는 "-" 표시
       } finally {
@@ -105,6 +119,13 @@ export default function DashboardPage() {
         : "text-red-500"
       : "text-gray-400";
 
+  const netProfit =
+    summary && expenseSummary
+      ? summary.current_total - expenseSummary.total_expenses
+      : null;
+  const netProfitColor =
+    netProfit != null ? (netProfit >= 0 ? "text-green-600" : "text-red-500") : "text-gray-400";
+
   const stats = summary
     ? [
         {
@@ -122,21 +143,23 @@ export default function DashboardPage() {
           color: changeColor,
         },
         {
-          label: "거래 건수",
-          value: `${summary.transaction_count}건`,
-          icon: "◈",
+          label: "이번달 지출",
+          value: expenseSummary ? formatAmount(expenseSummary.total_expenses) : "-",
+          icon: "↓",
+          color: expenseSummary && expenseSummary.total_expenses > 0 ? "text-red-500" : "text-gray-400",
         },
         {
-          label: "일 평균 매출",
-          value: formatAmount(summary.daily_average),
-          icon: "∼",
+          label: "순수익",
+          value: netProfit != null ? formatAmount(netProfit) : "-",
+          icon: "◎",
+          color: netProfitColor,
         },
       ]
     : [
         { label: "이번달 매출", value: "-", icon: "₩" },
         { label: "전달 대비", value: "-", icon: "↑" },
-        { label: "거래 건수", value: "-", icon: "◈" },
-        { label: "일 평균 매출", value: "-", icon: "∼" },
+        { label: "이번달 지출", value: "-", icon: "↓" },
+        { label: "순수익", value: "-", icon: "◎" },
       ];
 
   return (
