@@ -4,6 +4,19 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
 
 ---
 
+## [v0.14.1] — 2026-04-15
+
+### 문서 — 챗봇 환경변수 템플릿 추가
+
+#### Added
+
+- **프론트엔드 환경변수 템플릿** (`frontend/.env.local.example`)
+  - 챗봇 실행에 필요한 `ANTHROPIC_API_KEY`, `CLAUDE_MODEL` 명시
+  - Supabase, SMTP 등 프론트엔드 전체 환경변수 가이드 포함
+  - 팀원 로컬 환경 세팅 가이드용 — 실제 키값 미포함
+
+---
+
 ## [v0.14.0] — 2026-04-15
 
 ### 기능 — BOSS 도메인 특화 에이전틱 AI 챗봇
