@@ -255,7 +255,7 @@ async def generate_content(
 
     client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
     message = await client.messages.create(
-        model="claude-sonnet-4-6",
+        model=get_settings().claude_model,
         max_tokens=1024,
         system=_SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_message}],

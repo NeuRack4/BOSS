@@ -31,7 +31,7 @@ async def run(ctx) -> dict:
     context = "\n\n".join(d["content"] for d in docs)
 
     message = await client.messages.create(
-        model="claude-sonnet-4-6",
+        model=get_settings().claude_model,
         max_tokens=2048,
         system=_SYSTEM_PROMPT,
         messages=[

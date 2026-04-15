@@ -57,7 +57,7 @@ async def run(ctx: dict | None = None, districts: list[str] | None = None) -> di
     # 4. Claude 해석 생성
     sim_summary = _format_scores_for_llm(scores[:5])  # 상위 5개만 전달
     message = await client.messages.create(
-        model="claude-haiku-4-5-20251001",
+        model=get_settings().claude_model,
         max_tokens=2048,
         system=_SYSTEM_PROMPT,
         messages=[

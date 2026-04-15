@@ -150,7 +150,7 @@ async def build_draft_cards(
     )
 
     resp = await client.messages.create(
-        model="claude-haiku-4-5-20251001",
+        model=get_settings().claude_model,
         max_tokens=4096,
         system=_ONE_PASS_SYSTEM,
         messages=[{"role": "user", "content": prompt}],
@@ -191,7 +191,7 @@ async def _fallback_cards_from_description(
     )
     try:
         resp = await client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model=get_settings().claude_model,
             max_tokens=2048,
             system=_ONE_PASS_SYSTEM,
             messages=[{"role": "user", "content": prompt}],
