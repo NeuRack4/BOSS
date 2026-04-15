@@ -4,6 +4,42 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
 
 ---
 
+## [v0.9.0] — 2026-04-15
+
+### 기능 — 지원사업 신청서 초안 자동 작성 + 답변 저장
+
+#### Added
+
+- **HWP5 텍스트 파서** (`backend/rag/hwp_parser.py`)
+  - olefile + zlib 기반 HWP5 파일 텍스트 추출 — `hwp5` 패키지 불필요
+  - OLE 아카이브 → zlib raw deflate 압축 해제 → HWP 레코드 스트림 파싱
+  - `HWPTAG_PARA_TEXT(67)` 레코드 추출, 2바이트 유니코드 디코딩
+- **신청서 카드 에이전트** (`backend/agents/subsidy_draft.py`)
+  - HWP 원문 + 창업자 프로파일 → Claude Haiku 단일 호출로 항목 구조화 + pre-fill
+  - 카드 구조: `id / section / field_name / description / required / type / value`
+  - 프로파일 필드 키워드 매핑 (`apply_profile_prefill`) — 매 요청마다 최신 프로파일 재적용
+  - JSON 파싱 3단계 폴백 (전체 파싱 → 블록 추출 → 잘린 JSON 복구)
+  - HWP 없는 공고: 공고 description 기반 폴백 카드 생성
+- **신청서 초안 API** (`POST /subsidies/{program_id}/draft`)
+  - BizInfo 상세 페이지 스크래핑 → HWP 다운로드 → 텍스트 추출 → 카드 생성
+  - `subsidy_attachments.cards_json` 캐시 (최초 1회 Claude 호출 후 구조 재사용)
+  - 캐시 사용 시 `apply_profile_prefill`로 현재 프로파일 value 재적용 (stale 방지)
+  - `subsidy_draft_answers` 조회 후 저장 답변 머지 (우선순위: 저장값 > 프로파일 > Claude)
+- **답변 저장 API** (`PUT /subsidies/{program_id}/draft/answers`)
+  - 카드 입력값 `subsidy_draft_answers` 테이블에 upsert
+- **카드 에디터 UI** (`frontend/app/drafts/subsidy/page.tsx`)
+  - 2-pane 레이아웃: 좌측 섹션 목록 + 우측 입력 에디터
+  - 1.5초 debounce 자동 저장 — 헤더에 "저장 중… / 저장됨 / 저장 실패" 표시
+  - 커스텀 항목 추가/삭제, text·textarea·date·number 타입 지원
+  - 페이지 재진입 시 저장 답변 자동 복원
+- **첨부파일 일괄 수집** (`backend/data/sync/attachment_sync.py`, `backend/scripts/fetch_subsidy_attachments.py`)
+  - 일 1회(06:30 KST) 스케줄러로 HWP 수집 및 텍스트 추출 캐싱
+- **DB 마이그레이션**
+  - `015_subsidy_attachments.sql` — `subsidy_attachments` 테이블 (HWP 메타데이터·원문 캐시)
+  - `016_subsidy_draft_answers.sql` — `subsidy_attachments.cards_json` 컬럼 추가 + `subsidy_draft_answers` 테이블
+
+---
+
 ## [v0.8.1] — 2026-04-14
 
 ### 버그 수정 — RAG 검색 안정성 + 인사이트 데이터 품질 개선
@@ -49,7 +85,7 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
   - `HIDDEN_EDIT_FIELDS` — 구 방식 단일 키(여/부) 편집 패널에서 제외 + `applyFixedValues` 마이그레이션
 - **체크박스 값 정규화** (`applyFixedValues`)
   - 구 방식("여"/"부"/"해당"/"미해당") → 신 방식("V"/"") 일괄 변환 (localStorage·DB 저장 데이터 하위호환)
-  - 사업자등록 구 단일 키(자동정정신청, 투자조합_출자여부 등 8종) → `_여`/`_부` 쌍으로 자동 마이그레이션
+  - 사업자등록 구 단일 키(자동정정신청, 투자조합*출자여부 등 8종) → `*여`/`\_부` 쌍으로 자동 마이그레이션
 - **CORS 500 오류 대응** (`backend/api/main.py`)
   - FastAPI CORSMiddleware 500 헤더 누락 → 글로벌 `@app.exception_handler(Exception)` 추가
 - **load-fields 500 수정** (`backend/api/routers/pdf_forms.py`)
@@ -71,7 +107,7 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
 - **CORS 500 헤더 누락** (`backend/api/main.py`)
   - 미처리 예외 응답에 CORS 헤더 포함되도록 글로벌 exception handler 추가
 - **사업자등록 편집 패널 구 방식 키 노출** (`frontend/app/drafts/[type]/page.tsx`)
-  - "자동정정신청"·"투자조합_출자여부" 등 구 단일 키 10종이 텍스트 입력으로 노출되던 문제
+  - "자동정정신청"·"투자조합\_출자여부" 등 구 단일 키 10종이 텍스트 입력으로 노출되던 문제
   - `HIDDEN_EDIT_FIELDS` 추가 + `applyFixedValues` 마이그레이션으로 신 방식 `_여`/`_부` 쌍으로 자동 변환
 
 ---
