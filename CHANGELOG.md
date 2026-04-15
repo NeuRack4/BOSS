@@ -4,7 +4,7 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
 
 ---
 
-## [v0.13.2] — 2026-04-15
+## [v0.14.0] — 2026-04-15
 
 ### 기능 — BOSS 도메인 특화 에이전틱 AI 챗봇
 
