@@ -19,6 +19,48 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
 
 ## [v0.14.0] — 2026-04-15
 
+### 기능 — 채용 관리 (`/dashboard/hire`)
+
+#### Added
+
+- **채용 관리 라우터** (`backend/api/routers/hire.py`) — 신규 파일
+  - `GET /hire/status` — 창업자 프로파일·매출 요약·계절 채용 신호
+  - `POST /hire/inference` — AI 채용 타이밍 분석 (LLM 추론 기반)
+  - `POST /hire/job-posting` — 채용공고 초안 3플랫폼 (당근마켓·알바천국·사람인)
+  - `POST /hire/job-posting-visual` — Claude Haiku HTML 디자인 채용공고 생성
+  - `POST /hire/labor-contract` — 고용노동부 표준 근로계약서 초안
+  - `GET /hire/wage-simulation` — 인건비 시뮬레이션 (주휴수당 + 4대보험 의무 여부)
+- **채용 에이전트 확장** (`backend/agents/hiring.py`)
+  - `generate_job_posting_draft(ctx, extra)` — 15개 필드 풍부한 컨텍스트 프롬프트
+  - `generate_job_posting_visual(job_data, style_prompt)` — Claude Haiku HTML 디자인, regex 펜스 제거
+  - 2026년 최저임금 10,320원 적용 (`MIN_WAGE_2025 = 10_320`)
+- **채용 페이지** (`frontend/app/dashboard/hire/page.tsx`) — 신규 파일
+  - 3탭 자유 이동: 채용 현황 / 채용공고 작성 / 근로계약서
+  - **채용 현황 탭**: 단계·오픈 개월·직원 수 카드, 3개월 매출 요약, 계절 채용 신호 배너, AI 분석 버튼
+  - **채용공고 작성 탭**: 15개 필드 폼 (카페 정보·근무조건·모집정보·복리후생), 체크박스 멀티셀렉트 + 자유 입력, 텍스트 초안 3플랫폼 탭, HTML 디자인 미리보기 + PDF 다운로드
+  - **필수 항목 유효성 검사**: 카페 상호명·근무지 주소·근무 요일·근무 기간·주요 업무 미입력 시 버튼 비활성화 + 인라인 에러 표시
+  - **근로계약서 탭**: 주 근무시간·시급 입력 → 표준 계약서 초안 생성·복사
+  - DB 카페 정보 자동 프리필 (`/hire/status` 연동)
+  - `html2pdf.js` 동적 import — A4 portrait, scale 2
+- **버전 동적 연동** (`frontend/lib/version.ts`) — 신규 파일
+  - `APP_VERSION` 상수 단일 관리, `layout.tsx` import로 사이드바 버전 자동 반영
+
+#### Changed
+
+- **사이드바** (`frontend/app/dashboard/layout.tsx`)
+  - "채용 공고" 메뉴 추가 (`/dashboard/hire`, Users 아이콘)
+  - 하드코딩 `v0.6.0` → `v{APP_VERSION}` 동적 렌더링
+- **백엔드 진입점** (`backend/api/main.py`)
+  - `hire` 라우터 등록 (`prefix="/hire"`)
+
+#### Fixed
+
+- `backend/triggers/state.py` — `_insert_trigger_log` 함수 누락으로 발생하던 ImportError 해결
+- `_get_founder_profile` — `maybe_single()` 204 오류 → `.limit(1).execute()` 패턴으로 전환
+- `users.district` 컬럼 없음 오류 → `users.region` 조회로 수정
+
+---
+
 ### 기능 — BOSS 도메인 특화 에이전틱 AI 챗봇
 
 #### Added
