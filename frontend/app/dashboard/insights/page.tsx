@@ -65,7 +65,9 @@ export default function InsightsPage() {
     setError(null);
     setResult(null);
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) {
       setError("로그인이 필요합니다.");
       setLoading(false);
@@ -85,7 +87,9 @@ export default function InsightsPage() {
       const data = await res.json();
       setResult(data);
     } catch {
-      setError("백엔드 서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.");
+      setError(
+        "백엔드 서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.",
+      );
     } finally {
       setLoading(false);
     }
@@ -96,7 +100,9 @@ export default function InsightsPage() {
     setBenchLoading(true);
     setBenchmark(null);
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) {
       setBenchLoading(false);
       return;
@@ -121,12 +127,16 @@ export default function InsightsPage() {
 
   const changeColor =
     result?.summary.change_pct != null
-      ? result.summary.change_pct > 0 ? "text-green-600" : "text-red-500"
+      ? result.summary.change_pct > 0
+        ? "text-green-600"
+        : "text-red-500"
       : "text-gray-400";
 
   const changeSign =
     result?.summary.change_pct != null
-      ? result.summary.change_pct > 0 ? "▲" : "▼"
+      ? result.summary.change_pct > 0
+        ? "▲"
+        : "▼"
       : "";
 
   return (
@@ -141,29 +151,39 @@ export default function InsightsPage() {
 
       {/* 분석 기간 선택 */}
       <div className="glass-card rounded-xl p-6">
-        <h2 className="text-base font-bold text-gray-900 mb-5">분석 기간 선택</h2>
+        <h2 className="text-base font-bold text-gray-900 mb-5">
+          분석 기간 선택
+        </h2>
         <div className="flex items-center gap-4">
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1.5">연도</label>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">
+              연도
+            </label>
             <select
               value={year}
               onChange={(e) => setYear(Number(e.target.value))}
               className="px-3 py-2.5 rounded-lg border border-surface-300 bg-white text-sm text-gray-800 focus:outline-none focus:border-brand-500"
             >
               {[today.getFullYear() - 1, today.getFullYear()].map((y) => (
-                <option key={y} value={y}>{y}년</option>
+                <option key={y} value={y}>
+                  {y}년
+                </option>
               ))}
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1.5">월</label>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">
+              월
+            </label>
             <select
               value={month}
               onChange={(e) => setMonth(Number(e.target.value))}
               className="px-3 py-2.5 rounded-lg border border-surface-300 bg-white text-sm text-gray-800 focus:outline-none focus:border-brand-500"
             >
               {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                <option key={m} value={m}>{m}월</option>
+                <option key={m} value={m}>
+                  {m}월
+                </option>
               ))}
             </select>
           </div>
@@ -186,7 +206,9 @@ export default function InsightsPage() {
       {/* 벤치마킹 — AI 분석과 독립적으로 항상 표시 */}
       {areas.length > 0 && (
         <div className="glass-card rounded-xl p-6">
-          <h2 className="text-base font-bold text-gray-900 mb-1">상권 평균 벤치마킹</h2>
+          <h2 className="text-base font-bold text-gray-900 mb-1">
+            상권 평균 벤치마킹
+          </h2>
           <p className="text-xs text-gray-400 mb-4">
             내 카페 {year}년 {month}월 매출을 선택 상권 카페 평균과 비교합니다
           </p>
@@ -197,7 +219,9 @@ export default function InsightsPage() {
               className="flex-1 px-3 py-2.5 rounded-lg border border-surface-300 bg-white text-sm text-gray-800 focus:outline-none focus:border-brand-500"
             >
               {areas.map((a) => (
-                <option key={a} value={a}>{a}</option>
+                <option key={a} value={a}>
+                  {a}
+                </option>
               ))}
             </select>
             <button
@@ -209,7 +233,9 @@ export default function InsightsPage() {
             </button>
           </div>
 
-          {benchmark && !benchmark.error && <BenchmarkCard benchmark={benchmark} />}
+          {benchmark && !benchmark.error && (
+            <BenchmarkCard benchmark={benchmark} />
+          )}
           {benchmark?.error && (
             <p className="text-xs text-red-500">{benchmark.error}</p>
           )}
@@ -249,11 +275,15 @@ export default function InsightsPage() {
             </div>
             <div className="glass-card rounded-xl p-4">
               <p className="text-xs text-gray-400 mb-1">전년 동월 대비</p>
-              <p className={`text-lg font-bold ${
-                result.summary.yoy_change_pct == null
-                  ? "text-gray-400"
-                  : result.summary.yoy_change_pct > 0 ? "text-green-600" : "text-red-500"
-              }`}>
+              <p
+                className={`text-lg font-bold ${
+                  result.summary.yoy_change_pct == null
+                    ? "text-gray-400"
+                    : result.summary.yoy_change_pct > 0
+                      ? "text-green-600"
+                      : "text-red-500"
+                }`}
+              >
                 {result.summary.yoy_change_pct != null
                   ? `${result.summary.yoy_change_pct > 0 ? "▲" : "▼"} ${Math.abs(result.summary.yoy_change_pct)}%`
                   : "-"}
@@ -271,7 +301,9 @@ export default function InsightsPage() {
           <div className="glass-card rounded-xl p-6 border-brand-500/20 glow-blue">
             <div className="flex items-center gap-2 mb-4">
               <span className="text-brand-500 text-lg">✦</span>
-              <h2 className="text-base font-bold text-gray-900">AI 분석 결과</h2>
+              <h2 className="text-base font-bold text-gray-900">
+                AI 분석 결과
+              </h2>
               {result.rag_used && (
                 <span className="text-xs bg-brand-50 text-brand-600 border border-brand-200 px-2 py-0.5 rounded-full font-medium">
                   마포구 실데이터 반영
@@ -282,7 +314,9 @@ export default function InsightsPage() {
                   날씨 반영
                 </span>
               )}
-              <span className="ml-auto text-xs text-gray-400">{year}년 {month}월</span>
+              <span className="ml-auto text-xs text-gray-400">
+                {year}년 {month}월
+              </span>
             </div>
             <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
               {result.insight}
@@ -292,44 +326,66 @@ export default function InsightsPage() {
           {/* 카테고리 / 시간대 분석 */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="glass-card rounded-xl p-5">
-              <h3 className="text-sm font-bold text-gray-900 mb-3">카테고리별 매출</h3>
+              <h3 className="text-sm font-bold text-gray-900 mb-3">
+                카테고리별 매출
+              </h3>
               <div className="space-y-2">
-                {Object.entries(result.summary.category_breakdown).map(([cat, amt]) => {
-                  const pct = result.summary.current_total > 0
-                    ? Math.round((amt / result.summary.current_total) * 100) : 0;
-                  return (
-                    <div key={cat}>
-                      <div className="flex justify-between text-xs text-gray-600 mb-1">
-                        <span>{cat}</span>
-                        <span>{amt.toLocaleString()}원 ({pct}%)</span>
+                {Object.entries(result.summary.category_breakdown).map(
+                  ([cat, amt]) => {
+                    const pct =
+                      result.summary.current_total > 0
+                        ? Math.round((amt / result.summary.current_total) * 100)
+                        : 0;
+                    return (
+                      <div key={cat}>
+                        <div className="flex justify-between text-xs text-gray-600 mb-1">
+                          <span>{cat}</span>
+                          <span>
+                            {amt.toLocaleString()}원 ({pct}%)
+                          </span>
+                        </div>
+                        <div className="h-1.5 bg-surface-300 rounded-full">
+                          <div
+                            className="h-1.5 bg-brand-500 rounded-full transition-all"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
                       </div>
-                      <div className="h-1.5 bg-surface-300 rounded-full">
-                        <div className="h-1.5 bg-brand-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  },
+                )}
               </div>
             </div>
 
             <div className="glass-card rounded-xl p-5">
-              <h3 className="text-sm font-bold text-gray-900 mb-3">시간대별 매출</h3>
+              <h3 className="text-sm font-bold text-gray-900 mb-3">
+                시간대별 매출
+              </h3>
               <div className="space-y-2">
-                {Object.entries(result.summary.timeslot_breakdown).map(([slot, amt]) => {
-                  const pct = result.summary.current_total > 0
-                    ? Math.round((amt / result.summary.current_total) * 100) : 0;
-                  return (
-                    <div key={slot}>
-                      <div className="flex justify-between text-xs text-gray-600 mb-1">
-                        <span>{slot}</span>
-                        <span>{amt.toLocaleString()}원 ({pct}%)</span>
+                {Object.entries(result.summary.timeslot_breakdown).map(
+                  ([slot, amt]) => {
+                    const pct =
+                      result.summary.current_total > 0
+                        ? Math.round((amt / result.summary.current_total) * 100)
+                        : 0;
+                    return (
+                      <div key={slot}>
+                        <div className="flex justify-between text-xs text-gray-600 mb-1">
+                          <span>{slot}</span>
+                          <span>
+                            {amt.toLocaleString()}원 ({pct}%)
+                          </span>
+                        </div>
+                        <div className="h-1.5 bg-surface-300 rounded-full">
+                          <div
+                            className="h-1.5 bg-purple-400 rounded-full transition-all"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
                       </div>
-                      <div className="h-1.5 bg-surface-300 rounded-full">
-                        <div className="h-1.5 bg-purple-400 rounded-full transition-all" style={{ width: `${pct}%` }} />
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  },
+                )}
               </div>
             </div>
           </div>
@@ -340,7 +396,15 @@ export default function InsightsPage() {
 }
 
 function BenchmarkCard({ benchmark }: { benchmark: BenchmarkResult }) {
-  const { user_monthly, area_avg_per_store, ratio_pct, diff, area, quarter, store_count } = benchmark;
+  const {
+    user_monthly,
+    area_avg_per_store,
+    ratio_pct,
+    diff,
+    area,
+    quarter,
+    store_count,
+  } = benchmark;
 
   const isAbove = diff >= 0;
   const maxVal = Math.max(user_monthly, area_avg_per_store) || 1;
@@ -356,7 +420,9 @@ function BenchmarkCard({ benchmark }: { benchmark: BenchmarkResult }) {
           {area} · {quarterLabel} 기준 ({store_count}개 카페 평균)
         </span>
         {ratio_pct != null && (
-          <span className={`font-bold text-sm ${isAbove ? "text-green-600" : "text-red-500"}`}>
+          <span
+            className={`font-bold text-sm ${isAbove ? "text-green-600" : "text-red-500"}`}
+          >
             {isAbove ? "▲" : "▼"} 평균의 {ratio_pct}%
           </span>
         )}
@@ -366,7 +432,9 @@ function BenchmarkCard({ benchmark }: { benchmark: BenchmarkResult }) {
       <div>
         <div className="flex justify-between text-xs text-gray-600 mb-1.5">
           <span className="font-medium">내 카페</span>
-          <span className="font-bold text-gray-900">{user_monthly.toLocaleString()}원</span>
+          <span className="font-bold text-gray-900">
+            {user_monthly.toLocaleString()}원
+          </span>
         </div>
         <div className="h-3 bg-surface-200 rounded-full overflow-hidden">
           <div
@@ -380,7 +448,9 @@ function BenchmarkCard({ benchmark }: { benchmark: BenchmarkResult }) {
       <div>
         <div className="flex justify-between text-xs text-gray-600 mb-1.5">
           <span className="font-medium">상권 평균</span>
-          <span className="text-gray-500">{area_avg_per_store.toLocaleString()}원</span>
+          <span className="text-gray-500">
+            {area_avg_per_store.toLocaleString()}원
+          </span>
         </div>
         <div className="h-3 bg-surface-200 rounded-full overflow-hidden">
           <div
@@ -391,7 +461,9 @@ function BenchmarkCard({ benchmark }: { benchmark: BenchmarkResult }) {
       </div>
 
       {/* 차이 요약 */}
-      <div className={`rounded-lg px-4 py-3 text-sm font-medium ${isAbove ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>
+      <div
+        className={`rounded-lg px-4 py-3 text-sm font-medium ${isAbove ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}
+      >
         상권 평균 대비{" "}
         <span className="font-bold">{Math.abs(diff).toLocaleString()}원</span>{" "}
         {isAbove ? "초과" : "미달"}

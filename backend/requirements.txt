@@ -48,6 +48,13 @@ reportlab==4.2.5
 pypdf==4.3.1
 pymupdf==1.27.2
 
+# HWP Parsing (OLE2 직접 파싱 — pyhwp는 Python 3.12 미지원)
+olefile==0.47
+
+# HTML Parsing (bizinfo 상세 페이지 스크래핑)
+beautifulsoup4==4.12.3
+lxml==5.3.0
+
 # Dev / Test
 pytest==8.3.3
 pytest-asyncio==0.24.0
