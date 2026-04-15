@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { APP_VERSION } from "@/lib/version";
 import {
   profileToFormData,
   getFounderState,
@@ -24,6 +25,7 @@ import {
   Map,
   MapPin,
   Handshake,
+  Users,
   Bell,
   User,
   MessageCircle,
@@ -43,6 +45,7 @@ const navItems = [
   { label: "입지 분석", href: "/dashboard/location", icon: MapPin },
   { label: "지원사업", href: "/dashboard/subsidies", icon: Handshake },
   { label: "AI 챗봇", href: "/dashboard/chat", icon: MessageCircle },
+  { label: "채용 공고", href: "/dashboard/hire", icon: Users },
 ];
 
 export default function DashboardLayout({
@@ -150,7 +153,9 @@ export default function DashboardLayout({
           >
             BOSS
           </Link>
-          <span className="ml-2 text-xs text-gray-400 font-medium">v0.6.0</span>
+          <span className="ml-2 text-xs text-gray-400 font-medium">
+            v{APP_VERSION}
+          </span>
           <div className="ml-auto flex items-center gap-0.5">
             <Link
               href="/dashboard/notifications"

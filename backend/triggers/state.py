@@ -161,3 +161,18 @@ def _mark_notified(user_id: str, tax_deadline_id: int, d_day: int) -> None:
         },
         on_conflict="user_id,tax_deadline_id",
     ).execute()
+
+
+def _insert_trigger_log(user_id: str, trigger_type: str, message: str, draft_url: str | None = None) -> None:
+    """trigger_log 테이블에 알림 레코드 삽입"""
+    payload: dict = {
+        "user_id": user_id,
+        "trigger_type": trigger_type,
+        "message": message,
+    }
+    if draft_url:
+        payload["draft_url"] = draft_url
+    try:
+        get_supabase().table("trigger_log").insert(payload).execute()
+    except Exception as e:
+        logger.error("_insert_trigger_log 실패 user=%s: %s", user_id, e)

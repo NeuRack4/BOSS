@@ -12,8 +12,8 @@ from backend.core.config import get_settings
 from backend.core.constants import LEGAL_DISCLAIMER, DraftType, FounderSubStage
 from backend.rag.retriever.pgvector_retriever import retrieve
 
-# 2025년 최저임금 (시간급) — 연 1회 갱신
-MIN_WAGE_2025 = 10_030  # 원/시간
+# 2026년 최저임금 (시간급) — 연 1회 갱신
+MIN_WAGE_2025 = 10_320  # 원/시간 (2026년 기준)
 
 _POSTING_SYSTEM_PROMPT = """
 당신은 서울 마포구 카페 창업자를 위한 채용공고 작성 AI 비서입니다.
@@ -90,18 +90,21 @@ def calc_total_labor_cost(hourly_wage: int, weekly_hours: float) -> dict:
 
 # ── 채용공고 초안 생성 ──────────────────────────────────────────────────────
 
-async def generate_job_posting_draft(ctx) -> dict:
+async def generate_job_posting_draft(ctx, extra: dict | None = None) -> dict:
     """
     플랫폼별 채용공고 초안 생성.
+
+    extra: 프론트에서 직접 입력한 추가 정보 (없어도 동작)
+    {
+        business_name, address, work_days, work_start, work_end,
+        work_period, headcount, job_duties, preferred, benefits, extra_note,
+        hourly_wage, weekly_hours
+    }
 
     반환:
     {
         "draft_type": "job_posting",
-        "platforms": {
-            "karrot": str,    # 당근마켓 포맷
-            "alba": str,      # 알바천국 포맷
-            "saramin": str,   # 사람인 포맷
-        },
+        "platforms": { "karrot": str, "alba": str, "saramin": str },
         "wage_simulation": dict,
     }
     """
@@ -113,12 +116,43 @@ async def generate_job_posting_draft(ctx) -> dict:
         category="labor",
         match_count=3,
     )
-    context = "\n\n".join(d["content"] for d in docs)
+    rag_context = "\n\n".join(d["content"] for d in docs)
 
     neighborhood = getattr(ctx, "region", "마포구")
+    ex = extra or {}
+
+    hourly_wage = ex.get("hourly_wage", MIN_WAGE_2025)
+    weekly_hours = ex.get("weekly_hours", 20)
+    business_name = ex.get("business_name") or f"서울 {neighborhood} 카페"
+    address = ex.get("address") or f"서울 {neighborhood} (상세 주소 [   ])"
+
+    # 근무 일정 문자열 조립
+    work_days_str = "·".join(ex.get("work_days", [])) or "[   ]"
+    work_time_str = (
+        f"{ex['work_start']}~{ex['work_end']}"
+        if ex.get("work_start") and ex.get("work_end")
+        else "[   ]"
+    )
+    work_period_str = ex.get("work_period") or "협의"
+    headcount = ex.get("headcount", 1)
+
+    # 항목 리스트 문자열 조립
+    duties_str = (
+        ", ".join(ex["job_duties"]) if ex.get("job_duties")
+        else "카운터 응대, 에스프레소 음료 제조, 홀 관리, 마감 청소"
+    )
+    preferred_str = (
+        ", ".join(ex["preferred"]) if ex.get("preferred")
+        else "바리스타 자격증 보유자, 마포구 거주자, 성실하고 밝은 분"
+    )
+    benefits_str = (
+        ", ".join(ex["benefits"]) if ex.get("benefits")
+        else "없음"
+    )
+    extra_note_str = ex.get("extra_note") or ""
 
     message = await client.messages.create(
-        model=get_settings().claude_model,
+        model=settings.claude_model,
         max_tokens=3000,
         system=_POSTING_SYSTEM_PROMPT,
         messages=[
@@ -127,17 +161,24 @@ async def generate_job_posting_draft(ctx) -> dict:
                 "content": (
                     f"서울 {neighborhood} 카페 알바 채용공고를 플랫폼별로 작성해주세요.\n\n"
                     "[작성 조건]\n"
-                    f"- 근무지: 서울 {neighborhood} 카페 (주소는 [   ]로 표시)\n"
-                    "- 모집 직무: 카운터 응대, 에스프레소 음료 제조, 홀 관리, 마감 청소\n"
-                    f"- 시급: {MIN_WAGE_2025:,}원 이상 (협의 가능)\n"
-                    "- 근무 시간: 주 [   ]시간 (창업자가 채울 항목)\n"
-                    "- 우대: 바리스타 자격증 보유자, 마포구 거주자, 성실하고 밝은 분\n\n"
-                    "[플랫폼별 포맷]\n"
+                    f"- 사업장명: {business_name}\n"
+                    f"- 근무지: {address}\n"
+                    f"- 모집 인원: {headcount}명\n"
+                    f"- 모집 직무: {duties_str}\n"
+                    f"- 시급: {hourly_wage:,}원\n"
+                    f"- 주 근무시간: {weekly_hours}시간\n"
+                    f"- 근무 요일: {work_days_str}\n"
+                    f"- 근무 시간대: {work_time_str}\n"
+                    f"- 근무 기간: {work_period_str}\n"
+                    f"- 우대 조건: {preferred_str}\n"
+                    f"- 복리후생: {benefits_str}\n"
+                    + (f"- 추가 안내: {extra_note_str}\n" if extra_note_str else "")
+                    + "\n[플랫폼별 포맷]\n"
                     "1. 당근마켓: 간결·친근한 말투, 이모지 허용, 300자 이내 핵심만\n"
                     "2. 알바천국: 표준 구인 양식 (제목/모집내용/근무조건/급여/우대사항)\n"
                     "3. 사람인: 공식적인 말투, 회사 소개 포함, 지원 방법 명시\n\n"
-                    f"[참고 자료]\n{context}\n\n"
-                    f"[참고] 2025년 최저임금: {MIN_WAGE_2025:,}원/시간\n\n"
+                    f"[참고 자료]\n{rag_context}\n\n"
+                    f"[참고] 2026년 최저임금: {MIN_WAGE_2025:,}원/시간\n\n"
                     "각 플랫폼 초안을 [당근마켓], [알바천국], [사람인] 헤더로 구분하여 출력하세요.\n"
                     f"\n---\n{LEGAL_DISCLAIMER}"
                 ),
@@ -146,10 +187,8 @@ async def generate_job_posting_draft(ctx) -> dict:
     )
 
     raw = message.content[0].text
-
-    # 플랫폼별 섹션 파싱
     platforms = _parse_platform_sections(raw)
-    wage_sim = calc_total_labor_cost(MIN_WAGE_2025, 20)  # 주 20시간 기준 예시
+    wage_sim = calc_total_labor_cost(hourly_wage, weekly_hours)
 
     return {
         "draft_type": DraftType.JOB_POSTING,
@@ -226,7 +265,7 @@ async def generate_labor_contract_draft(ctx, weekly_hours: float = 20.0) -> dict
                     "- 사업장명: [   ] 카페 (창업자 채울 항목)\n"
                     "- 근무지: 서울 마포구 [   ] (창업자 채울 항목)\n"
                     f"- 근로 형태: 단시간 근로자 (주 {weekly_hours}시간)\n"
-                    f"- 시급: {MIN_WAGE_2025:,}원 (2025년 최저임금 기준)\n"
+                    f"- 시급: {MIN_WAGE_2025:,}원 (2026년 최저임금 기준)\n"
                     f"- 월 예상 급여: {wage_sim['monthly_total']:,}원 "
                     f"(기본급 {wage_sim['monthly_base_pay']:,}원 + "
                     f"주휴수당 {wage_sim['monthly_holiday_pay']:,}원)\n"
@@ -250,6 +289,95 @@ async def generate_labor_contract_draft(ctx, weekly_hours: float = 20.0) -> dict
         "wage_simulation": wage_sim,
         "calculated_at": str(date.today()),
     }
+
+
+# ── 채용공고 HTML 디자인 생성 (Claude Haiku) ──────────────────────────────────
+
+_VISUAL_SYSTEM_PROMPT = """
+당신은 한국 카페 채용공고 디자인 전문가입니다.
+주어진 채용 정보를 바탕으로 아름답고 인쇄 가능한 HTML 채용공고를 만들어주세요.
+
+규칙:
+- 완전한 standalone HTML (외부 CDN 없음, 모든 CSS 인라인 또는 <style> 블록)
+- A4 기준 단일 페이지, 인쇄/PDF 저장에 최적화 (@media print 포함)
+- 한국어 전용, 폰트는 system-ui 또는 'Apple SD Gothic Neo', sans-serif 사용
+- 화려하되 실용적인 디자인 — 실제 카페 채용공고처럼 보여야 함
+- HTML 코드만 출력 (설명 텍스트 없이, ```html 블록 없이 순수 HTML만)
+"""
+
+
+async def generate_job_posting_visual(job_data: dict, style_prompt: str = "") -> dict:
+    """
+    Claude Haiku로 채용공고 HTML 디자인 생성.
+
+    job_data: JobPostingRequest 필드 전체
+    style_prompt: 사용자 디자인 지시 (예: "밝고 트렌디한 핑크 톤")
+
+    반환: {"html": str, "calculated_at": str}
+    """
+    import re
+    settings = get_settings()
+    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+
+    ex = job_data
+    hourly_wage = ex.get("hourly_wage", MIN_WAGE_2025)
+    weekly_hours = ex.get("weekly_hours", 20)
+    wage_sim = calc_total_labor_cost(hourly_wage, weekly_hours)
+
+    work_days_str = "·".join(ex.get("work_days", [])) or "협의"
+    work_time_str = (
+        f"{ex['work_start']} ~ {ex['work_end']}"
+        if ex.get("work_start") and ex.get("work_end") else "협의"
+    )
+
+    duties_str = "\n".join(f"• {d}" for d in ex.get("job_duties", [])) or "• 음료 제조 및 카운터 응대"
+    preferred_str = "\n".join(f"• {p}" for p in ex.get("preferred", [])) or "• 성실하고 밝은 분"
+    benefits_str = "\n".join(f"• {b}" for b in ex.get("benefits", [])) or "• 음료 무료 제공"
+
+    user_content = f"""다음 정보로 채용공고 HTML을 만들어주세요.
+
+[디자인 스타일 요청]
+{style_prompt if style_prompt else "깔끔하고 모던한 카페 느낌, 따뜻한 브라운 계열 색상"}
+
+[채용 정보]
+카페명: {ex.get('business_name') or '○○ 카페'}
+주소: {ex.get('address') or '서울 마포구'}
+모집 인원: {ex.get('headcount', 1)}명
+시급: {hourly_wage:,}원
+주 근무시간: {weekly_hours}시간
+월 예상 급여: {wage_sim['monthly_total']:,}원 (주휴수당 포함)
+4대보험: {'가입' if wage_sim['four_insurance_required'] else '미가입 (주 15시간 미만)'}
+근무 요일: {work_days_str}
+근무 시간: {work_time_str}
+근무 기간: {ex.get('work_period') or '협의'}
+
+[주요 업무]
+{duties_str}
+
+[우대 조건]
+{preferred_str}
+
+[복리후생]
+{benefits_str}
+
+[추가 안내]
+{ex.get('extra_note') or '없음'}
+"""
+
+    message = await client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=4096,
+        system=_VISUAL_SYSTEM_PROMPT,
+        messages=[{"role": "user", "content": user_content}],
+    )
+
+    raw = message.content[0].text.strip()
+
+    # ```html ... ``` 블록이 있으면 내용만 추출
+    match = re.search(r"```html\s*([\s\S]*?)```", raw)
+    html = match.group(1).strip() if match else raw
+
+    return {"html": html, "calculated_at": str(date.today())}
 
 
 # ── 오케스트레이터 진입점 ──────────────────────────────────────────────────

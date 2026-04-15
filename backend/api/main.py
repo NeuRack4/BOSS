@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from backend.core.config import get_settings
-from backend.api.routers import health, founders, triggers, drafts, subsidies, tax, location, sales, insights, rag, pdf_forms, expenses, marketing, ocr, menus, sales_items, map as map_router, recommend
+from backend.api.routers import health, founders, triggers, drafts, subsidies, tax, location, sales, insights, rag, pdf_forms, expenses, marketing, ocr, menus, sales_items, map as map_router, recommend, hire
 from backend.triggers.scheduler import start_scheduler, stop_scheduler
 
 
@@ -21,7 +21,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="BOSS API",
         description="Business Operations Support System — Proactive AI 비서",
-        version="0.3.0",
+        version="0.14.0",
         lifespan=lifespan,
     )
 
@@ -67,6 +67,7 @@ def create_app() -> FastAPI:
     app.include_router(map_router.router, prefix="/map", tags=["map"])
     app.include_router(recommend.router, prefix="/recommend", tags=["recommend"])
     app.include_router(rag.router, prefix="/rag", tags=["rag"])
+    app.include_router(hire.router, prefix="/hire", tags=["hire"])
     app.include_router(pdf_forms.router)  # prefix="/drafts" 내부 정의
 
     return app
