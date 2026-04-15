@@ -48,6 +48,18 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
 
 ---
 
+## [v0.13.2] — 2026-04-15
+
+### 버그 수정
+
+#### Fixed
+
+- **매출 페이지 fetch 에러 핸들링** (`frontend/app/dashboard/sales/page.tsx`)
+  - `fetchMenus` / `fetchEntries`에 try-catch 추가
+  - 백엔드 미실행 또는 네트워크 오류 시 "Unhandled Runtime Error: TypeError: Failed to fetch" 오버레이 대신 조용히 처리
+
+---
+
 ## [v0.13.1] — 2026-04-15
 
 ### 기능 — 사이드바 UX 개선

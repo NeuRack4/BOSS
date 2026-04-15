@@ -128,17 +128,26 @@ export default function SalesPage() {
   };
 
   const fetchMenus = async () => {
-    const h = await getAuthHeader();
-    const res = await fetch(`${apiUrl()}/menus/`, { headers: h });
-    if (res.ok) setMenus(await res.json());
+    try {
+      const h = await getAuthHeader();
+      const res = await fetch(`${apiUrl()}/menus/`, { headers: h });
+      if (res.ok) setMenus(await res.json());
+    } catch {
+      // 백엔드 미실행 또는 네트워크 오류 시 조용히 처리
+    }
   };
 
   const fetchEntries = async () => {
     setFetching(true);
-    const h = await getAuthHeader();
-    const res = await fetch(`${apiUrl()}/sales-items/?`, { headers: h });
-    if (res.ok) setEntries(await res.json());
-    setFetching(false);
+    try {
+      const h = await getAuthHeader();
+      const res = await fetch(`${apiUrl()}/sales-items/?`, { headers: h });
+      if (res.ok) setEntries(await res.json());
+    } catch {
+      // 백엔드 미실행 또는 네트워크 오류 시 조용히 처리
+    } finally {
+      setFetching(false);
+    }
   };
 
   const addToCart = () => {
