@@ -4,6 +4,50 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
 
 ---
 
+## [v0.14.0] — 2026-04-15
+
+### 기능 — BOSS 도메인 특화 에이전틱 AI 챗봇
+
+#### Added
+
+- **챗봇 API Route** (`frontend/app/api/chat/route.ts`) — 신규 파일
+  - Next.js 서버사이드 API Route — Anthropic API 키 서버 내 보호
+  - **Claude Tool Use(Function Calling) 에이전틱 루프**: 1차 호출(툴 선택) → 병렬 툴 실행 → 2차 호출(SSE 스트리밍)
+  - 5개 BOSS 도메인 툴 — 팀원 API를 읽기 전용으로 호출 (기존 백엔드 무수정)
+    - `search_laws` → `POST /rag/search` — 법령·규정 하이브리드 검색 (법적 질문 시 항상 호출)
+    - `search_subsidies` → `POST /subsidies/search` — 지원사업 공고 검색
+    - `get_tax_deadlines` → `GET /tax/deadlines` — 세금 신고 기한 조회
+    - `get_ongoing_subsidies` → `GET /subsidies/ongoing` — 상시 모집 지원사업
+    - `get_location_districts` → `GET /location/districts` — 마포구 9개 상권 정보
+  - 프롬프트 캐싱 (`cache_control: ephemeral`) — 시스템 프롬프트 캐시 적중 시 토큰 비용 90% 절감
+  - `CLAUDE_MODEL` 환경변수 — `claude-haiku-4-5` 교체로 비용 ~84% 절감 가능
+  - 슬라이딩 윈도우 컨텍스트 — 최근 20개 메시지만 유지 (컨텍스트 폭발 방지)
+  - MAX_TURNS=15 하드 제한 — 대화 15턴 후 리셋 유도
+  - **행동 중심 시스템 프롬프트**: 모든 응답 끝에 "사장님이 다음에 해야 할 구체적인 행동 1~3가지" 필수 포함
+- **챗봇 UI 컴포넌트** (`frontend/components/chat/ChatWindow.tsx`) — 신규 파일
+  - 실시간 SSE 스트리밍 텍스트 표시 (커서 애니메이션)
+  - 턴 뱃지 (TurnBadge): 녹색→황색→적색 단계적 경고 (13/15턴부터 경고)
+  - "새 대화 시작" 버튼 — 첫 턴 이후 헤더에 표시, 클릭 시 상태 초기화
+  - 툴 실행 상태 표시 ("BOSS 데이터 조회 중..." — 에이전틱 루프 진행 중 표시)
+  - 마크다운 렌더링 (ReactMarkdown + remark-gfm)
+  - Shift+Enter 줄바꿈 / Enter 전송
+- **챗봇 페이지** (`frontend/app/dashboard/chat/page.tsx`) — 신규 파일
+  - `/dashboard/chat` 경로
+  - "서류 초안 바로가기" 버튼 → `/drafts/business-registration`
+
+#### Changed
+
+- **사이드바** (`frontend/app/dashboard/layout.tsx`)
+  - `navItems` 최하단에 "AI 챗봇" (`/dashboard/chat`, MessageCircle 아이콘) 메뉴 추가
+
+#### Notes
+
+- 신규 파일 3개 추가, 기존 팀원 파일 1개만 최소 수정 (navItems 1줄)
+- `ANTHROPIC_API_KEY` 환경 변수 필요 (`frontend/.env.local`에 추가)
+- 백엔드 API는 팀원 코드를 읽기 전용 호출만 — 팀원 파일 무수정
+
+---
+
 ## [v0.13.2] — 2026-04-15
 
 ### 버그 수정
@@ -175,50 +219,6 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
   - 강조 메뉴 입력 → `/menus/` API 드롭다운으로 교체 (메뉴 없으면 텍스트 input 폴백)
 - **사이드바** (`frontend/app/dashboard/layout.tsx`)
   - 하드코딩된 카페명·상권 → `boss_profile` localStorage에서 실제 데이터로 교체
-
----
-
-## [v0.10.2] — 2026-04-15 (feature/chatbot)
-
-### 기능 — BOSS 도메인 특화 에이전틱 AI 챗봇
-
-#### Added
-
-- **챗봇 API Route** (`frontend/app/api/chat/route.ts`) — 신규 파일
-  - Next.js 서버사이드 API Route — Anthropic API 키 서버 내 보호
-  - **Claude Tool Use(Function Calling) 에이전틱 루프**: 1차 호출(툴 선택) → 병렬 툴 실행 → 2차 호출(SSE 스트리밍)
-  - 5개 BOSS 도메인 툴 — 팀원 API를 읽기 전용으로 호출 (기존 백엔드 무수정)
-    - `search_laws` → `POST /rag/search` — 법령·규정 하이브리드 검색 (법적 질문 시 항상 호출)
-    - `search_subsidies` → `POST /subsidies/search` — 지원사업 공고 검색
-    - `get_tax_deadlines` → `GET /tax/deadlines` — 세금 신고 기한 조회
-    - `get_ongoing_subsidies` → `GET /subsidies/ongoing` — 상시 모집 지원사업
-    - `get_location_districts` → `GET /location/districts` — 마포구 9개 상권 정보
-  - 프롬프트 캐싱 (`cache_control: ephemeral`) — 시스템 프롬프트 캐시 적중 시 토큰 비용 90% 절감
-  - `CLAUDE_MODEL` 환경변수 — `claude-haiku-4-5` 교체로 비용 ~84% 절감 가능
-  - 슬라이딩 윈도우 컨텍스트 — 최근 20개 메시지만 유지 (컨텍스트 폭발 방지)
-  - MAX_TURNS=15 하드 제한 — 대화 15턴 후 리셋 유도
-  - **행동 중심 시스템 프롬프트**: 모든 응답 끝에 "사장님이 다음에 해야 할 구체적인 행동 1~3가지" 필수 포함
-- **챗봇 UI 컴포넌트** (`frontend/components/chat/ChatWindow.tsx`) — 신규 파일
-  - 실시간 SSE 스트리밍 텍스트 표시 (커서 애니메이션)
-  - 턴 뱃지 (TurnBadge): 녹색→황색→적색 단계적 경고 (13/15턴부터 경고)
-  - "새 대화 시작" 버튼 — 첫 턴 이후 헤더에 표시, 클릭 시 상태 초기화
-  - 툴 실행 상태 표시 ("BOSS 데이터 조회 중..." — 에이전틱 루프 진행 중 표시)
-  - 마크다운 렌더링 (ReactMarkdown + remark-gfm)
-  - Shift+Enter 줄바꿈 / Enter 전송
-- **챗봇 페이지** (`frontend/app/dashboard/chat/page.tsx`) — 신규 파일
-  - `/dashboard/chat` 경로
-  - "서류 초안 바로가기" 버튼 → `/drafts/business-registration`
-
-#### Changed
-
-- **사이드바** (`frontend/app/dashboard/layout.tsx`)
-  - `navItems` 최하단에 "AI 챗봇" (`/dashboard/chat`, 💬) 메뉴 추가
-
-#### Notes
-
-- 신규 파일 3개 추가, 기존 팀원 파일 1개만 최소 수정 (navItems 1줄)
-- `ANTHROPIC_API_KEY` 환경 변수 필요 (`frontend/.env.local`에 추가)
-- 백엔드 API는 팀원 코드를 읽기 전용 호출만 — 팀원 파일 무수정
 
 ---
 
