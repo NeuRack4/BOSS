@@ -20,10 +20,47 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from backend.api.dependencies import db, get_current_user_id
+from backend.db.client import get_supabase
 
 router = APIRouter(prefix="/drafts", tags=["pdf-forms"])
 
+# 로컬 폴백 (개발환경 / Storage 다운로드 실패 시)
 _FORMS_DIR = Path(__file__).parent.parent.parent.parent / "frontend" / "public" / "forms"
+
+# Supabase Storage 버킷명 (창업 서류 공식 서식 — 사업자등록/식품신고/근로계약/임대)
+_PDF_BUCKET = "startup-forms"
+
+# 메모리 캐시 (프로세스 수명 동안 유지 — 서식 PDF는 정적 파일)
+_pdf_cache: dict[str, bytes] = {}
+
+
+def _fetch_pdf_bytes(filename: str) -> bytes:
+    """
+    Supabase Storage pdf-forms 버킷에서 PDF bytes 반환.
+    캐시 히트 시 즉시 반환, 미스 시 다운로드 후 캐시 저장.
+    다운로드 실패 시 로컬 파일로 폴백.
+    """
+    if filename in _pdf_cache:
+        return _pdf_cache[filename]
+
+    # Supabase Storage 다운로드
+    try:
+        sb = get_supabase()
+        data: bytes = sb.storage.from_(_PDF_BUCKET).download(filename)
+        _pdf_cache[filename] = data
+        return data
+    except Exception:
+        pass
+
+    # 로컬 폴백 (개발환경)
+    local = _FORMS_DIR / filename
+    if local.exists():
+        data = local.read_bytes()
+        _pdf_cache[filename] = data
+        return data
+
+    raise FileNotFoundError(f"PDF 서식 파일을 찾을 수 없습니다: {filename}")
+
 
 # 한글 폰트 (Windows)
 _MALGUN = "C:/Windows/Fonts/malgun.ttf"
@@ -323,31 +360,107 @@ FOOD_BIZ: list[FieldCoord] = [
 
 # ──────────────────────────────────────────────────────────────────────
 # 표준 근로계약서 (employment.pdf, 3페이지, A4 595×841pt)
+#
+# [Page 1]
+# 서두 (y=145.7~158.6): "○○○장(이하 "채용기관장"이라 함)과 ○○○(이하 "근로자"이라 함)은..."
+#   회사명 ○○○: x=73.4~108   /  근로자명 ○○○: x=310.4~345
+# 인적사항 fill 행: y=268.5~308.7  열 경계: x=83│215│332│457│547
+# 연락처/주소 fill 행: y=320.7~355  probe_y=337
+# 제1조 근로기간: y=398.2~411.2
+#   "20○○년" x=164.3~216.2 (○○: x≈175~202)
+#   "○월"    x=222.8~248.7 (○:  x≈222~237)
+#   "○일부터" x=255.2~307.2 (○:  x≈255~268)
+#   "20○○년" x=313.7~365.7 (○○: x≈324~353)
+#   "○월"    x=372.2~398.2 (○:  x≈372~387)
+#   "○일까지" x=404.7~456.6 (○:  x≈404~418)
+# 제3조 근무장소: y=612.7~625.6  직종: y=632.2~645.2
+# 제4조 근로시간: y=690.7~703.6
+#   "○요일부터" x=252.7~317.6 (○: x≈252~264)  "○요일까지," x=325.5~368.0 (○: x≈325~337)
+#   "○○시부터"  x=375.8~440.8 (○○: x≈375~397)  "○○시까지"  x=448.6~513.6 (○○: x≈448~470)
+#   휴게시간: y=710.2~723.2  "(휴게시간 ○○시~○○시)는..." → 시작 ○○:x=151~174, 종료 ○○:x=193~215
+#
+# [Page 2]
+# 보수표 헤더행: y=576.5~590.8  데이터행: y=596.8~611.2
+#   기본급 금액: 우정렬 x=357  /  급식비 금액: 우정렬 x=540
+# 임금지급일: y=702.8~717.2  "보수는 매월 25일(첫날부터...)"  25 위치: x≈219~229
+# 임금계좌: y=758.4~772.8  "○○은행," x=175.8~226.7  "○○-○○-○○○○○○" x=232.8~377.1
+#
+# [Page 3]
+# 수령확인: y=276.7~289.6  "수령 여, 미수령" → 수령[V] gap x=395~401
+# 계약일: y=315.7~328.7  "20" x=245.5~258.6 / "년" x=271.5 / "월" x=303.9 / "일" x=336.4
+# 서명란: y=354.7~367.7  (채용기관장) x=86~159 → 성명 x=162  /  (근로자) x=324~371 → 성명 x=374
 # ──────────────────────────────────────────────────────────────────────
 EMP_CONTRACT: list[FieldCoord] = [
-    F("채용기관장_사업장명",         48, 154, page=1, fs=9, cjk=True),
-    F("근로자_성명",                 93, 286, page=1,       cjk=True),
-    F("근로자_성별",                225, 286, page=1,       cjk=False),
-    F("근로자_생년월일",            340, 286, page=1,       cjk=False),
-    F("근무형태",                   448, 286, page=1,       cjk=False),
-    F("근로자_연락처",              100, 324, page=1,       cjk=False),
-    F("근로자_주소",                250, 324, page=1,       cjk=True),
-    F("계약기간_시작",              145, 399, page=1,       cjk=False),
-    F("계약기간_종료",              355, 399, page=1,       cjk=False),
-    F("근무장소",                   214, 619, page=1,       cjk=True),
-    F("직종_업무내용",              182, 637, page=1,       cjk=True),
-    F("근무요일_시작",             320, 692, page=1,       cjk=False),
-    F("근무요일_종료",             365, 692, page=1,       cjk=False),
-    F("근무시작시간",              408, 692, page=1,       cjk=False),
-    F("근무종료시간",              458, 692, page=1,       cjk=False),
-    F("휴게시작시간",              231, 714, page=1,       cjk=False),
-    F("휴게종료시간",              282, 714, page=1,       cjk=False),
-    F("기본급",                    145, 611, page=2,       r=True,  cjk=False),
-    F("급식비",                    290, 611, page=2,       r=True,  cjk=False),
-    F("임금지급일",                280, 712, page=2,       cjk=False),
-    F("은행명",                    207, 753, page=2,       cjk=False),
-    F("계좌번호",                  265, 753, page=2,       cjk=False),
-    F("계약일",                    245, 323, page=3, fs=9, cjk=False),
+    # ① 서두: 채용기관장 사업장명 (○○○ 위치 x=73.4, y=145.7~158.6)
+    F("채용기관장_사업장명",         73, 149, page=1, fs=9, cjk=True),
+    # ② 서두: 근로자 성명 (두번째 ○○○ x=310.4, 같은 줄)
+    F("근로자_성명_서두",           310, 149, page=1, fs=9, cjk=True),
+
+    # ③ 인적사항 테이블 fill 행 (y=268.5~308.7, probe_y=286)
+    F("근로자_성명",                 93, 286, page=1, cjk=True),
+    F("근로자_성별",                225, 286, page=1, cjk=True),
+    F("근로자_생년월일",            337, 286, page=1, cjk=False),
+    F("근무형태",                   463, 286, page=1, cjk=True),
+
+    # ④ 연락처/주소 fill 행 (y=320.7~355, probe_y=337)
+    F("근로자_연락처",              100, 337, page=1, cjk=False),
+    F("근로자_주소",                250, 337, page=1, cjk=True),
+
+    # ⑤ 제1조 근로기간 (y=398.2~411.2, probe_y=402)
+    # 날짜 파싱: fill_pdf 엔드포인트에서 YYYY-MM-DD → 년2/월/일 분리 주입
+    # 시작 날짜
+    F("계약기간_시작_년2",          200, 402, page=1, r=True, cjk=False),  # 20[년2]년: gap x=175~202
+    F("계약기간_시작_월",           235, 402, page=1, r=True, cjk=False),  # [월]월: gap x=222~237
+    F("계약기간_시작_일",           268, 402, page=1, r=True, cjk=False),  # [일]일: gap x=255~268
+    # 종료 날짜
+    F("계약기간_종료_년2",          350, 402, page=1, r=True, cjk=False),  # gap x=324~353
+    F("계약기간_종료_월",           385, 402, page=1, r=True, cjk=False),  # gap x=372~387
+    F("계약기간_종료_일",           418, 402, page=1, r=True, cjk=False),  # gap x=404~418
+
+    # ⑥ 제3조 근무장소 및 직종
+    F("근무장소",                   205, 613, page=1, cjk=True),
+    F("직종_업무내용",              179, 633, page=1, cjk=True),
+
+    # ⑦ 제4조 근로시간 (y=690.7~703.6, probe_y=691)
+    # ○요일부터 x=252.7 → 좌정렬 x=252 (한글 요일)
+    F("근무요일_시작",             252, 691, page=1, cjk=True),
+    # ○요일까지 x=325.5 → 좌정렬 x=325 (한글 요일)
+    F("근무요일_종료",             325, 691, page=1, cjk=True),
+    # ○○시부터 x=375.8 → 좌정렬 x=375 (09:00 형식)
+    F("근무시작시간",              375, 691, page=1, cjk=False),
+    # ○○시까지 x=448.6 → 좌정렬 x=448 (18:00 형식)
+    F("근무종료시간",              448, 691, page=1, cjk=False),
+    # 휴게시간 (y=710.2~723.2): 시작 ○○ x=151.6, 종료 ○○ x≈196
+    F("휴게시작시간",              151, 711, page=1, cjk=False),
+    F("휴게종료시간",              196, 711, page=1, cjk=False),
+
+    # ⑧ 보수표 (page=2) — 헤더행 y=576.5~590.8 / 기본급(0호봉) 셀 우측정렬
+    # 기본급(0호봉) 셀: 헤더라벨(x=133~206) 우측 빈칸에 금액 삽입, right-align x=280
+    F("기본급",                    280, 577, page=2, r=True, cjk=False),
+    # 정액 급식비 셀: 헤더라벨(x=363~429) 우측 빈칸, right-align x=540
+    F("급식비",                    540, 577, page=2, r=True, cjk=False),
+
+    # ⑨ 임금지급일: "보수는 매월 25일..." 은 서식 원본 인쇄 문구 — 덮지 않음
+
+    # ⑩ 임금계좌 (page=2, y=758.4~772.8)
+    # ○○은행 전체 덮기 후 은행명 삽입
+    F("은행명",                    175, 758, page=2, cjk=True),
+    # ○○-○○-○○○○○○ 전체 덮기 후 계좌번호 삽입
+    F("계좌번호",                  232, 758, page=2, cjk=False),
+
+    # ⑫ 계약일 (page=3, y=315.7~328.7) — 년2/월/일 분리 주입
+    F("계약일_년2",                271, 316, page=3, fs=9, r=True, cjk=False),
+    F("계약일_월",                 303, 316, page=3, fs=9, r=True, cjk=False),
+    F("계약일_일",                 336, 316, page=3, fs=9, r=True, cjk=False),
+
+    # ⑪ 수령확인 체크박스 (page=3, y=276.7~289.6)
+    # "수령"(x=369~394.9) 와 "여,"(x=401.5~418) 사이 □ gap x=395~401
+    # □ 기호는 "여,"(x=401.5) 첫 글리프이므로 V를 x=403에 삽입 (□ 내부)
+    F("수령확인",                  403, 277, page=3, cjk=False),
+
+    # ⑭ 서명란 (page=3, y=354.7~367.7)
+    F("채용기관장_대표성명",        162, 354, page=3, cjk=True),
+    F("근로자_서명_성명",           374, 354, page=3, cjk=True),
 ]
 
 
@@ -442,9 +555,54 @@ def _patch_food_biz_rows(page: fitz.Page) -> None:
                    color=K, width=0.84)
 
 
-def _fill_pdf(pdf_path: Path, coords: list[FieldCoord], fields: dict[str, str], max_pages: int | None = None) -> bytes:
+def _patch_employment_contract(doc: fitz.Document) -> None:
     """
-    PyMuPDF로 PDF에 텍스트 삽입 후 bytes 반환.
+    표준 근로계약서 ○ 기호(플레이스홀더) 제거 및 pre-print 덮기.
+    insert_text()는 기존 내용을 지우지 않으므로 흰 박스로 먼저 덮음.
+    """
+    W = (1.0, 1.0, 1.0)  # 흰색
+
+    # ── Page 1 ──────────────────────────────────────────────────────
+    p1 = doc[0]
+
+    # 서두: 채용기관장 사업장명 ○○○ (x=73.4~108, y=145.7~158.6)
+    p1.draw_rect(fitz.Rect(72, 144, 110, 160), color=W, fill=W, width=0)
+    # 서두: 근로자 성명 ○○○ (x=310.4~345, 같은 줄)
+    p1.draw_rect(fitz.Rect(309, 144, 348, 160), color=W, fill=W, width=0)
+
+    # 계약기간 날짜 ○ 제거 (y=398.2~411.2)
+    # "20" (x=164~175) 는 pre-print이므로 보존 — ○○ 부분만 (x=177~) 덮기
+    p1.draw_rect(fitz.Rect(177, 397, 204, 412), color=W, fill=W, width=0)  # 시작 년 ○○
+    p1.draw_rect(fitz.Rect(221, 397, 237, 412), color=W, fill=W, width=0)  # 시작 월 ○
+    p1.draw_rect(fitz.Rect(254, 397, 269, 412), color=W, fill=W, width=0)  # 시작 일 ○
+    # 종료 "20" (x=313~325) 보존 — ○○ 부분만 (x=327~) 덮기
+    p1.draw_rect(fitz.Rect(327, 397, 354, 412), color=W, fill=W, width=0)  # 종료 년 ○○
+    p1.draw_rect(fitz.Rect(371, 397, 387, 412), color=W, fill=W, width=0)  # 종료 월 ○
+    p1.draw_rect(fitz.Rect(403, 397, 419, 412), color=W, fill=W, width=0)  # 종료 일 ○
+
+    # 근로시간 ○ 제거 (y=690.7~703.6)
+    p1.draw_rect(fitz.Rect(251, 689, 266, 704), color=W, fill=W, width=0)  # 시작 요일 ○
+    p1.draw_rect(fitz.Rect(324, 689, 338, 704), color=W, fill=W, width=0)  # 종료 요일 ○
+    p1.draw_rect(fitz.Rect(374, 689, 398, 704), color=W, fill=W, width=0)  # 시작 시간 ○○
+    p1.draw_rect(fitz.Rect(447, 689, 471, 704), color=W, fill=W, width=0)  # 종료 시간 ○○
+
+    # 휴게시간 ○○ 제거 (y=710.2~723.2)
+    p1.draw_rect(fitz.Rect(150, 709, 175, 724), color=W, fill=W, width=0)  # 시작 ○○
+    p1.draw_rect(fitz.Rect(192, 709, 218, 724), color=W, fill=W, width=0)  # 종료 ○○
+
+    # ── Page 2 ──────────────────────────────────────────────────────
+    if doc.page_count > 1:
+        p2 = doc[1]
+        # "보수는 매월 25일..." 은 서식에 원래 인쇄된 문구이므로 덮지 않음
+        # 계좌: ○○은행, (x=175.8~226.7) 전체 덮기
+        p2.draw_rect(fitz.Rect(174, 757, 228, 773), color=W, fill=W, width=0)
+        # 계좌번호 ○○-○○-○○○○○○ (x=232.8~377.1) 전체 덮기
+        p2.draw_rect(fitz.Rect(231, 757, 378, 773), color=W, fill=W, width=0)
+
+
+def _fill_pdf(pdf_bytes: bytes, pdf_name: str, coords: list[FieldCoord], fields: dict[str, str], max_pages: int | None = None) -> bytes:
+    """
+    PyMuPDF로 PDF bytes에 텍스트 삽입 후 bytes 반환.
 
     ins_num (우측정렬, helv):
         text_width = fitz.get_text_length(text, fontname="helv", fontsize)
@@ -453,13 +611,17 @@ def _fill_pdf(pdf_path: Path, coords: list[FieldCoord], fields: dict[str, str], 
     ins_str (좌측정렬, CJK):
         insert_point.x = x0
     """
-    doc = fitz.open(str(pdf_path))
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     if max_pages and doc.page_count > max_pages:
         doc.select(list(range(max_pages)))
 
     # 식품영업 신고서 레이아웃 보정 (row 확장 + 210mm 문구 삭제)
-    if "food-biz" in str(pdf_path):
+    if "food-biz" in pdf_name:
         _patch_food_biz_rows(doc[0])
+
+    # 근로계약서: ○ 플레이스홀더 흰 박스로 제거 + pre-print 덮기
+    if "employment" in pdf_name:
+        _patch_employment_contract(doc)
 
     for coord in coords:
         value = fields.get(coord.key, "")
@@ -519,9 +681,11 @@ async def fill_pdf(doc_type: str, req: FillPdfRequest):
     if not config:
         raise HTTPException(status_code=404, detail=f"지원하지 않는 서류 유형: {doc_type}")
 
-    pdf_path = _FORMS_DIR / config["pdf"]
-    if not pdf_path.exists():
-        raise HTTPException(status_code=404, detail=f"PDF 서식 파일 없음: {config['pdf']}")
+    pdf_filename = config["pdf"]
+    try:
+        pdf_bytes = _fetch_pdf_bytes(pdf_filename)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"PDF 서식 파일 없음: {pdf_filename}")
 
     fields = dict(req.fields)
 
@@ -565,6 +729,36 @@ async def fill_pdf(doc_type: str, req: FillPdfRequest):
         # 반려동물 출입여부: 기본 해당
         fields.setdefault("반려동물_출입여부_해당", "V")
 
+    # 근로계약서: 계약기간 + 계약일 날짜 파싱 → 년2/월/일 분리 주입
+    if doc_type == "employment-contract":
+        def _split_date(raw: str, prefix: str) -> None:
+            """YYYY-MM-DD → {prefix}_년2(마지막 2자리), {prefix}_월, {prefix}_일 주입"""
+            parts = raw.replace(".", "-").split("-")
+            if len(parts) == 3:
+                fields.setdefault(f"{prefix}_년2", parts[0][-2:])
+                fields.setdefault(f"{prefix}_월",  parts[1].zfill(2))
+                fields.setdefault(f"{prefix}_일",  parts[2].zfill(2))
+
+        if fields.get("계약기간_시작"):
+            _split_date(fields["계약기간_시작"], "계약기간_시작")
+        if fields.get("계약기간_종료"):
+            _split_date(fields["계약기간_종료"], "계약기간_종료")
+        if fields.get("계약일"):
+            parts = fields["계약일"].replace(".", "-").split("-")
+            if len(parts) == 3:
+                fields.setdefault("계약일_년2", parts[0][-2:])
+                fields.setdefault("계약일_월",  parts[1].zfill(2))
+                fields.setdefault("계약일_일",  parts[2].zfill(2))
+
+        # 서두 근로자 성명 = 인적사항 성명과 동일
+        if fields.get("근로자_성명") and not fields.get("근로자_성명_서두"):
+            fields["근로자_성명_서두"] = fields["근로자_성명"]
+        # 서명란 근로자 성명 = 인적사항 성명과 동일
+        if fields.get("근로자_성명") and not fields.get("근로자_서명_성명"):
+            fields["근로자_서명_성명"] = fields["근로자_성명"]
+        # 수령확인 기본값 "V" (page=3 체크박스)
+        fields.setdefault("수령확인", "V")
+
     # 사업자등록 신청서: 오늘 날짜 + 고정값 주입
     if doc_type == "business-registration":
         today = _date.today()
@@ -578,7 +772,7 @@ async def fill_pdf(doc_type: str, req: FillPdfRequest):
         fields["주종목"] = "카페"
 
     try:
-        pdf_bytes = _fill_pdf(pdf_path, config["coords"], fields, config.get("max_pages"))
+        pdf_bytes = _fill_pdf(pdf_bytes, pdf_filename, config["coords"], fields, config.get("max_pages"))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"PDF 생성 오류: {e}")
 
