@@ -11,22 +11,36 @@ import {
   SUB_STAGE_LABELS,
   type FounderStateData,
 } from "@/lib/api";
+import {
+  LayoutDashboard,
+  TrendingUp,
+  ArrowDownCircle,
+  Coffee,
+  Megaphone,
+  FileText,
+  Scale,
+  Sparkles,
+  Rocket,
+  Map,
+  MapPin,
+  Handshake,
+  Bell,
+  User,
+} from "lucide-react";
 
 const navItems = [
-  { label: "개요", href: "/dashboard", icon: "◈" },
-  { label: "매출 관리", href: "/dashboard/sales", icon: "₩" },
-  { label: "비용 관리", href: "/dashboard/expenses", icon: "↓" },
-  { label: "메뉴 관리", href: "/dashboard/menus", icon: "☕" },
-  { label: "마케팅", href: "/dashboard/marketing", icon: "📣" },
-  { label: "세금 관리", href: "/dashboard/tax", icon: "📋" },
-  { label: "법령 검색", href: "/dashboard/rag", icon: "⚖" },
-  { label: "AI 인사이트", href: "/dashboard/insights", icon: "✦" },
-  { label: "창업 시뮬레이터", href: "/dashboard/startup", icon: "🚀" },
-  { label: "상권 지도", href: "/dashboard/map", icon: "🗺️" },
-  { label: "입지 분석", href: "/dashboard/location", icon: "📍" },
-  { label: "지원사업", href: "/dashboard/subsidies", icon: "📢" },
-  { label: "알림", href: "/dashboard/notifications", icon: "🔔" },
-  { label: "마이페이지", href: "/dashboard/profile", icon: "👤" },
+  { label: "개요", href: "/dashboard", icon: LayoutDashboard },
+  { label: "매출 관리", href: "/dashboard/sales", icon: TrendingUp },
+  { label: "비용 관리", href: "/dashboard/expenses", icon: ArrowDownCircle },
+  { label: "메뉴 관리", href: "/dashboard/menus", icon: Coffee },
+  { label: "마케팅", href: "/dashboard/marketing", icon: Megaphone },
+  { label: "세금 관리", href: "/dashboard/tax", icon: FileText },
+  { label: "법령 검색", href: "/dashboard/rag", icon: Scale },
+  { label: "AI 인사이트", href: "/dashboard/insights", icon: Sparkles },
+  { label: "창업 시뮬레이터", href: "/dashboard/startup", icon: Rocket },
+  { label: "상권 지도", href: "/dashboard/map", icon: Map },
+  { label: "입지 분석", href: "/dashboard/location", icon: MapPin },
+  { label: "지원사업", href: "/dashboard/subsidies", icon: Handshake },
 ];
 
 export default function DashboardLayout({
@@ -123,11 +137,11 @@ export default function DashboardLayout({
 
       {/* 사이드바 */}
       <aside
-        className={`fixed md:static inset-y-0 left-0 z-30 w-60 bg-white border-r border-surface-300 flex flex-col transition-transform duration-200
+        className={`fixed inset-y-0 left-0 z-30 w-60 bg-white border-r border-surface-300 flex flex-col transition-transform duration-200
           ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}
       >
         {/* 로고 */}
-        <div className="h-16 flex items-center px-6 border-b border-surface-300">
+        <div className="h-16 flex items-center px-4 border-b border-surface-300">
           <Link
             href="/"
             className="text-xl font-black gradient-text tracking-tight"
@@ -135,6 +149,27 @@ export default function DashboardLayout({
             BOSS
           </Link>
           <span className="ml-2 text-xs text-gray-400 font-medium">v0.6.0</span>
+          <div className="ml-auto flex items-center gap-0.5">
+            <Link
+              href="/dashboard/notifications"
+              className="relative p-1.5 rounded-lg hover:bg-surface-200 text-gray-500 transition-colors"
+              title="알림"
+            >
+              <Bell size={16} />
+              {unreadCount > 0 && (
+                <span className="absolute top-0.5 right-0.5 text-[9px] bg-red-500 text-white font-bold w-3.5 h-3.5 flex items-center justify-center rounded-full">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </Link>
+            <Link
+              href="/dashboard/profile"
+              className="p-1.5 rounded-lg hover:bg-surface-200 text-gray-500 transition-colors"
+              title="마이페이지"
+            >
+              <User size={16} />
+            </Link>
+          </div>
         </div>
 
         {/* 카페 정보 + 현재 단계 */}
@@ -148,24 +183,27 @@ export default function DashboardLayout({
               1인 운영 · {cafeInfo.district}
             </p>
           </div>
-          {founderState && (
-            <div className="rounded-lg border border-surface-300 bg-surface-50 px-3 py-2">
-              <p className="text-xs text-gray-400 mb-1">현재 단계</p>
-              <p className="text-xs font-semibold text-gray-700">
-                {STAGE_LABELS[founderState.stage]}
-              </p>
-              <p className="text-xs text-brand-500 mt-0.5">
-                · {SUB_STAGE_LABELS[founderState.sub_stage]}
-              </p>
-            </div>
-          )}
+          <div className="rounded-lg border border-surface-300 bg-surface-50 px-3 py-2">
+            <p className="text-xs text-gray-400 mb-0.5">현재 단계</p>
+            <p className="text-xs font-semibold text-gray-700">
+              {founderState ? (
+                <>
+                  {STAGE_LABELS[founderState.stage]}{" "}
+                  <span className="text-brand-500 font-normal">
+                    ({SUB_STAGE_LABELS[founderState.sub_stage]})
+                  </span>
+                </>
+              ) : (
+                <span className="text-gray-300">—</span>
+              )}
+            </p>
+          </div>
         </div>
 
         {/* 네비게이션 */}
-        <nav className="flex-1 px-3 py-4 space-y-1">
-          {navItems.map(({ label, href, icon }) => {
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+          {navItems.map(({ label, href, icon: Icon }) => {
             const isActive = pathname === href;
-            const isNotification = href === "/dashboard/notifications";
             return (
               <Link
                 key={href}
@@ -178,13 +216,8 @@ export default function DashboardLayout({
                       : "text-gray-600 hover:bg-surface-200 hover:text-gray-900"
                   }`}
               >
-                <span className="text-base w-5 text-center">{icon}</span>
+                <Icon size={16} className="shrink-0" />
                 <span className="flex-1">{label}</span>
-                {isNotification && unreadCount > 0 && (
-                  <span className="text-xs bg-red-500 text-white font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
-                    {unreadCount > 9 ? "9+" : unreadCount}
-                  </span>
-                )}
               </Link>
             );
           })}
@@ -211,7 +244,7 @@ export default function DashboardLayout({
       </aside>
 
       {/* 메인 콘텐츠 */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 md:ml-60">
         {/* 모바일 상단 헤더 */}
         <header className="md:hidden h-14 bg-white border-b border-surface-300 flex items-center px-4 gap-3">
           <button
@@ -221,13 +254,6 @@ export default function DashboardLayout({
             ☰
           </button>
           <span className="font-black gradient-text">BOSS</span>
-          {unreadCount > 0 && (
-            <Link href="/dashboard/notifications" className="ml-auto">
-              <span className="text-xs bg-red-500 text-white font-bold px-2 py-0.5 rounded-full">
-                🔔 {unreadCount}
-              </span>
-            </Link>
-          )}
         </header>
 
         <main className="flex-1 p-6">{children}</main>

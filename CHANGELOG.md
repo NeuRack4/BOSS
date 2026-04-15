@@ -4,7 +4,27 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
 
 ---
 
-## [v0.11.0] — 2026-04-15
+## [v0.13.1] — 2026-04-15
+
+### 기능 — 사이드바 UX 개선
+
+#### Changed
+
+- **사이드바 고정** (`frontend/app/dashboard/layout.tsx`)
+  - `md:static` → `fixed` 전환, 본문이 길어져도 사이드바 뷰포트에 고정
+  - 네비게이션 영역에 `overflow-y-auto` 추가 — 메뉴 많아도 내부 스크롤
+  - 메인 콘텐츠 `md:ml-60` 오프셋 추가
+- **알림·마이페이지 버튼 이동** (`frontend/app/dashboard/layout.tsx`)
+  - 사이드바 하단 navItems → 로고(BOSS) 우측 아이콘 버튼으로 이동
+- **전체 아이콘 흑백 SVG 교체** (`frontend/app/dashboard/layout.tsx`)
+  - 이모지/컬러 아이콘 → `lucide-react` 흑백 SVG 아이콘 일괄 교체
+- **현재 단계 표시 형식 변경** (`frontend/app/dashboard/layout.tsx`)
+  - 2줄 표시 → `창업 준비 (입지 탐색)` 한 줄 인라인 형식
+  - 데이터 로딩 전 `—` 플레이스홀더로 레이아웃 고정 (높이 흔들림 제거)
+
+---
+
+## [v0.13.0] — 2026-04-15
 
 ### 기능 — AI 인사이트 마케팅 강화 및 마크다운 렌더링 수정
 
