@@ -4,6 +4,38 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
 
 ---
 
+## [v0.9.1] — 2026-04-15
+
+### 버그 수정 — 표준 근로계약서 PDF 오버레이 좌표 정밀화 + Supabase Storage 폴백
+
+#### Fixed
+
+- **근로계약서 "20" 보존 버그** (`backend/api/routers/pdf_forms.py`)
+  - 근로계약기간 년도 흰 박스 시작 x `174→177`, 종료 년도 `323→327` — "20" 글자가 덮이던 문제 해결
+- **기본급 위치 엉뚱한 행 삽입** (`backend/api/routers/pdf_forms.py`)
+  - `get_text("words")` 분석으로 보수표 헤더행 정확 좌표 확인 — y `596→577`, x `357→280`
+  - 가족수당 행(y=596)에 금액이 삽입되던 문제 해결
+- **임금지급일 pre-print 원복** (`backend/api/routers/pdf_forms.py`)
+  - "보수는 매월 25일" 서식 원문 흰 박스로 덮던 로직 제거 — 서식 그대로 보존
+- **근로자_동의 필드 제거** (`backend/api/routers/pdf_forms.py`, `frontend/app/drafts/[type]/page.tsx`)
+  - 실제 서식에 없는 단독 체크박스 필드를 잘못 삽입하던 문제 해결 — 해당 필드 전체 삭제
+- **수령확인 V 체크 위치** (`backend/api/routers/pdf_forms.py`)
+  - □ 글리프 내부에 정확히 위치하도록 x `396→403` 조정
+
+#### Added
+
+- **Supabase Storage PDF 서빙** (`backend/api/routers/pdf_forms.py`)
+  - `_fetch_pdf_bytes()` — Storage `startup-forms` 버킷 우선 다운로드 + 메모리 캐시
+  - 다운로드 실패 시 로컬 `frontend/public/forms/` 폴백
+- **근로계약서 서두 + 서명란 필드 분리** (`backend/api/routers/pdf_forms.py`)
+  - `근로자_성명_서두`, `근로자_서명_성명`, `채용기관장_대표성명` 필드 추가 — 3곳에 각각 삽입
+- **프로필 기반 상호명 자동 적용** (`frontend/app/drafts/[type]/page.tsx`)
+  - `profileFromStorage().business_name` 우선 → localStorage 구버전 데이터("연남동") 덮어쓰기 방지
+- **수령확인 체크박스 등록** (`frontend/app/drafts/[type]/page.tsx`)
+  - `CHECKBOX_KEYS` Set에 `"수령확인"` 추가 — UI 체크박스로 올바르게 렌더링
+
+---
+
 ## [v0.9.0] — 2026-04-15
 
 ### 기능 — 지원사업 신청서 초안 자동 작성 + 답변 저장

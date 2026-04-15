@@ -52,6 +52,8 @@ const CHECKBOX_KEYS = new Set<string>([
   "공동조리장_해당", "공동조리장_미해당",
   "식품자동판매기_기능여부_해당", "식품자동판매기_기능여부_미해당",
   "반려동물_출입여부_해당", "반려동물_출입여부_미해당",
+  // 근로계약서 체크박스
+  "수령확인",
 ]);
 
 /* ─── 편집 패널에서 숨길 필드 (내부 계산용 / 구 방식 단일 키) ─── */
@@ -324,29 +326,33 @@ const MOCK_FIELDS: Record<string, Record<string, string>> = {
     반려동물_출입여부_해당: "V",    반려동물_출입여부_미해당: "",
   },
   "employment-contract": {
-    채용기관장_사업장명: "연남카페",
-    근로자_성명: "김아무개",
+    채용기관장_사업장명: "연남카페",          // DB 사업자등록 상호명으로 자동 교체
+    채용기관장_대표성명: "홍길동",             // DB 사업자등록 대표자명으로 자동 교체
+    근로자_성명: "김민지",
+    근로자_성명_서두: "김민지",               // 서두 ○○○ 위치 (근로자_성명과 동일)
+    근로자_서명_성명: "김민지",               // 서명란 (근로자_성명과 동일)
     근로자_성별: "여",
     근로자_생년월일: "1998-03-15",
-    근무형태: "파트타임",
-    근로자_연락처: "010-0000-1111",
-    근로자_주소: "서울시 마포구 합정동 123",
-    계약기간_시작: "2026-06-01",
-    계약기간_종료: "2027-05-31",
+    근무형태: "정규직",
+    근로자_연락처: "010-9876-5432",
+    근로자_주소: "서울특별시 마포구 성미산로 22, 301호",
+    계약기간_시작: "2026-05-22",
+    계약기간_종료: "2027-04-30",
     근무장소: "연남카페 (마포구 연남동 567-8)",
-    직종_업무내용: "바리스타 / 음료 제조 및 홀 서빙",
+    직종_업무내용: "음료제조, 고객응대, 매장 정리",
     근무요일_시작: "월",
     근무요일_종료: "금",
     근무시작시간: "09:00",
     근무종료시간: "18:00",
-    휴게시작시간: "12:00",
-    휴게종료시간: "13:00",
-    기본급: "2,096,270",
-    급식비: "200,000",
+    휴게시작시간: "13:00",
+    휴게종료시간: "14:00",
+    기본급: "2,200,000",
+    급식비: "100,000",
     임금지급일: "25",
     은행명: "국민은행",
     계좌번호: "123-456-789012",
-    계약일: "2026-05-20",
+    수령확인: "V",
+    계약일: new Date().toISOString().split("T")[0],
   },
   "lease-contract": {
     소재지: "서울시 마포구 연남동 567-8 1층 101호",
@@ -448,6 +454,21 @@ export default function DraftPreviewPage() {
       if (type === "food-business-license") {
         const profileName = (profileFromStorage().name as string) || "";
         if (profileName) fields["신고인_성명"] = profileName;
+      }
+      // employment-contract: 서두/서명란 성명 + 상호명 항상 최신값 주입
+      if (type === "employment-contract") {
+        if (fields["근로자_성명"]) {
+          if (!fields["근로자_성명_서두"]) fields["근로자_성명_서두"] = fields["근로자_성명"];
+          if (!fields["근로자_서명_성명"]) fields["근로자_서명_성명"] = fields["근로자_성명"];
+        }
+        // 상호명: 온보딩 프로필 business_name 우선 (localStorage 구버전 데이터 방지)
+        const profileBizName = (profileFromStorage().business_name as string) || "";
+        if (profileBizName) {
+          fields["채용기관장_사업장명"] = profileBizName;
+        } else if (!fields["채용기관장_사업장명"]) {
+          fields["채용기관장_사업장명"] = MOCK_FIELDS["employment-contract"]["채용기관장_사업장명"];
+        }
+        if (!fields["수령확인"]) fields["수령확인"] = "V";
       }
 
       // 사업자등록 구 방식 단일 키 → 신 방식 _여/_부 쌍으로 마이그레이션 후 삭제
@@ -553,7 +574,10 @@ export default function DraftPreviewPage() {
                 // DB 대표자명 있으면 더 정확한 값으로 교체
                 if (ownerName) updatedFields["신고인_성명"] = ownerName;
               }
-              if (type === "employment-contract" && bizName) updatedFields["채용기관장_사업장명"] = bizName;
+              if (type === "employment-contract") {
+                if (bizName) updatedFields["채용기관장_사업장명"] = bizName;
+                if (ownerName) updatedFields["채용기관장_대표성명"] = ownerName;
+              }
             }
           } catch { /* 네트워크 오류 무시 — updatedFields에 이미 이름 주입됨 */ }
 
@@ -630,12 +654,15 @@ export default function DraftPreviewPage() {
               }
               if (type === "employment-contract") {
                 if (bizName) mapped["채용기관장_사업장명"] = bizName;
+                if (biz["성명_대표자"]) mapped["채용기관장_대표성명"] = biz["성명_대표자"];
                 if (biz["사업장_소재지"]) {
                   const addr = biz["사업장_소재지"];
                   const floor = biz["사업장_층"] ? ` ${biz["사업장_층"]}층` : "";
                   const unit  = biz["사업장_호"]  ? ` ${biz["사업장_호"]}호`  : "";
                   mapped["근무장소"] = `${bizName} (${addr}${floor}${unit})`.trim();
                 }
+                // 수령확인 기본값
+                if (!mapped["수령확인"]) mapped["수령확인"] = "V";
               }
               // 신고인_성명은 biz["성명_대표자"]로 이미 설정됨 — auth userName으로 덮지 않음
               // (applyFixedValues에서 profile.name이 최종 우선순위로 적용됨)
