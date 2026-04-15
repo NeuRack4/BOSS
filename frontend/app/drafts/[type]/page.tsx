@@ -27,39 +27,74 @@ const DOC_META: Record<string, { title: string; subtitle: string }> = {
 /* ─── 체크박스 필드 집합 (value "V" = 체크, "" = 미체크) ─── */
 const CHECKBOX_KEYS = new Set<string>([
   // 사업자등록 체크박스
-  "주소자동정정_여", "주소자동정정_부",
-  "투자조합여부_여", "투자조합여부_부",
-  "허가등사업여부_신고", "허가등사업여부_등록", "허가등사업여부_허가", "허가등사업여부_해당없음",
-  "주류면허신청_여", "주류면허신청_부",
-  "사업자단위과세_여", "사업자단위과세_부",
-  "간이과세적용_여", "간이과세적용_부",
-  "간이과세포기_여", "간이과세포기_부",
-  "수신동의_문자", "수신동의_이메일",
-  "확정일자_여", "확정일자_부",
-  "공동사업자_여", "공동사업자_부",
-  "송달장소_여", "송달장소_부",
-  "현금영수증_여", "현금영수증_부",
+  "주소자동정정_여",
+  "주소자동정정_부",
+  "투자조합여부_여",
+  "투자조합여부_부",
+  "허가등사업여부_신고",
+  "허가등사업여부_등록",
+  "허가등사업여부_허가",
+  "허가등사업여부_해당없음",
+  "주류면허신청_여",
+  "주류면허신청_부",
+  "사업자단위과세_여",
+  "사업자단위과세_부",
+  "간이과세적용_여",
+  "간이과세적용_부",
+  "간이과세포기_여",
+  "간이과세포기_부",
+  "수신동의_문자",
+  "수신동의_이메일",
+  "확정일자_여",
+  "확정일자_부",
+  "공동사업자_여",
+  "공동사업자_부",
+  "송달장소_여",
+  "송달장소_부",
+  "현금영수증_여",
+  "현금영수증_부",
   // 식품영업 체크박스
-  "영업종류_즉석판매제조ㆍ가공업", "영업종류_집단급식소식품판매업", "영업종류_일반음식점영업",
-  "영업종류_식품운반업", "영업종류_기타식품판매업", "영업종류_위탁급식영업",
-  "영업종류_식품소분업", "영업종류_식품냉동ㆍ냉장업", "영업종류_제과점영업",
-  "영업종류_식용얼음판매업", "영업종류_용기ㆍ포장지제조업",
-  "영업종류_식품자동판매기영업", "영업종류_옹기류제조업",
-  "영업종류_유통전문판매업", "영업종류_휴게음식점영업",
-  "식품용수_수돗물", "식품용수_먹는샘물", "식품용수_먹는염지하수",
-  "식품용수_지하수", "식품용수_먹는해양심층수", "식품용수_그밖의먹는물",
-  "공유주방_해당", "공유주방_미해당",
-  "공동조리장_해당", "공동조리장_미해당",
-  "식품자동판매기_기능여부_해당", "식품자동판매기_기능여부_미해당",
-  "반려동물_출입여부_해당", "반려동물_출입여부_미해당",
+  "영업종류_즉석판매제조ㆍ가공업",
+  "영업종류_집단급식소식품판매업",
+  "영업종류_일반음식점영업",
+  "영업종류_식품운반업",
+  "영업종류_기타식품판매업",
+  "영업종류_위탁급식영업",
+  "영업종류_식품소분업",
+  "영업종류_식품냉동ㆍ냉장업",
+  "영업종류_제과점영업",
+  "영업종류_식용얼음판매업",
+  "영업종류_용기ㆍ포장지제조업",
+  "영업종류_식품자동판매기영업",
+  "영업종류_옹기류제조업",
+  "영업종류_유통전문판매업",
+  "영업종류_휴게음식점영업",
+  "식품용수_수돗물",
+  "식품용수_먹는샘물",
+  "식품용수_먹는염지하수",
+  "식품용수_지하수",
+  "식품용수_먹는해양심층수",
+  "식품용수_그밖의먹는물",
+  "공유주방_해당",
+  "공유주방_미해당",
+  "공동조리장_해당",
+  "공동조리장_미해당",
+  "식품자동판매기_기능여부_해당",
+  "식품자동판매기_기능여부_미해당",
+  "반려동물_출입여부_해당",
+  "반려동물_출입여부_미해당",
 ]);
 
 /* ─── 편집 패널에서 숨길 필드 (내부 계산용 / 구 방식 단일 키) ─── */
 const HIDDEN_EDIT_FIELDS = new Set<string>([
-  "신고_년", "신고_월", "신고_일",
-  "신청_년", "신청_월", "신청_일",
-  "공유주방_사용여부",            // 구 방식 → 공유주방_해당/미해당
-  "공동조리장_이용여부",          // 구 방식 → 공동조리장_해당/미해당
+  "신고_년",
+  "신고_월",
+  "신고_일",
+  "신청_년",
+  "신청_월",
+  "신청_일",
+  "공유주방_사용여부", // 구 방식 → 공유주방_해당/미해당
+  "공동조리장_이용여부", // 구 방식 → 공동조리장_해당/미해당
   // 사업자등록 구 방식 단일 키 (applyFixedValues에서 _여/_부 쌍으로 마이그레이션 후 삭제)
   "자동정정신청",
   "투자조합_출자여부",
@@ -74,39 +109,96 @@ const HIDDEN_EDIT_FIELDS = new Set<string>([
 ]);
 
 /* ─── 체크박스 섹션 그룹 (편집 패널 하단 그리드 표시) ─── */
-interface CheckboxSection { title: string; keys: string[] }
+interface CheckboxSection {
+  title: string;
+  keys: string[];
+}
 const CHECKBOX_SECTIONS: Record<string, CheckboxSection[]> = {
   "business-registration": [
-    { title: "주소 자동정정 신청",     keys: ["주소자동정정_여", "주소자동정정_부"] },
-    { title: "투자조합 출자여부",      keys: ["투자조합여부_여", "투자조합여부_부"] },
-    { title: "허가·등록·신고 사업여부", keys: ["허가등사업여부_신고", "허가등사업여부_등록", "허가등사업여부_허가", "허가등사업여부_해당없음"] },
-    { title: "주류면허 신청여부",      keys: ["주류면허신청_여", "주류면허신청_부"] },
-    { title: "사업자단위과세 신고여부", keys: ["사업자단위과세_여", "사업자단위과세_부"] },
-    { title: "간이과세 적용신고여부",  keys: ["간이과세적용_여", "간이과세적용_부"] },
-    { title: "간이과세 포기신고여부",  keys: ["간이과세포기_여", "간이과세포기_부"] },
-    { title: "수신 동의",              keys: ["수신동의_문자", "수신동의_이메일"] },
-    { title: "확정일자",               keys: ["확정일자_여", "확정일자_부"] },
-    { title: "공동사업자",             keys: ["공동사업자_여", "공동사업자_부"] },
-    { title: "송달장소",               keys: ["송달장소_여", "송달장소_부"] },
-    { title: "현금영수증",             keys: ["현금영수증_여", "현금영수증_부"] },
+    {
+      title: "주소 자동정정 신청",
+      keys: ["주소자동정정_여", "주소자동정정_부"],
+    },
+    {
+      title: "투자조합 출자여부",
+      keys: ["투자조합여부_여", "투자조합여부_부"],
+    },
+    {
+      title: "허가·등록·신고 사업여부",
+      keys: [
+        "허가등사업여부_신고",
+        "허가등사업여부_등록",
+        "허가등사업여부_허가",
+        "허가등사업여부_해당없음",
+      ],
+    },
+    {
+      title: "주류면허 신청여부",
+      keys: ["주류면허신청_여", "주류면허신청_부"],
+    },
+    {
+      title: "사업자단위과세 신고여부",
+      keys: ["사업자단위과세_여", "사업자단위과세_부"],
+    },
+    {
+      title: "간이과세 적용신고여부",
+      keys: ["간이과세적용_여", "간이과세적용_부"],
+    },
+    {
+      title: "간이과세 포기신고여부",
+      keys: ["간이과세포기_여", "간이과세포기_부"],
+    },
+    { title: "수신 동의", keys: ["수신동의_문자", "수신동의_이메일"] },
+    { title: "확정일자", keys: ["확정일자_여", "확정일자_부"] },
+    { title: "공동사업자", keys: ["공동사업자_여", "공동사업자_부"] },
+    { title: "송달장소", keys: ["송달장소_여", "송달장소_부"] },
+    { title: "현금영수증", keys: ["현금영수증_여", "현금영수증_부"] },
   ],
   "food-business-license": [
-    { title: "영업의 종류", keys: [
-      "영업종류_즉석판매제조ㆍ가공업", "영업종류_집단급식소식품판매업", "영업종류_일반음식점영업",
-      "영업종류_식품운반업", "영업종류_기타식품판매업", "영업종류_위탁급식영업",
-      "영업종류_식품소분업", "영업종류_식품냉동ㆍ냉장업", "영업종류_제과점영업",
-      "영업종류_식용얼음판매업", "영업종류_용기ㆍ포장지제조업",
-      "영업종류_식품자동판매기영업", "영업종류_옹기류제조업",
-      "영업종류_유통전문판매업", "영업종류_휴게음식점영업",
-    ]},
-    { title: "식품용수", keys: [
-      "식품용수_수돗물", "식품용수_먹는샘물", "식품용수_먹는염지하수",
-      "식품용수_지하수", "식품용수_먹는해양심층수", "식품용수_그밖의먹는물",
-    ]},
-    { title: "공유주방 사용여부",          keys: ["공유주방_해당", "공유주방_미해당"] },
-    { title: "공동조리장 이용여부",         keys: ["공동조리장_해당", "공동조리장_미해당"] },
-    { title: "식품자동판매기 혼합처리기능", keys: ["식품자동판매기_기능여부_해당", "식품자동판매기_기능여부_미해당"] },
-    { title: "반려동물 출입여부",           keys: ["반려동물_출입여부_해당", "반려동물_출입여부_미해당"] },
+    {
+      title: "영업의 종류",
+      keys: [
+        "영업종류_즉석판매제조ㆍ가공업",
+        "영업종류_집단급식소식품판매업",
+        "영업종류_일반음식점영업",
+        "영업종류_식품운반업",
+        "영업종류_기타식품판매업",
+        "영업종류_위탁급식영업",
+        "영업종류_식품소분업",
+        "영업종류_식품냉동ㆍ냉장업",
+        "영업종류_제과점영업",
+        "영업종류_식용얼음판매업",
+        "영업종류_용기ㆍ포장지제조업",
+        "영업종류_식품자동판매기영업",
+        "영업종류_옹기류제조업",
+        "영업종류_유통전문판매업",
+        "영업종류_휴게음식점영업",
+      ],
+    },
+    {
+      title: "식품용수",
+      keys: [
+        "식품용수_수돗물",
+        "식품용수_먹는샘물",
+        "식품용수_먹는염지하수",
+        "식품용수_지하수",
+        "식품용수_먹는해양심층수",
+        "식품용수_그밖의먹는물",
+      ],
+    },
+    { title: "공유주방 사용여부", keys: ["공유주방_해당", "공유주방_미해당"] },
+    {
+      title: "공동조리장 이용여부",
+      keys: ["공동조리장_해당", "공동조리장_미해당"],
+    },
+    {
+      title: "식품자동판매기 혼합처리기능",
+      keys: ["식품자동판매기_기능여부_해당", "식품자동판매기_기능여부_미해당"],
+    },
+    {
+      title: "반려동물 출입여부",
+      keys: ["반려동물_출입여부_해당", "반려동물_출입여부_미해당"],
+    },
   ],
 };
 
@@ -205,19 +297,32 @@ const FIELD_LABELS: Record<string, string> = {
   계약체결일: "계약체결일",
   공동조리장_업소정보: "공동조리장 업소정보",
   // 사업자등록 체크박스
-  주소자동정정_여: "여", 주소자동정정_부: "부",
-  투자조합여부_여: "여", 투자조합여부_부: "부",
-  허가등사업여부_신고: "신고", 허가등사업여부_등록: "등록",
-  허가등사업여부_허가: "허가", 허가등사업여부_해당없음: "해당없음",
-  주류면허신청_여: "여", 주류면허신청_부: "부",
-  사업자단위과세_여: "여", 사업자단위과세_부: "부",
-  간이과세적용_여: "여", 간이과세적용_부: "부",
-  간이과세포기_여: "여", 간이과세포기_부: "부",
-  수신동의_문자: "문자(SMS)", 수신동의_이메일: "이메일",
-  확정일자_여: "여", 확정일자_부: "부",
-  공동사업자_여: "여", 공동사업자_부: "부",
-  송달장소_여: "여", 송달장소_부: "부",
-  현금영수증_여: "여", 현금영수증_부: "부",
+  주소자동정정_여: "여",
+  주소자동정정_부: "부",
+  투자조합여부_여: "여",
+  투자조합여부_부: "부",
+  허가등사업여부_신고: "신고",
+  허가등사업여부_등록: "등록",
+  허가등사업여부_허가: "허가",
+  허가등사업여부_해당없음: "해당없음",
+  주류면허신청_여: "여",
+  주류면허신청_부: "부",
+  사업자단위과세_여: "여",
+  사업자단위과세_부: "부",
+  간이과세적용_여: "여",
+  간이과세적용_부: "부",
+  간이과세포기_여: "여",
+  간이과세포기_부: "부",
+  수신동의_문자: "문자(SMS)",
+  수신동의_이메일: "이메일",
+  확정일자_여: "여",
+  확정일자_부: "부",
+  공동사업자_여: "여",
+  공동사업자_부: "부",
+  송달장소_여: "여",
+  송달장소_부: "부",
+  현금영수증_여: "여",
+  현금영수증_부: "부",
   // 식품영업 체크박스
   영업종류_즉석판매제조ㆍ가공업: "즉석판매제조·가공업",
   영업종류_집단급식소식품판매업: "집단급식소식품판매업",
@@ -229,7 +334,7 @@ const FIELD_LABELS: Record<string, string> = {
   영업종류_식품냉동ㆍ냉장업: "식품냉동·냉장업",
   영업종류_제과점영업: "제과점영업",
   영업종류_식용얼음판매업: "식용얼음판매업",
-  "영업종류_용기ㆍ포장지제조업": "용기·포장지제조업",
+  영업종류_용기ㆍ포장지제조업: "용기·포장지제조업",
   영업종류_식품자동판매기영업: "식품자동판매기영업",
   영업종류_옹기류제조업: "옹기류제조업",
   영업종류_유통전문판매업: "유통전문판매업",
@@ -240,10 +345,14 @@ const FIELD_LABELS: Record<string, string> = {
   식품용수_지하수: "지하수",
   식품용수_먹는해양심층수: "먹는해양심층수",
   식품용수_그밖의먹는물: "그 밖의 먹는물",
-  공유주방_해당: "해당", 공유주방_미해당: "미해당",
-  공동조리장_해당: "해당", 공동조리장_미해당: "미해당",
-  식품자동판매기_기능여부_해당: "해당", 식품자동판매기_기능여부_미해당: "미해당",
-  반려동물_출입여부_해당: "해당", 반려동물_출입여부_미해당: "미해당",
+  공유주방_해당: "해당",
+  공유주방_미해당: "미해당",
+  공동조리장_해당: "해당",
+  공동조리장_미해당: "미해당",
+  식품자동판매기_기능여부_해당: "해당",
+  식품자동판매기_기능여부_미해당: "미해당",
+  반려동물_출입여부_해당: "해당",
+  반려동물_출입여부_미해당: "미해당",
 };
 
 /* ─── Mock 데이터 (온보딩 미완료 사용자용 가이드 예시) ─── */
@@ -282,18 +391,32 @@ const MOCK_FIELDS: Record<string, Record<string, string>> = {
     // ⑤ 전자우편
     전자우편주소: "hello@boss-ai.kr",
     // 체크박스 ("V" = 체크, "" = 미체크)
-    주소자동정정_여: "",  주소자동정정_부: "V",
-    투자조합여부_여: "",  투자조합여부_부: "V",
-    허가등사업여부_신고: "V", 허가등사업여부_등록: "", 허가등사업여부_허가: "", 허가등사업여부_해당없음: "",
-    주류면허신청_여: "",  주류면허신청_부: "V",
-    사업자단위과세_여: "", 사업자단위과세_부: "V",
-    간이과세적용_여: "",  간이과세적용_부: "V",
-    간이과세포기_여: "",  간이과세포기_부: "V",
-    수신동의_문자: "V",  수신동의_이메일: "",
-    확정일자_여: "V",    확정일자_부: "",
-    공동사업자_여: "",   공동사업자_부: "V",
-    송달장소_여: "",     송달장소_부: "V",
-    현금영수증_여: "V",  현금영수증_부: "",
+    주소자동정정_여: "",
+    주소자동정정_부: "V",
+    투자조합여부_여: "",
+    투자조합여부_부: "V",
+    허가등사업여부_신고: "V",
+    허가등사업여부_등록: "",
+    허가등사업여부_허가: "",
+    허가등사업여부_해당없음: "",
+    주류면허신청_여: "",
+    주류면허신청_부: "V",
+    사업자단위과세_여: "",
+    사업자단위과세_부: "V",
+    간이과세적용_여: "",
+    간이과세적용_부: "V",
+    간이과세포기_여: "",
+    간이과세포기_부: "V",
+    수신동의_문자: "V",
+    수신동의_이메일: "",
+    확정일자_여: "V",
+    확정일자_부: "",
+    공동사업자_여: "",
+    공동사업자_부: "V",
+    송달장소_여: "",
+    송달장소_부: "V",
+    현금영수증_여: "V",
+    현금영수증_부: "",
   },
   "food-business-license": {
     // 텍스트 필드
@@ -308,20 +431,37 @@ const MOCK_FIELDS: Record<string, Record<string, string>> = {
     영업장_소재지: "서울시 마포구 연남동 522 2층 202호",
     신고일: "2026-06-01",
     // 영업의 종류 체크박스 ("V" = 체크, "" = 미체크)
-    영업종류_즉석판매제조ㆍ가공업: "",  영업종류_집단급식소식품판매업: "", 영업종류_일반음식점영업: "",
-    영업종류_식품운반업: "",             영업종류_기타식품판매업: "",        영업종류_위탁급식영업: "",
-    영업종류_식품소분업: "",             "영업종류_식품냉동ㆍ냉장업": "",    영업종류_제과점영업: "",
-    영업종류_식용얼음판매업: "",         "영업종류_용기ㆍ포장지제조업": "",
-    영업종류_식품자동판매기영업: "",      영업종류_옹기류제조업: "",
-    영업종류_유통전문판매업: "",          영업종류_휴게음식점영업: "V",      // 카페 기본값
+    영업종류_즉석판매제조ㆍ가공업: "",
+    영업종류_집단급식소식품판매업: "",
+    영업종류_일반음식점영업: "",
+    영업종류_식품운반업: "",
+    영업종류_기타식품판매업: "",
+    영업종류_위탁급식영업: "",
+    영업종류_식품소분업: "",
+    영업종류_식품냉동ㆍ냉장업: "",
+    영업종류_제과점영업: "",
+    영업종류_식용얼음판매업: "",
+    영업종류_용기ㆍ포장지제조업: "",
+    영업종류_식품자동판매기영업: "",
+    영업종류_옹기류제조업: "",
+    영업종류_유통전문판매업: "",
+    영업종류_휴게음식점영업: "V", // 카페 기본값
     // 식품용수 체크박스
-    식품용수_수돗물: "V",  식품용수_먹는샘물: "", 식품용수_먹는염지하수: "",
-    식품용수_지하수: "",   식품용수_먹는해양심층수: "", 식품용수_그밖의먹는물: "",
+    식품용수_수돗물: "V",
+    식품용수_먹는샘물: "",
+    식품용수_먹는염지하수: "",
+    식품용수_지하수: "",
+    식품용수_먹는해양심층수: "",
+    식품용수_그밖의먹는물: "",
     // 공유주방 / 공동조리장 / 기능여부 / 반려동물
-    공유주방_해당: "",    공유주방_미해당: "V",
-    공동조리장_해당: "",   공동조리장_미해당: "V",
-    식품자동판매기_기능여부_해당: "", 식품자동판매기_기능여부_미해당: "V",
-    반려동물_출입여부_해당: "V",    반려동물_출입여부_미해당: "",
+    공유주방_해당: "",
+    공유주방_미해당: "V",
+    공동조리장_해당: "",
+    공동조리장_미해당: "V",
+    식품자동판매기_기능여부_해당: "",
+    식품자동판매기_기능여부_미해당: "V",
+    반려동물_출입여부_해당: "V",
+    반려동물_출입여부_미해당: "",
   },
   "employment-contract": {
     채용기관장_사업장명: "연남카페",
@@ -453,14 +593,14 @@ export default function DraftPreviewPage() {
       // 사업자등록 구 방식 단일 키 → 신 방식 _여/_부 쌍으로 마이그레이션 후 삭제
       if (type === "business-registration") {
         const MIGRATE: Record<string, [string, string]> = {
-          "자동정정신청":               ["주소자동정정_여",   "주소자동정정_부"],
-          "투자조합_출자여부":           ["투자조합여부_여",   "투자조합여부_부"],
-          "간이과세_신고여부":           ["간이과세적용_여",   "간이과세적용_부"],
-          "간이과세_포기신고여부":       ["간이과세포기_여",   "간이과세포기_부"],
-          "확정일자_신청여부":           ["확정일자_여",       "확정일자_부"],
-          "공동사업자_신청여부":         ["공동사업자_여",     "공동사업자_부"],
-          "사업장외_송달장소_신청여부":  ["송달장소_여",       "송달장소_부"],
-          "현금영수증_가입신청여부":     ["현금영수증_여",     "현금영수증_부"],
+          자동정정신청: ["주소자동정정_여", "주소자동정정_부"],
+          투자조합_출자여부: ["투자조합여부_여", "투자조합여부_부"],
+          간이과세_신고여부: ["간이과세적용_여", "간이과세적용_부"],
+          간이과세_포기신고여부: ["간이과세포기_여", "간이과세포기_부"],
+          확정일자_신청여부: ["확정일자_여", "확정일자_부"],
+          공동사업자_신청여부: ["공동사업자_여", "공동사업자_부"],
+          사업장외_송달장소_신청여부: ["송달장소_여", "송달장소_부"],
+          현금영수증_가입신청여부: ["현금영수증_여", "현금영수증_부"],
         };
         for (const [oldKey, [yeoKey, buKey]] of Object.entries(MIGRATE)) {
           if (oldKey in fields) {
@@ -468,13 +608,15 @@ export default function DraftPreviewPage() {
             // 기존값이 "여" → 여 체크 / "부" → 부 체크 / 그 외 → 이미 설정된 값 유지
             if (!fields[yeoKey] && !fields[buKey]) {
               fields[yeoKey] = v === "여" ? "V" : "";
-              fields[buKey]  = v === "부" ? "V" : "";
+              fields[buKey] = v === "부" ? "V" : "";
             }
             delete fields[oldKey];
           }
         }
         // 매핑 불가 구 키 — 삭제만
-        ["허가사업_여부", "신탁재산_여부"].forEach((k) => { delete fields[k]; });
+        ["허가사업_여부", "신탁재산_여부"].forEach((k) => {
+          delete fields[k];
+        });
       }
 
       // 체크박스 정규화: 구 방식("해당"/"미해당"/"여"/"부" 텍스트) → "V"/"" 통일
@@ -520,14 +662,19 @@ export default function DraftPreviewPage() {
           let userId = "";
           try {
             const { supabase } = await import("@/lib/supabase");
-            const { data: { user } } = await supabase.auth.getUser();
+            const {
+              data: { user },
+            } = await supabase.auth.getUser();
             if (!user) return;
             userId = user.id;
             liveUserName =
               user.user_metadata?.full_name ||
               user.user_metadata?.name ||
-              user.email?.split("@")[0] || "";
-          } catch { return; }
+              user.email?.split("@")[0] ||
+              "";
+          } catch {
+            return;
+          }
 
           const updatedFields = { ...saved };
 
@@ -553,14 +700,21 @@ export default function DraftPreviewPage() {
                 // DB 대표자명 있으면 더 정확한 값으로 교체
                 if (ownerName) updatedFields["신고인_성명"] = ownerName;
               }
-              if (type === "employment-contract" && bizName) updatedFields["채용기관장_사업장명"] = bizName;
+              if (type === "employment-contract" && bizName)
+                updatedFields["채용기관장_사업장명"] = bizName;
             }
-          } catch { /* 네트워크 오류 무시 — updatedFields에 이미 이름 주입됨 */ }
+          } catch {
+            /* 네트워크 오류 무시 — updatedFields에 이미 이름 주입됨 */
+          }
 
           // ── Step 3: 항상 상태 갱신 (fetch 성공/실패 무관) ───────────
           setEditedFields(updatedFields);
           renderPdf(updatedFields);
-          try { localStorage.setItem(savedKey, JSON.stringify(updatedFields)); } catch { /* 무시 */ }
+          try {
+            localStorage.setItem(savedKey, JSON.stringify(updatedFields));
+          } catch {
+            /* 무시 */
+          }
         })();
       }
       return;
@@ -569,13 +723,18 @@ export default function DraftPreviewPage() {
     // ② DB에서 저장된 필드 불러오기 (Supabase 로그인 상태일 때)
     // 반환: { fields: 저장 필드 or null, userName: 로그인 유저 이름 }
     // ★ auth 호출과 fetch 호출을 분리 — fetch 실패해도 userName은 항상 보존
-    async function tryLoadFromDb(): Promise<{ fields: Record<string, string> | null; userName: string }> {
+    async function tryLoadFromDb(): Promise<{
+      fields: Record<string, string> | null;
+      userName: string;
+    }> {
       // ── Step 1: Supabase auth (백엔드 독립적, 클라이언트 SDK) ──────────
       let userId = "";
       let userName = "";
       try {
         const { supabase } = await import("@/lib/supabase");
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user) return { fields: null, userName: "" };
         userId = user.id;
         userName =
@@ -599,42 +758,58 @@ export default function DraftPreviewPage() {
             return { fields: json.fields as Record<string, string>, userName };
           }
         }
-      } catch { /* 백엔드 오류 무시 */ }
+      } catch {
+        /* 백엔드 오류 무시 */
+      }
 
       // ── Step 3: 사업자등록 교차 로드 (실패 무시, userName 보존) ──────────
       if (type === "food-business-license" || type === "employment-contract") {
         try {
-          const bizRes = await fetch(`${apiUrl}/drafts/load-fields/business-registration`, {
-            headers: { "x-user-id": userId },
-          });
+          const bizRes = await fetch(
+            `${apiUrl}/drafts/load-fields/business-registration`,
+            {
+              headers: { "x-user-id": userId },
+            },
+          );
           if (bizRes.ok) {
             const bizJson = await bizRes.json();
             const biz = bizJson.fields as Record<string, string> | null;
             if (biz && Object.keys(biz).length > 0) {
-              const mapped: Record<string, string> = { ...(MOCK_FIELDS[type] ?? {}) };
+              const mapped: Record<string, string> = {
+                ...(MOCK_FIELDS[type] ?? {}),
+              };
               const bizName = biz["상호_단체명"] || "";
 
               if (type === "food-business-license") {
-                if (bizName)                   mapped["명칭_상호"]            = bizName;
-                if (biz["성명_대표자"])        mapped["신고인_성명"]          = biz["성명_대표자"];
-                if (biz["주민등록번호"])       mapped["신고인_주민등록번호"]  = biz["주민등록번호"];
-                if (biz["휴대전화번호"])       mapped["신고인_전화번호"]      = biz["휴대전화번호"];
+                if (bizName) mapped["명칭_상호"] = bizName;
+                if (biz["성명_대표자"])
+                  mapped["신고인_성명"] = biz["성명_대표자"];
+                if (biz["주민등록번호"])
+                  mapped["신고인_주민등록번호"] = biz["주민등록번호"];
+                if (biz["휴대전화번호"])
+                  mapped["신고인_전화번호"] = biz["휴대전화번호"];
                 if (biz["사업장_소재지"]) {
                   const addr = biz["사업장_소재지"];
-                  const floor = biz["사업장_층"] ? ` ${biz["사업장_층"]}층` : "";
-                  const unit  = biz["사업장_호"]  ? ` ${biz["사업장_호"]}호`  : "";
-                  mapped["신고인_주소"]   = addr + floor + unit;
+                  const floor = biz["사업장_층"]
+                    ? ` ${biz["사업장_층"]}층`
+                    : "";
+                  const unit = biz["사업장_호"] ? ` ${biz["사업장_호"]}호` : "";
+                  mapped["신고인_주소"] = addr + floor + unit;
                   mapped["영업장_소재지"] = addr + floor + unit;
                 }
-                if (biz["사업장_전화번호"]) mapped["영업장_전화번호"] = biz["사업장_전화번호"];
+                if (biz["사업장_전화번호"])
+                  mapped["영업장_전화번호"] = biz["사업장_전화번호"];
               }
               if (type === "employment-contract") {
                 if (bizName) mapped["채용기관장_사업장명"] = bizName;
                 if (biz["사업장_소재지"]) {
                   const addr = biz["사업장_소재지"];
-                  const floor = biz["사업장_층"] ? ` ${biz["사업장_층"]}층` : "";
-                  const unit  = biz["사업장_호"]  ? ` ${biz["사업장_호"]}호`  : "";
-                  mapped["근무장소"] = `${bizName} (${addr}${floor}${unit})`.trim();
+                  const floor = biz["사업장_층"]
+                    ? ` ${biz["사업장_층"]}층`
+                    : "";
+                  const unit = biz["사업장_호"] ? ` ${biz["사업장_호"]}호` : "";
+                  mapped["근무장소"] =
+                    `${bizName} (${addr}${floor}${unit})`.trim();
                 }
               }
               // 신고인_성명은 biz["성명_대표자"]로 이미 설정됨 — auth userName으로 덮지 않음
@@ -642,7 +817,9 @@ export default function DraftPreviewPage() {
               return { fields: mapped, userName };
             }
           }
-        } catch { /* 백엔드 오류 무시 */ }
+        } catch {
+          /* 백엔드 오류 무시 */
+        }
       }
 
       // 로그인은 됐지만 저장 데이터 없음 → fields: null, userName은 항상 반환
@@ -653,11 +830,19 @@ export default function DraftPreviewPage() {
       if (dbFields && Object.keys(dbFields).length > 0) {
         applyFixedValues(dbFields);
         // food-biz: profile.name → auth userName 순으로 fallback 주입
-        if (type === "food-business-license" && !dbFields["신고인_성명"] && userName) {
+        if (
+          type === "food-business-license" &&
+          !dbFields["신고인_성명"] &&
+          userName
+        ) {
           dbFields["신고인_성명"] = userName;
         }
         // localStorage에도 캐시
-        try { localStorage.setItem(savedKey, JSON.stringify(dbFields)); } catch { /* 무시 */ }
+        try {
+          localStorage.setItem(savedKey, JSON.stringify(dbFields));
+        } catch {
+          /* 무시 */
+        }
         const dbDraft: DraftResult = {
           doc_type: type,
           title: meta.title,
@@ -695,7 +880,7 @@ export default function DraftPreviewPage() {
       }
       generateDraft(type, profile, userName);
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type]);
 
   /* draft.fields 바뀌면 editedFields 초기화 + PDF 첫 렌더 (API 응답 시에만) */
@@ -976,8 +1161,13 @@ export default function DraftPreviewPage() {
                       {/* ── 텍스트 필드 ── */}
                       <div className="space-y-3 mb-4">
                         {Object.entries(displayFields).map(([key, value]) => {
-                          if (HIDDEN_EDIT_FIELDS.has(key) || CHECKBOX_KEYS.has(key)) return null;
-                          const isLong = (value?.length ?? 0) > 30 || key === "특약사항";
+                          if (
+                            HIDDEN_EDIT_FIELDS.has(key) ||
+                            CHECKBOX_KEYS.has(key)
+                          )
+                            return null;
+                          const isLong =
+                            (value?.length ?? 0) > 30 || key === "특약사항";
                           return (
                             <div key={key} className="space-y-1">
                               <label className="block text-xs font-medium text-gray-600">
@@ -986,7 +1176,9 @@ export default function DraftPreviewPage() {
                               {isLong ? (
                                 <textarea
                                   value={value ?? ""}
-                                  onChange={(e) => handleFieldChange(key, e.target.value)}
+                                  onChange={(e) =>
+                                    handleFieldChange(key, e.target.value)
+                                  }
                                   rows={3}
                                   className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400/20 resize-y"
                                 />
@@ -994,7 +1186,9 @@ export default function DraftPreviewPage() {
                                 <input
                                   type="text"
                                   value={value ?? ""}
-                                  onChange={(e) => handleFieldChange(key, e.target.value)}
+                                  onChange={(e) =>
+                                    handleFieldChange(key, e.target.value)
+                                  }
                                   className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400/20"
                                 />
                               )}
@@ -1011,7 +1205,8 @@ export default function DraftPreviewPage() {
                           </p>
                           <div className="flex flex-wrap gap-1.5">
                             {section.keys.map((key) => {
-                              const checked = (displayFields[key] ?? "") === "V";
+                              const checked =
+                                (displayFields[key] ?? "") === "V";
                               return (
                                 <button
                                   key={key}
