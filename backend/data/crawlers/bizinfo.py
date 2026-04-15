@@ -20,6 +20,7 @@
 import re
 from datetime import date
 from typing import Optional
+from urllib.parse import urlparse
 
 import httpx
 
@@ -220,3 +221,108 @@ def _infer_region(title: str, item: dict) -> Optional[str]:
     if any(m in blob for m in _SEOUL_MARKERS):
         return "서울"
     return "전국"
+
+
+# ------------------------------------------------------------
+# 첨부파일 스크래퍼 (신청서 초안 기능)
+# ------------------------------------------------------------
+
+_ATTACH_EXTS = (".hwp", ".pdf", ".docx", ".doc")
+
+# 기업마당 다운로드 URL regex — BS4는 &fileSn=0 의 & 를 엔티티로 파싱해 href를 잘라버림
+_RE_FILEDOWN = re.compile(r'href="(/cmm/fms/fileDown\.do\?[^"]+)"')
+_RE_EXTSN = re.compile(r'data-extsn="([^"]+)"')
+_RE_FILEBLANK = re.compile(
+    r"fileBlank\('([^']+)'\s*\+\s*'/'\s*\+\s*'([^']+)'"
+)
+
+
+async def fetch_attachments(detail_url: str) -> list[dict]:
+    """
+    기업마당 공고 상세 페이지에서 첨부파일 목록을 수집한다.
+
+    기업마당 HTML 구조 특이사항:
+      - <a href="/cmm/fms/fileDown.do?atchFileId=...&fileSn=0"> 에서
+        & 가 이스케이프 안 된 채로 있어 BS4가 href를 잘라버림
+      - data-extsn="hwp" 속성으로 파일 타입 판별
+      - fileBlank() onclick 에서 실제 파일명 추출
+
+    Returns:
+        [{"filename": str, "file_type": str, "download_url": str}, ...]
+        첨부파일이 없거나 접근 실패 시 빈 리스트 반환.
+    """
+    if not detail_url:
+        return []
+
+    base = _base_origin(detail_url)
+    try:
+        async with httpx.AsyncClient(timeout=20.0, follow_redirects=True) as client:
+            resp = await client.get(
+                detail_url,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; BOSS-crawler/1.0)"},
+            )
+            resp.raise_for_status()
+            html = resp.text
+    except Exception:
+        return []
+
+    # regex로 직접 추출 — 순서 보장 (HTML 등장 순)
+    download_hrefs = _RE_FILEDOWN.findall(html)   # ["/cmm/fms/fileDown.do?...", ...]
+    ext_values = _RE_EXTSN.findall(html)           # ["hwp", "pdf", ...]
+    fileblank_matches = _RE_FILEBLANK.findall(html) # [("/webapp/.../2026/04", "파일명.hwp"), ...]
+
+    results: list[dict] = []
+    seen: set[str] = set()
+
+    for i, href in enumerate(download_hrefs):
+        file_type = ext_values[i] if i < len(ext_values) else "unknown"
+        if file_type not in ("hwp", "pdf", "docx"):
+            continue
+
+        download_url = base + href
+
+        if download_url in seen:
+            continue
+        seen.add(download_url)
+
+        # 파일명: fileBlank 에서 추출 (같은 순서)
+        if i < len(fileblank_matches):
+            _, raw_fname = fileblank_matches[i]
+            filename = raw_fname.strip()
+        else:
+            filename = f"신청서.{file_type}"
+
+        results.append({"filename": filename, "file_type": file_type, "download_url": download_url})
+
+    return results
+
+
+async def download_attachment(download_url: str) -> Optional[bytes]:
+    """첨부파일을 바이트로 다운로드. 실패 시 None 반환."""
+    try:
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+            resp = await client.get(
+                download_url,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; BOSS-crawler/1.0)"},
+            )
+            resp.raise_for_status()
+            return resp.content
+    except Exception:
+        return None
+
+
+def _base_origin(url: str) -> str:
+    parsed = urlparse(url)
+    return f"{parsed.scheme}://{parsed.netloc}"
+
+
+def _ext_from_filename(filename: str) -> str:
+    """파일명에서 확장자 추출."""
+    lower = filename.lower()
+    if lower.endswith(".hwp"):
+        return "hwp"
+    if lower.endswith(".pdf"):
+        return "pdf"
+    if lower.endswith(".docx") or lower.endswith(".doc"):
+        return "docx"
+    return "unknown"

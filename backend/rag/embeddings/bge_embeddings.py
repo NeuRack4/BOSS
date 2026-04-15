@@ -7,12 +7,14 @@ sentence-transformers 라이브러리 사용.
 CPU/GPU 자동 감지: CUDA 사용 가능 시 cuda로 실행.
 """
 import asyncio
+import threading
 from functools import lru_cache
 
 from sentence_transformers import SentenceTransformer
 
 _MODEL_NAME = "BAAI/bge-m3"
 DIMENSIONS = 1024
+_ENCODE_LOCK = threading.Lock()  # SentenceTransformer는 멀티스레드 안전하지 않음
 
 
 @lru_cache(maxsize=1)
@@ -26,29 +28,30 @@ def _get_model() -> SentenceTransformer:
 
 
 def _encode_sync(texts: list[str]) -> list[list[float]]:
-    model = _get_model()
+    with _ENCODE_LOCK:
+        model = _get_model()
 
-    try:
-        import torch
-        use_cuda = torch.cuda.is_available()
-    except ImportError:
-        use_cuda = False
-
-    results = []
-    # VRAM OOM 방지: 텍스트 하나씩 처리 후 캐시 비우기
-    for text in texts:
-        vec = model.encode(
-            [text],
-            batch_size=1,
-            normalize_embeddings=True,
-            show_progress_bar=False,
-        )
-        results.append(vec[0].tolist())
-        if use_cuda:
+        try:
             import torch
-            torch.cuda.empty_cache()
+            use_cuda = torch.cuda.is_available()
+        except ImportError:
+            use_cuda = False
 
-    return results
+        results = []
+        # VRAM OOM 방지: 텍스트 하나씩 처리 후 캐시 비우기
+        for text in texts:
+            vec = model.encode(
+                [text],
+                batch_size=1,
+                normalize_embeddings=True,
+                show_progress_bar=False,
+            )
+            results.append(vec[0].tolist())
+            if use_cuda:
+                import torch
+                torch.cuda.empty_cache()
+
+        return results
 
 
 async def embed(texts: list[str]) -> list[list[float]]:
