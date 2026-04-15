@@ -58,7 +58,8 @@ export default function SurvivalBarChart({ scores }: Props) {
             color: "#e2e8f0",
             fontSize: 12,
           }}
-          formatter={(value: number) => [`${value}점`, "생존율 스코어"]}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          formatter={(value: any) => [`${value}점`, "생존율 스코어"] as any}
         />
         <Bar dataKey="score" radius={[6, 6, 0, 0]}>
           {data.map((entry, i) => (

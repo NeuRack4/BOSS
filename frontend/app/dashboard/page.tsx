@@ -265,7 +265,8 @@ export default function DashboardPage() {
                 tickFormatter={(v) => `${(v / 10000).toFixed(0)}만`}
               />
               <Tooltip
-                formatter={(v: number) => [`${v.toLocaleString()}원`, "매출"]}
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                formatter={(v: any) => [`${(v as number).toLocaleString()}원`, "매출"] as any}
                 contentStyle={{
                   fontSize: 12,
                   borderRadius: 8,

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import listPlugin from "@fullcalendar/list";
@@ -55,6 +56,11 @@ const fmtDate = (d: Date) =>
 
 type SearchHit = Program & { similarity: number };
 
+type AutoMatchResult = {
+  query: string;
+  results: (Program & { similarity: number })[];
+};
+
 export default function SubsidiesPage() {
   const [regionLevel, setRegionLevel] = useState<RegionLevel>(null);
   const [programs, setPrograms] = useState<Program[]>([]);
@@ -65,6 +71,8 @@ export default function SubsidiesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchHits, setSearchHits] = useState<SearchHit[] | null>(null);
   const [searching, setSearching] = useState(false);
+  const [autoMatch, setAutoMatch] = useState<AutoMatchResult | null>(null);
+  const [autoMatchLoading, setAutoMatchLoading] = useState(false);
   const syncRanRef = useRef(false);
   const [range, setRange] = useState<{ from: string; to: string }>(() => {
     const today = new Date();
@@ -96,6 +104,20 @@ export default function SubsidiesPage() {
     }
   }, [range]);
 
+  const fetchAutoMatch = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    setAutoMatchLoading(true);
+    try {
+      const res = await fetch(`${apiBase()}/subsidies/auto-match`, {
+        headers: { "X-User-Id": user.id },
+      });
+      if (res.ok) setAutoMatch(await res.json());
+    } finally {
+      setAutoMatchLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (syncRanRef.current) {
       fetchPrograms();
@@ -110,7 +132,8 @@ export default function SubsidiesPage() {
       }
       fetchPrograms();
     })();
-  }, [fetchPrograms]);
+    fetchAutoMatch();
+  }, [fetchPrograms, fetchAutoMatch]);
 
   const visibleRegions = useMemo(
     () => (regionLevel ? REGIONS_INCLUDED[regionLevel] : []),
@@ -230,6 +253,64 @@ export default function SubsidiesPage() {
           </div>
         </div>
       </header>
+
+      {/* 맞춤 추천 섹션 */}
+      <section className="glass-card rounded-xl p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-bold text-gray-900">✦ 내 상황에 맞는 추천</h2>
+            {autoMatch && (
+              <p className="text-xs text-gray-400 mt-0.5">
+                검색 쿼리: <span className="text-brand-500">{autoMatch.query}</span>
+              </p>
+            )}
+          </div>
+          <button
+            onClick={fetchAutoMatch}
+            disabled={autoMatchLoading}
+            className="text-xs text-brand-500 hover:text-brand-700 disabled:opacity-50"
+          >
+            {autoMatchLoading ? "분석 중…" : "새로고침"}
+          </button>
+        </div>
+
+        {autoMatchLoading && !autoMatch && (
+          <p className="text-sm text-gray-400">프로필 기반으로 지원사업을 분석하고 있습니다…</p>
+        )}
+
+        {autoMatch && autoMatch.results.length === 0 && (
+          <p className="text-sm text-gray-500">현재 조건에 맞는 추천 지원사업이 없습니다.</p>
+        )}
+
+        {autoMatch && autoMatch.results.length > 0 && (
+          <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {autoMatch.results.slice(0, 6).map((p) => (
+              <li
+                key={p.id}
+                onClick={() => setSelected(p)}
+                className="cursor-pointer border border-surface-300 rounded-lg px-4 py-3 bg-white hover:border-brand-500 hover:shadow-sm transition"
+              >
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-brand-500 font-medium">
+                    {p.region ?? "지역 미지정"}
+                    {p.sub_kind ? ` · ${p.sub_kind}` : ""}
+                  </span>
+                  {p.similarity > 0 && (
+                    <span className="ml-auto text-gray-400">
+                      매칭 {(p.similarity * 100).toFixed(0)}%
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm font-medium text-gray-900 mt-0.5 line-clamp-2">{p.title}</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {p.period_raw ?? (p.start_date && p.end_date ? `${p.start_date} ~ ${p.end_date}` : "기간 미정")}
+                  {p.organization ? ` · ${p.organization}` : ""}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <div className="flex flex-col md:flex-row gap-2 md:items-center bg-white border border-surface-300 rounded-xl px-4 py-3">
         <input

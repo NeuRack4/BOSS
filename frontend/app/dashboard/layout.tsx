@@ -16,9 +16,13 @@ const navItems = [
   { label: "개요", href: "/dashboard", icon: "◈" },
   { label: "매출 관리", href: "/dashboard/sales", icon: "₩" },
   { label: "비용 관리", href: "/dashboard/expenses", icon: "↓" },
+  { label: "메뉴 관리", href: "/dashboard/menus", icon: "☕" },
+  { label: "마케팅", href: "/dashboard/marketing", icon: "📣" },
   { label: "세금 관리", href: "/dashboard/tax", icon: "📋" },
   { label: "법령 검색", href: "/dashboard/rag", icon: "⚖" },
   { label: "AI 인사이트", href: "/dashboard/insights", icon: "✦" },
+  { label: "창업 시뮬레이터", href: "/dashboard/startup", icon: "🚀" },
+  { label: "상권 지도", href: "/dashboard/map", icon: "🗺️" },
   { label: "지원사업", href: "/dashboard/subsidies", icon: "📢" },
   { label: "알림", href: "/dashboard/notifications", icon: "🔔" },
   { label: "마이페이지", href: "/dashboard/profile", icon: "👤" },
@@ -34,9 +38,8 @@ export default function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [founderState, setFounderState] = useState<FounderStateData | null>(
-    null,
-  );
+  const [founderState, setFounderState] = useState<FounderStateData | null>(null);
+  const [cafeInfo, setCafeInfo] = useState({ name: "마포구 카페", district: "마포구" });
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
@@ -60,6 +63,14 @@ export default function DashboardLayout({
             if (data.profile && Object.keys(data.profile).length > 0) {
               const formData = profileToFormData(data.profile);
               localStorage.setItem("boss_profile", JSON.stringify(formData));
+              const cafeName = (formData.businessName as string) || "";
+              const district = (formData.district as string) || "";
+              if (cafeName || district) {
+                setCafeInfo({
+                  name: cafeName || "마포구 카페",
+                  district: district || "마포구",
+                });
+              }
             } else {
               // 프로필 미완성 → 온보딩으로 안내 (강제 이동 아님, 배너로 처리)
               localStorage.removeItem("boss_profile");
@@ -125,10 +136,10 @@ export default function DashboardLayout({
           <div className="glass-card rounded-lg px-3 py-2.5">
             <p className="text-xs text-gray-400 mb-0.5">내 카페</p>
             <p className="text-sm font-semibold text-gray-800 truncate">
-              마포구 카페
+              {cafeInfo.name}
             </p>
             <p className="text-xs text-brand-500 font-medium">
-              1인 운영 · 마포구
+              1인 운영 · {cafeInfo.district}
             </p>
           </div>
           {founderState && (

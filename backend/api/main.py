@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from backend.core.config import get_settings
-from backend.api.routers import health, founders, triggers, drafts, subsidies, tax, location, sales, insights, rag, pdf_forms, expenses
+from backend.api.routers import health, founders, triggers, drafts, subsidies, tax, location, sales, insights, rag, pdf_forms, expenses, marketing, ocr, menus, sales_items, map as map_router, recommend
 from backend.triggers.scheduler import start_scheduler, stop_scheduler
 
 
@@ -60,6 +60,12 @@ def create_app() -> FastAPI:
     app.include_router(sales.router, prefix="/sales", tags=["sales"])
     app.include_router(insights.router, prefix="/insights", tags=["insights"])
     app.include_router(expenses.router, prefix="/expenses", tags=["expenses"])
+    app.include_router(marketing.router, prefix="/marketing", tags=["marketing"])
+    app.include_router(ocr.router, prefix="/ocr", tags=["ocr"])
+    app.include_router(menus.router, prefix="/menus", tags=["menus"])
+    app.include_router(sales_items.router, prefix="/sales-items", tags=["sales-items"])
+    app.include_router(map_router.router, prefix="/map", tags=["map"])
+    app.include_router(recommend.router, prefix="/recommend", tags=["recommend"])
     app.include_router(rag.router, prefix="/rag", tags=["rag"])
     app.include_router(pdf_forms.router)  # prefix="/drafts" 내부 정의
 

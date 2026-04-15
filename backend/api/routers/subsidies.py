@@ -132,6 +132,74 @@ async def search_subsidies(
     return result.data or []
 
 
+@router.get("/auto-match")
+async def auto_match(
+    user_id: str = Depends(get_current_user_id),
+    supabase: Client = Depends(db),
+):
+    """창업자 프로필 기반 지원사업 자동 추천 (search_subsidies RPC 재사용)"""
+    # 1. 창업자 프로필 조회
+    profile_res = (
+        supabase.table("users")
+        .select("stage, profile")
+        .eq("id", user_id)
+        .limit(1)
+        .execute()
+    )
+    user_row = profile_res.data[0] if profile_res.data else {}
+    profile: dict = user_row.get("profile") or {}
+
+    # 2. founder_state 조회 (세부 단계)
+    state_res = (
+        supabase.table("founder_state")
+        .select("stage, sub_stage")
+        .eq("user_id", user_id)
+        .limit(1)
+        .execute()
+    )
+    stage = (state_res.data[0].get("stage") if state_res.data else None) or user_row.get("stage", "")
+
+    # 3. 프로필 기반 쿼리 빌드
+    query_parts = ["마포구 카페 창업 지원사업"]
+
+    if stage in ("setup", "pre_open"):
+        query_parts.append("창업 준비 초기 자금")
+    elif stage == "operating":
+        query_parts.append("소상공인 경영 안정 지원")
+
+    # 생년월일 → 나이 계산 (청년 여부)
+    birth_date = profile.get("birth_date", "")
+    if birth_date and len(birth_date) >= 4:
+        try:
+            from datetime import date
+            birth_year = int(birth_date[:4])
+            age = date.today().year - birth_year
+            if age <= 39:
+                query_parts.append("청년창업 지원")
+        except (ValueError, TypeError):
+            pass
+
+    query = " ".join(query_parts)
+
+    # 4. 임베딩 검색 (기존 search_subsidies RPC 재사용)
+    embedding = await embed_single(query)
+    embedding_str = "[" + ",".join(str(v) for v in embedding) + "]"
+
+    result = supabase.rpc(
+        "search_subsidies",
+        {
+            "query_text": query,
+            "query_embedding": embedding_str,
+            "match_count": 8,
+        },
+    ).execute()
+
+    return {
+        "query": query,
+        "results": result.data or [],
+    }
+
+
 @router.post("/sync-today")
 async def sync_today():
     """
