@@ -26,6 +26,7 @@ import {
   Handshake,
   Bell,
   User,
+  MessageCircle,
 } from "lucide-react";
 
 const navItems = [
@@ -41,6 +42,7 @@ const navItems = [
   { label: "상권 지도", href: "/dashboard/map", icon: Map },
   { label: "입지 분석", href: "/dashboard/location", icon: MapPin },
   { label: "지원사업", href: "/dashboard/subsidies", icon: Handshake },
+  { label: "AI 챗봇", href: "/dashboard/chat", icon: MessageCircle },
 ];
 
 export default function DashboardLayout({
