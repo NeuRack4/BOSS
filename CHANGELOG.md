@@ -4,6 +4,47 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
 
 ---
 
+## [v0.10.0] — 2026-04-15
+
+### 기능 — 비용 관리 + 순수익 계산 + AI 인사이트 비용 컨텍스트
+
+#### Added
+
+- **비용 관리 API** (`backend/api/routers/expenses.py`)
+  - `POST /expenses/` — 비용 입력 (월세·재료비·인건비·공과금·기타)
+  - `GET /expenses/` — 비용 목록 조회 (날짜 범위 필터)
+  - `GET /expenses/summary` — 월별 비용 요약 + 카테고리별 분해
+  - `PUT /expenses/{id}` / `DELETE /expenses/{id}` — 수정·삭제
+  - `get_expense_summary()` 공용 함수 — insights API에서 재사용
+- **비용 Pydantic 스키마** (`backend/api/schemas/expense.py`)
+  - `ExpenseCreate` / `ExpenseResponse` / `ExpenseUpdate`
+  - `ExpenseCategory` Literal 타입 (`rent | ingredient | labor | utility | other`)
+- **expenses 테이블** (`backend/db/migrations/015_expenses.sql`)
+  - RLS 4정책 (SELECT · INSERT · UPDATE · DELETE) + `user_id, date` 복합 인덱스
+  - Supabase 마이그레이션 적용 완료
+- **비용 관리 페이지** (`frontend/app/dashboard/expenses/page.tsx`)
+  - 카테고리별 아이콘 버튼 선택 UI (🏠 월세 / 🧃 재료비 / 👤 인건비 / 💡 공과금 / 📦 기타)
+  - 카테고리별 합계 카드 + 총 지출 카드
+  - 수정·삭제 인라인 지원
+- **신규 기능 구현 계획 문서** (`docs/feature-new-implementation-plan.md`)
+  - Phase 1~3 / Step 1~9 의존성 기반 구현 로드맵
+
+#### Changed
+
+- **대시보드 메인** (`frontend/app/dashboard/page.tsx`)
+  - 통계 카드 4종 교체: 거래건수·일평균 → **이번달 지출·순수익** 카드 추가
+  - `ExpenseSummary` 타입 추가, `/expenses/summary` API 병렬 호출
+- **AI 인사이트** (`backend/api/routers/insights.py`)
+  - `/insights/analyze` 응답에 `net_profit` · `total_expenses` 필드 추가
+  - 비용 데이터가 있을 때 Claude 프롬프트에 `[이번달 비용 현황]` 섹션 자동 주입
+  - 응답에 순수익 컨텍스트 포함 → 매출만이 아닌 수익성 기반 분석 가능
+- **사이드바 네비게이션** (`frontend/app/dashboard/layout.tsx`)
+  - "매출 관리" 하위에 "비용 관리" (`/dashboard/expenses`) 메뉴 추가
+- **메인 API 등록** (`backend/api/main.py`)
+  - `expenses` 라우터 `/expenses` prefix로 등록
+
+---
+
 ## [v0.9.1] — 2026-04-15
 
 ### 버그 수정 — 표준 근로계약서 PDF 오버레이 좌표 정밀화 + Supabase Storage 폴백
