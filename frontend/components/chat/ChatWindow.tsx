@@ -79,6 +79,13 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
       >
         {isUser ? (
           <p className="whitespace-pre-wrap">{msg.content}</p>
+        ) : msg.content === "" && msg.isStreaming ? (
+          /* 스트리밍 시작 전 — dots만 표시 */
+          <div className="flex gap-1 py-1">
+            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
+            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
+            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
+          </div>
         ) : (
           <div className="prose prose-sm max-w-none prose-p:my-1 prose-li:my-0.5 prose-headings:text-gray-900">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
@@ -324,24 +331,11 @@ export default function ChatWindow() {
           </div>
         )}
 
-        {/* 로딩 인디케이터 */}
-        {isLoading && messages[messages.length - 1]?.content === "" && (
+        {/* toolStatus 표시 — dots는 MessageBubble 내부에서 처리 */}
+        {isLoading && toolStatus && (
           <div className="flex gap-3">
-            <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center text-sm font-bold text-white flex-shrink-0">
-              B
-            </div>
-            <div className="bg-white border border-surface-300 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
-              <div className="flex items-center gap-2">
-                <div className="flex gap-1">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
-                </div>
-                {toolStatus && (
-                  <span className="text-xs text-gray-400">{toolStatus}</span>
-                )}
-              </div>
-            </div>
+            <div className="w-8 h-8 flex-shrink-0" />
+            <span className="text-xs text-gray-400 self-center">{toolStatus}</span>
           </div>
         )}
 

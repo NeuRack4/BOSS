@@ -4,6 +4,31 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
 
 ---
 
+## [v0.14.2] — 2026-04-15
+
+### 수정 — AI 챗봇 응답 정규화 + 로그 파일 저장
+
+#### Fixed
+
+- **API 응답 정규화** (`frontend/app/api/chat/route.ts`)
+  - `executeTool()` 반환값을 raw JSON → Claude가 읽기 좋은 한국어 텍스트로 변환
+  - `search_laws`: 【법령 N】출처 + 조항 + 본문 형식
+  - `search_subsidies`: 【지원사업 N】제목·기관·마감·대상·설명 형식
+  - `get_tax_deadlines`: 【세금 신고 기한 목록】날짜·제목·세금종류 형식
+  - `get_ongoing_subsidies`: 【상시 모집 지원사업】번호·제목·기관·대상 형식
+  - `get_location_districts`: 【마포구 9개 상권 정보】상권명·점수·설명 형식
+- **챗봇 로딩 dots 중복 버그 수정** (`frontend/components/chat/ChatWindow.tsx`)
+  - 빈 content + isStreaming 상태에서 dots가 두 개 렌더링되던 문제 해결
+  - dots를 MessageBubble 내부로 이동, 별도 로딩 div 제거
+
+#### Added
+
+- **[CHATBOT] 콘솔 로그** — 툴 선택·입력값·성공/실패를 터미널에 출력
+- **챗봇 로그 파일 저장** (`frontend/logs/chatbot.log`)
+  - 타임스탬프 포함 자동 저장 — `tail -f frontend/logs/chatbot.log`로 실시간 확인 가능
+
+---
+
 ## [v0.14.1] — 2026-04-15
 
 ### 문서 — 챗봇 환경변수 템플릿 추가

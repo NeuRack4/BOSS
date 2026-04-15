@@ -13,6 +13,24 @@
  */
 
 import { NextRequest } from "next/server";
+import fs from "fs";
+import path from "path";
+
+// ── 파일 로그 (logs/chatbot.log) ─────────────────────────────────────────────
+const LOG_DIR = path.join(process.cwd(), "logs");
+const LOG_FILE = path.join(LOG_DIR, "chatbot.log");
+
+function writeLog(line: string) {
+  const ts = new Date().toISOString().replace("T", " ").slice(0, 19);
+  const entry = `[${ts}] ${line}\n`;
+  console.log(line); // 터미널 동시 출력
+  try {
+    if (!fs.existsSync(LOG_DIR)) fs.mkdirSync(LOG_DIR, { recursive: true });
+    fs.appendFileSync(LOG_FILE, entry, "utf8");
+  } catch (e) {
+    console.error("[CHATBOT] 로그 파일 쓰기 실패:", e);
+  }
+}
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY ?? "";
@@ -181,7 +199,7 @@ const BOSS_TOOLS = [
 async function executeTool(
   name: string,
   input: Record<string, unknown>
-): Promise<unknown> {
+): Promise<string> {
   try {
     switch (name) {
       case "search_laws": {
@@ -195,16 +213,17 @@ async function executeTool(
           }),
           signal: AbortSignal.timeout(8000),
         });
-        if (!res.ok) return { error: `법령 검색 실패 (${res.status})` };
+        if (!res.ok) return `[법령 검색 실패] 백엔드 응답 오류 (${res.status})`;
         const data = (await res.json()) as Array<{
           content: string;
           metadata: Record<string, unknown>;
         }>;
-        return data.slice(0, 5).map((r) => ({
-          content: r.content.slice(0, 600),
-          source: r.metadata?.source ?? "",
-          article: r.metadata?.article ?? "",
-        }));
+        if (!data.length) return "[법령 검색 결과 없음] 관련 법령을 찾지 못했습니다.";
+        return data.slice(0, 5).map((r, i) => {
+          const source = r.metadata?.source ?? "출처 미상";
+          const article = r.metadata?.article ? ` ${r.metadata.article}` : "";
+          return `【법령 ${i + 1}】${source}${article}\n${r.content.slice(0, 500)}`;
+        }).join("\n\n");
       }
 
       case "search_subsidies": {
@@ -214,16 +233,14 @@ async function executeTool(
           body: JSON.stringify({ query: input.query, match_count: 5 }),
           signal: AbortSignal.timeout(8000),
         });
-        if (!res.ok) return { error: `지원사업 검색 실패 (${res.status})` };
+        if (!res.ok) return `[지원사업 검색 실패] 백엔드 응답 오류 (${res.status})`;
         const data = (await res.json()) as Array<Record<string, unknown>>;
-        return data.slice(0, 5).map((r) => ({
-          title: r.title,
-          organization: r.organization,
-          description: String(r.description ?? "").slice(0, 300),
-          end_date: r.end_date,
-          is_ongoing: r.is_ongoing,
-          target: r.target,
-        }));
+        if (!data.length) return "[지원사업 검색 결과 없음] 관련 지원사업을 찾지 못했습니다.";
+        return data.slice(0, 5).map((r, i) => {
+          const deadline = r.end_date ? `마감: ${r.end_date}` : r.is_ongoing ? "상시 모집" : "마감일 미정";
+          const target = r.target ? `대상: ${r.target}` : "";
+          return `【지원사업 ${i + 1}】${r.title} (${r.organization})\n${deadline}${target ? " | " + target : ""}\n${String(r.description ?? "").slice(0, 250)}`;
+        }).join("\n\n");
       }
 
       case "get_tax_deadlines": {
@@ -231,45 +248,53 @@ async function executeTool(
         const res = await fetch(`${API_BASE}/tax/deadlines?days_ahead=${days}`, {
           signal: AbortSignal.timeout(5000),
         });
-        if (!res.ok) return { error: `세금 기한 조회 실패 (${res.status})` };
+        if (!res.ok) return `[세금 기한 조회 실패] 백엔드 응답 오류 (${res.status})`;
         const data = (await res.json()) as {
           deadlines: Array<Record<string, unknown>>;
         };
-        return (data.deadlines ?? []).slice(0, 10).map((d) => ({
-          title: d.title,
-          tax_type: d.tax_type,
-          deadline_date: d.deadline_date,
-          description: String(d.description ?? "").slice(0, 200),
-        }));
+        const deadlines = data.deadlines ?? [];
+        if (!deadlines.length) return "[세금 신고 기한 없음] 해당 기간 내 예정된 세금 신고가 없습니다.";
+        return "【세금 신고 기한 목록】\n" + deadlines.slice(0, 10).map((d) =>
+          `- ${d.deadline_date} | ${d.title} (${d.tax_type})\n  ${String(d.description ?? "").slice(0, 150)}`
+        ).join("\n");
       }
 
       case "get_ongoing_subsidies": {
         const res = await fetch(`${API_BASE}/subsidies/ongoing`, {
           signal: AbortSignal.timeout(5000),
         });
-        if (!res.ok) return { error: `상시 지원사업 조회 실패 (${res.status})` };
+        if (!res.ok) return `[상시 지원사업 조회 실패] 백엔드 응답 오류 (${res.status})`;
         const data = (await res.json()) as Array<Record<string, unknown>>;
-        return data.slice(0, 8).map((r) => ({
-          title: r.title,
-          organization: r.organization,
-          description: String(r.description ?? "").slice(0, 250),
-          target: r.target,
-        }));
+        if (!data.length) return "[상시 지원사업 없음] 현재 상시 모집 중인 지원사업이 없습니다.";
+        return "【상시 모집 지원사업】\n" + data.slice(0, 8).map((r, i) => {
+          const target = r.target ? ` | 대상: ${r.target}` : "";
+          return `${i + 1}. ${r.title} (${r.organization})${target}\n   ${String(r.description ?? "").slice(0, 200)}`;
+        }).join("\n\n");
       }
 
       case "get_location_districts": {
         const res = await fetch(`${API_BASE}/location/districts`, {
           signal: AbortSignal.timeout(5000),
         });
-        if (!res.ok) return { error: `상권 정보 조회 실패 (${res.status})` };
-        return await res.json();
+        if (!res.ok) return `[상권 정보 조회 실패] 백엔드 응답 오류 (${res.status})`;
+        const data = (await res.json()) as Array<Record<string, unknown>>;
+        if (!data || (Array.isArray(data) && !data.length)) return "[상권 정보 없음] 상권 데이터를 불러오지 못했습니다.";
+        if (Array.isArray(data)) {
+          return "【마포구 9개 상권 정보】\n" + data.map((d) => {
+            const name = d.name ?? d.district_name ?? d.area_name ?? "";
+            const desc = d.description ?? d.characteristics ?? d.summary ?? "";
+            const score = d.score ?? d.rating ?? "";
+            return `- ${name}${score ? ` (점수: ${score})` : ""}${desc ? `: ${String(desc).slice(0, 150)}` : ""}`;
+          }).join("\n");
+        }
+        return `【마포구 상권 정보】\n${JSON.stringify(data).slice(0, 800)}`;
       }
 
       default:
-        return { error: `알 수 없는 도구: ${name}` };
+        return `[알 수 없는 도구] ${name}`;
     }
   } catch (err) {
-    return { error: `도구 실행 오류: ${String(err)}` };
+    return `[도구 실행 오류] ${String(err)}`;
   }
 }
 
@@ -372,6 +397,7 @@ export async function POST(req: NextRequest) {
         max_tokens: 1024,
         system: systemBlocks,
         tools: BOSS_TOOLS,
+        tool_choice: { type: "any" },
         messages: [...recentHistory, { role: "user", content: message }],
       }),
     });
@@ -396,6 +422,7 @@ export async function POST(req: NextRequest) {
 
   // 도구 없이 텍스트 바로 반환
   if (toolUseBlocks.length === 0) {
+    writeLog("[CHATBOT] No tools selected — answering directly");
     const text = firstData.content
       .filter((b) => b.type === "text")
       .map((b) => b.text ?? "")
@@ -404,12 +431,34 @@ export async function POST(req: NextRequest) {
   }
 
   // ── 3단계: 도구 병렬 실행 ────────────────────────────────────────────────
+  const TOOL_LABELS: Record<string, string> = {
+    search_laws:           "법령 검색        → POST /rag/search",
+    search_subsidies:      "지원사업 검색     → POST /subsidies/search",
+    get_tax_deadlines:     "세금 신고 기한    → GET  /tax/deadlines",
+    get_ongoing_subsidies: "상시 지원사업     → GET  /subsidies/ongoing",
+    get_location_districts:"마포구 상권 정보  → GET  /location/districts",
+  };
+
+  writeLog(`[CHATBOT] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+  writeLog(`[CHATBOT] 선택된 툴 ${toolUseBlocks.length}개: ${toolUseBlocks.map((b) => b.name).join(", ")}`);
+
   const toolResults = await Promise.all(
     toolUseBlocks.map(async (block) => {
-      const result = await executeTool(
-        block.name!,
-        block.input ?? {}
-      );
+      const toolName = block.name!;
+      const toolInput = block.input ?? {};
+      const label = TOOL_LABELS[toolName] ?? toolName;
+      writeLog(`[CHATBOT] ▶ ${label}`);
+      writeLog(`[CHATBOT]   입력값: ${JSON.stringify(toolInput)}`);
+
+      const result = await executeTool(toolName, toolInput);
+
+      const isError = result && typeof result === "object" && "error" in (result as object);
+      if (isError) {
+        writeLog(`[CHATBOT] ✗ 실패: ${label} → ${(result as { error: string }).error}`);
+      } else {
+        writeLog(`[CHATBOT] ✓ 성공: ${label}`);
+      }
+
       return {
         type: "tool_result",
         tool_use_id: block.id,
