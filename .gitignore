@@ -48,6 +48,9 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Claude Code (로컬 AI 세션 파일 — 커밋 불필요)
+.claude/
+
 # Logs
 *.log
 npm-debug.log*
