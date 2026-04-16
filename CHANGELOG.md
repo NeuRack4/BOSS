@@ -4,6 +4,29 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
 
 ---
 
+## [v0.16.1] — 2026-04-16
+
+### 기능 — 온보딩 완료 UX 개선 + 마이페이지 온보딩 스텝 표시
+
+#### Added
+
+- **온보딩 완료 화면 로그인 상태 분기** (`frontend/app/onboarding/page.tsx`)
+  - 비로그인: "30초 가입하고 초안 받기" (brand CTA) + "방금 입력하신 정보가 안전하게 저장되었습니다" 서브텍스트
+  - 비로그인: "이미 계정이 있어요 → 로그인" / "나중에 하기" 버튼
+  - 로그인: 기존 "대시보드로 이동" 버튼
+  - 앰버 배너 제거 — 중복 CTA 통합
+
+- **회원가입 후 온보딩 데이터 Supabase 자동 저장** (`frontend/app/auth/signup/page.tsx`)
+  - 가입 성공 직후 `localStorage("boss_profile")` 감지 → `PUT /founders/me` 자동 호출
+  - 저장 성공 후 localStorage 항목 삭제 → 대시보드로 이동
+  - 온보딩 없이 가입 시 기존대로 온보딩으로 이동
+
+- **마이페이지 섹션에 온보딩 스텝 뱃지** (`frontend/app/dashboard/profile/page.tsx`)
+  - "사업 정보" 옆 `온보딩 스텝 3` (brand 컬러, 11px)
+  - "사업장 정보" 옆 `온보딩 스텝 4` (brand 컬러, 11px)
+
+---
+
 ## [v0.16.0] — 2026-04-16
 
 ### 기능 — 채용공고 고도화 (공고 기간·마감 알림·인건비 시뮬레이션·현황 카드)

@@ -30,16 +30,26 @@ const selectClass = inputClass;
 
 function Section({
   title,
+  badge,
+  badgeSize = "normal",
   children,
 }: {
   title: string;
+  badge?: string;
   children: React.ReactNode;
 }) {
   return (
     <div className="glass-card rounded-2xl p-6">
-      <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-5">
-        {title}
-      </h2>
+      <div className="flex items-center gap-2 mb-5">
+        <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide">
+          {title}
+        </h2>
+        {badge && (
+          <span className="text-[11px] font-semibold text-brand-500">
+            {badge}
+          </span>
+        )}
+      </div>
       <div className="space-y-4">{children}</div>
     </div>
   );
@@ -203,7 +213,7 @@ export default function ProfilePage() {
       </Section>
 
       {/* 사업 정보 */}
-      <Section title="사업 정보">
+      <Section title="사업 정보" badge="온보딩 스텝 3">
         <Field label="업종">
           <select
             value={form.businessType}
@@ -285,7 +295,7 @@ export default function ProfilePage() {
       </Section>
 
       {/* 사업장 정보 */}
-      <Section title="사업장 정보">
+      <Section title="사업장 정보" badge="온보딩 스텝 4">
         <Field label="주소">
           <input
             type="text"

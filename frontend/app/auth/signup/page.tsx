@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { apiFetch, formDataToProfile } from "@/lib/api";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -39,8 +40,28 @@ export default function SignupPage() {
       }
       setLoading(false);
     } else {
-      // 신규 가입 → 온보딩 먼저
-      router.push("/onboarding");
+      // 온보딩에서 입력한 데이터가 있으면 자동으로 프로필 저장
+      try {
+        const saved = localStorage.getItem("boss_profile");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          await apiFetch("/founders/me", {
+            method: "PUT",
+            body: JSON.stringify(
+              formDataToProfile(parsed as Record<string, unknown>)
+            ),
+          });
+          localStorage.removeItem("boss_profile");
+          // 온보딩 완료 후 가입 → 대시보드로
+          router.push("/dashboard");
+        } else {
+          // 온보딩 없이 가입 → 온보딩으로
+          router.push("/onboarding");
+        }
+      } catch {
+        // 저장 실패해도 대시보드로 이동 (프로필은 나중에 입력 가능)
+        router.push("/dashboard");
+      }
     }
   };
 
