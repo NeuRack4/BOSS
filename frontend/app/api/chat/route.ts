@@ -15,6 +15,7 @@
 import { NextRequest } from "next/server";
 import fs from "fs";
 import path from "path";
+import { createClient } from "@supabase/supabase-js";
 
 // ── 파일 로그 (logs/chatbot.log) ─────────────────────────────────────────────
 const LOG_DIR = path.join(process.cwd(), "logs");
@@ -97,7 +98,7 @@ const SYSTEM_PROMPT = `당신은 BOSS의 카페 창업 전담 AI 비서입니다
 | 지원사업 매칭 | /dashboard/subsidies | search_subsidies |
 | 세금 기한·신고 | /dashboard/tax | get_tax_deadlines |
 | 법령 검색 | /dashboard/rag | search_laws |
-| 입지 분석 | /location | get_location_districts |
+| 입지 분석 | /dashboard/location | get_location_districts |
 | 매출 관리 | /dashboard/sales | — |
 | AI 인사이트 | /dashboard/insights | — |
 
@@ -107,6 +108,25 @@ const SYSTEM_PROMPT = `당신은 BOSS의 카페 창업 전담 AI 비서입니다
 - 챗봇에서 PDF 직접 생성 (서류 초안 메뉴로 안내만)
 - "전문가에게 문의하세요"로만 마무리하기 (안내 + 다음 행동 필수)
 - 정보만 나열하고 행동 지침 없이 끝내기
+- 검색 결과가 없을 때 "데이터베이스 업데이트 중", "서버 점검 중", "검색 결과 없음" 등 검색 과정을 언급하기 — 결과가 없으면 조용히 다른 키워드로 재시도하거나, 일반 지식 기반으로 자연스럽게 바로 답변할 것. 도구 호출 여부나 검색 결과 유무는 절대 사용자에게 노출하지 않는다
+
+## BOSS 내부 링크 형식 (필수 준수)
+
+BOSS 서비스 내 페이지로 안내할 때는 반드시 마크다운 링크 형식을 사용하세요.
+텍스트에 경로만 적지 말고, 아래처럼 클릭 가능한 링크로 작성합니다:
+
+- 사업자등록 신청서 → [사업자등록 신청서 작성하기](/drafts/business-registration)
+- 식품영업 신고서 → [식품영업 신고서 작성하기](/drafts/food-business-license)
+- 근로계약서 → [표준 근로계약서 작성하기](/drafts/employment-contract)
+- 임대차계약서 → [상가 임대차계약서 작성하기](/drafts/lease-contract)
+- 지원사업 → [지원사업 매칭 보기](/dashboard/subsidies)
+- 세금 기한·신고 → [세금 관리 메뉴](/dashboard/tax)
+- 법령 검색 → [법령 검색 메뉴](/dashboard/rag)
+- 입지 분석 → [마포구 입지 분석](/dashboard/location)
+- 매출 관리 → [매출 관리 메뉴](/dashboard/sales)
+- AI 인사이트 → [AI 인사이트 보기](/dashboard/insights)
+
+예시: "지금 바로 [식품영업 신고서 작성하기](/drafts/food-business-license)를 시작하세요."
 
 ## 면책 고지
 세금·법률·계약 관련 답변 말미에 반드시 포함:
@@ -127,8 +147,7 @@ const BOSS_TOOLS = [
       properties: {
         query: {
           type: "string",
-          description:
-            "검색 키워드 (예: '식품위생법 영업신고', '근로계약 최저임금')",
+          description: "검색 키워드 (예: '식품위생법 영업신고', '근로계약 최저임금')",
         },
         category: {
           type: "string",
@@ -150,8 +169,7 @@ const BOSS_TOOLS = [
       properties: {
         query: {
           type: "string",
-          description:
-            "검색 키워드 (예: '카페 창업 자금', '소상공인 임차료 지원')",
+          description: "검색 키워드 (예: '카페 창업 자금', '소상공인 임차료 지원')",
         },
       },
       required: ["query"],
@@ -200,7 +218,7 @@ const BOSS_TOOLS = [
 // ── 도구 실행 (팀원 API 호출 — 소스 수정 없음) ───────────────────────────────
 async function executeTool(
   name: string,
-  input: Record<string, unknown>,
+  input: Record<string, unknown>
 ): Promise<string> {
   try {
     switch (name) {
@@ -220,16 +238,12 @@ async function executeTool(
           content: string;
           metadata: Record<string, unknown>;
         }>;
-        if (!data.length)
-          return "[법령 검색 결과 없음] 관련 법령을 찾지 못했습니다.";
-        return data
-          .slice(0, 5)
-          .map((r, i) => {
-            const source = r.metadata?.source ?? "출처 미상";
-            const article = r.metadata?.article ? ` ${r.metadata.article}` : "";
-            return `【법령 ${i + 1}】${source}${article}\n${r.content.slice(0, 500)}`;
-          })
-          .join("\n\n");
+        if (!data.length) return "[법령 검색 결과 없음] 관련 법령을 찾지 못했습니다.";
+        return data.slice(0, 5).map((r, i) => {
+          const source = r.metadata?.source ?? "출처 미상";
+          const article = r.metadata?.article ? ` ${r.metadata.article}` : "";
+          return `【법령 ${i + 1}】${source}${article}\n${r.content.slice(0, 500)}`;
+        }).join("\n\n");
       }
 
       case "search_subsidies": {
@@ -239,96 +253,59 @@ async function executeTool(
           body: JSON.stringify({ query: input.query, match_count: 5 }),
           signal: AbortSignal.timeout(8000),
         });
-        if (!res.ok)
-          return `[지원사업 검색 실패] 백엔드 응답 오류 (${res.status})`;
+        if (!res.ok) return `[지원사업 검색 실패] 백엔드 응답 오류 (${res.status})`;
         const data = (await res.json()) as Array<Record<string, unknown>>;
-        if (!data.length)
-          return "[지원사업 검색 결과 없음] 관련 지원사업을 찾지 못했습니다.";
-        return data
-          .slice(0, 5)
-          .map((r, i) => {
-            const deadline = r.end_date
-              ? `마감: ${r.end_date}`
-              : r.is_ongoing
-                ? "상시 모집"
-                : "마감일 미정";
-            const target = r.target ? `대상: ${r.target}` : "";
-            return `【지원사업 ${i + 1}】${r.title} (${r.organization})\n${deadline}${target ? " | " + target : ""}\n${String(r.description ?? "").slice(0, 250)}`;
-          })
-          .join("\n\n");
+        if (!data.length) return "[지원사업 검색 결과 없음] 관련 지원사업을 찾지 못했습니다.";
+        return data.slice(0, 5).map((r, i) => {
+          const deadline = r.end_date ? `마감: ${r.end_date}` : r.is_ongoing ? "상시 모집" : "마감일 미정";
+          const target = r.target ? `대상: ${r.target}` : "";
+          return `【지원사업 ${i + 1}】${r.title} (${r.organization})\n${deadline}${target ? " | " + target : ""}\n${String(r.description ?? "").slice(0, 250)}`;
+        }).join("\n\n");
       }
 
       case "get_tax_deadlines": {
         const days = (input.days_ahead as number) ?? 90;
-        const res = await fetch(
-          `${API_BASE}/tax/deadlines?days_ahead=${days}`,
-          {
-            signal: AbortSignal.timeout(5000),
-          },
-        );
-        if (!res.ok)
-          return `[세금 기한 조회 실패] 백엔드 응답 오류 (${res.status})`;
+        const res = await fetch(`${API_BASE}/tax/deadlines?days_ahead=${days}`, {
+          signal: AbortSignal.timeout(5000),
+        });
+        if (!res.ok) return `[세금 기한 조회 실패] 백엔드 응답 오류 (${res.status})`;
         const data = (await res.json()) as {
           deadlines: Array<Record<string, unknown>>;
         };
         const deadlines = data.deadlines ?? [];
-        if (!deadlines.length)
-          return "[세금 신고 기한 없음] 해당 기간 내 예정된 세금 신고가 없습니다.";
-        return (
-          "【세금 신고 기한 목록】\n" +
-          deadlines
-            .slice(0, 10)
-            .map(
-              (d) =>
-                `- ${d.deadline_date} | ${d.title} (${d.tax_type})\n  ${String(d.description ?? "").slice(0, 150)}`,
-            )
-            .join("\n")
-        );
+        if (!deadlines.length) return "[세금 신고 기한 없음] 해당 기간 내 예정된 세금 신고가 없습니다.";
+        return "【세금 신고 기한 목록】\n" + deadlines.slice(0, 10).map((d) =>
+          `- ${d.deadline_date} | ${d.title} (${d.tax_type})\n  ${String(d.description ?? "").slice(0, 150)}`
+        ).join("\n");
       }
 
       case "get_ongoing_subsidies": {
         const res = await fetch(`${API_BASE}/subsidies/ongoing`, {
           signal: AbortSignal.timeout(5000),
         });
-        if (!res.ok)
-          return `[상시 지원사업 조회 실패] 백엔드 응답 오류 (${res.status})`;
+        if (!res.ok) return `[상시 지원사업 조회 실패] 백엔드 응답 오류 (${res.status})`;
         const data = (await res.json()) as Array<Record<string, unknown>>;
-        if (!data.length)
-          return "[상시 지원사업 없음] 현재 상시 모집 중인 지원사업이 없습니다.";
-        return (
-          "【상시 모집 지원사업】\n" +
-          data
-            .slice(0, 8)
-            .map((r, i) => {
-              const target = r.target ? ` | 대상: ${r.target}` : "";
-              return `${i + 1}. ${r.title} (${r.organization})${target}\n   ${String(r.description ?? "").slice(0, 200)}`;
-            })
-            .join("\n\n")
-        );
+        if (!data.length) return "[상시 지원사업 없음] 현재 상시 모집 중인 지원사업이 없습니다.";
+        return "【상시 모집 지원사업】\n" + data.slice(0, 8).map((r, i) => {
+          const target = r.target ? ` | 대상: ${r.target}` : "";
+          return `${i + 1}. ${r.title} (${r.organization})${target}\n   ${String(r.description ?? "").slice(0, 200)}`;
+        }).join("\n\n");
       }
 
       case "get_location_districts": {
         const res = await fetch(`${API_BASE}/location/districts`, {
           signal: AbortSignal.timeout(5000),
         });
-        if (!res.ok)
-          return `[상권 정보 조회 실패] 백엔드 응답 오류 (${res.status})`;
+        if (!res.ok) return `[상권 정보 조회 실패] 백엔드 응답 오류 (${res.status})`;
         const data = (await res.json()) as Array<Record<string, unknown>>;
-        if (!data || (Array.isArray(data) && !data.length))
-          return "[상권 정보 없음] 상권 데이터를 불러오지 못했습니다.";
+        if (!data || (Array.isArray(data) && !data.length)) return "[상권 정보 없음] 상권 데이터를 불러오지 못했습니다.";
         if (Array.isArray(data)) {
-          return (
-            "【마포구 9개 상권 정보】\n" +
-            data
-              .map((d) => {
-                const name = d.name ?? d.district_name ?? d.area_name ?? "";
-                const desc =
-                  d.description ?? d.characteristics ?? d.summary ?? "";
-                const score = d.score ?? d.rating ?? "";
-                return `- ${name}${score ? ` (점수: ${score})` : ""}${desc ? `: ${String(desc).slice(0, 150)}` : ""}`;
-              })
-              .join("\n")
-          );
+          return "【마포구 9개 상권 정보】\n" + data.map((d) => {
+            const name = d.name ?? d.district_name ?? d.area_name ?? "";
+            const desc = d.description ?? d.characteristics ?? d.summary ?? "";
+            const score = d.score ?? d.rating ?? "";
+            return `- ${name}${score ? ` (점수: ${score})` : ""}${desc ? `: ${String(desc).slice(0, 150)}` : ""}`;
+          }).join("\n");
         }
         return `【마포구 상권 정보】\n${JSON.stringify(data).slice(0, 800)}`;
       }
@@ -341,6 +318,73 @@ async function executeTool(
   }
 }
 
+// ── Supabase 서버 클라이언트 (서비스 키 사용) ───────────────────────────────
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+const supabaseKey =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ??
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+  "";
+
+// ── 프로필 컨텍스트 빌더 ─────────────────────────────────────────────────────
+interface FounderProfile {
+  business_type?: string;
+  region?: string;
+  stage?: string;
+  tax_type?: string;
+  business_name?: string;
+}
+
+async function fetchFounderProfile(
+  userId: string
+): Promise<FounderProfile | null> {
+  if (!supabaseUrl || !supabaseKey) return null;
+  try {
+    const sb = createClient(supabaseUrl, supabaseKey);
+    const { data } = await sb
+      .from("users")
+      .select("business_type, region, stage")
+      .eq("id", userId)
+      .single();
+
+    if (!data) return null;
+
+    // founder_state에서 상세 단계 조회
+    const { data: stateData } = await sb
+      .from("founder_state")
+      .select("stage, sub_stage")
+      .eq("user_id", userId)
+      .single();
+
+    // founder_business_info에서 사업자 유형 조회
+    const { data: bizData } = await sb
+      .from("founder_business_info")
+      .select("tax_type, business_name")
+      .eq("user_id", userId)
+      .single();
+
+    return {
+      business_type: data.business_type,
+      region: data.region,
+      stage: stateData?.stage ?? data.stage,
+      tax_type: bizData?.tax_type,
+      business_name: bizData?.business_name,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function buildProfileContext(profile: FounderProfile | null): string {
+  if (!profile) return "";
+  const lines: string[] = ["\n\n## 현재 사용자 프로필"];
+  if (profile.business_name) lines.push(`- 상호명: ${profile.business_name}`);
+  if (profile.business_type) lines.push(`- 업종: ${profile.business_type}`);
+  if (profile.region) lines.push(`- 지역: ${profile.region}`);
+  if (profile.stage) lines.push(`- 창업 단계: ${profile.stage}`);
+  if (profile.tax_type) lines.push(`- 사업자 유형: ${profile.tax_type}`);
+  return lines.join("\n");
+}
+
 // ── 타입 ────────────────────────────────────────────────────────────────────
 interface ChatMessage {
   role: "user" | "assistant";
@@ -350,6 +394,7 @@ interface ChatMessage {
 interface ChatRequest {
   message: string;
   history: ChatMessage[];
+  userId?: string;
 }
 
 interface AnthropicContentBlock {
@@ -375,7 +420,7 @@ function createSSEStream(text: string): ReadableStream {
           return;
         }
         controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ text: chunks[i] })}\n\n`),
+          encoder.encode(`data: ${JSON.stringify({ text: chunks[i] })}\n\n`)
         );
         i++;
         setTimeout(send, 0);
@@ -396,7 +441,7 @@ export async function POST(req: NextRequest) {
   if (!ANTHROPIC_KEY) {
     return new Response(
       JSON.stringify({ error: "ANTHROPIC_API_KEY가 설정되지 않았습니다." }),
-      { status: 500, headers: { "Content-Type": "application/json" } },
+      { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
 
@@ -404,21 +449,33 @@ export async function POST(req: NextRequest) {
   try {
     body = await req.json();
   } catch {
-    return new Response(JSON.stringify({ error: "잘못된 요청 형식입니다." }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: "잘못된 요청 형식입니다." }),
+      { status: 400, headers: { "Content-Type": "application/json" } }
+    );
   }
 
-  const { message, history = [] } = body;
+  const { message, history = [], userId } = body;
   if (!message?.trim()) {
-    return new Response(JSON.stringify({ error: "메시지를 입력해주세요." }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: "메시지를 입력해주세요." }),
+      { status: 400, headers: { "Content-Type": "application/json" } }
+    );
   }
 
-  const recentHistory = history.slice(-10);
+  // 프로필 컨텍스트 주입 (userId 있을 때만)
+  let systemText = SYSTEM_PROMPT;
+  if (userId) {
+    const profile = await fetchFounderProfile(userId);
+    const profileCtx = buildProfileContext(profile);
+    if (profileCtx) {
+      systemText = SYSTEM_PROMPT + profileCtx;
+      writeLog(`[CHATBOT] 프로필 주입: userId=${userId}, stage=${profile?.stage ?? "미상"}, region=${profile?.region ?? "미상"}`);
+    }
+  }
+
+  // 15턴 = 메시지 30개 (발표자료 기준 통일)
+  const recentHistory = history.slice(-30);
   const commonHeaders = {
     "Content-Type": "application/json",
     "x-api-key": ANTHROPIC_KEY,
@@ -426,174 +483,126 @@ export async function POST(req: NextRequest) {
     "anthropic-beta": "prompt-caching-2024-07-31",
   };
   const systemBlocks = [
-    { type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } },
+    { type: "text", text: systemText, cache_control: { type: "ephemeral" } },
   ];
 
-  // ── 1단계: 도구 포함 1차 호출 (논스트리밍) ──────────────────────────────
-  let firstData: { content: AnthropicContentBlock[]; stop_reason: string };
-  try {
-    const firstRes = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: commonHeaders,
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 1024,
-        system: systemBlocks,
-        tools: BOSS_TOOLS,
-        tool_choice: { type: "any" },
-        messages: [...recentHistory, { role: "user", content: message }],
-      }),
-    });
-
-    if (!firstRes.ok) {
-      const err = await firstRes.text();
-      return new Response(
-        JSON.stringify({ error: `Claude API 오류: ${err}` }),
-        { status: 502, headers: { "Content-Type": "application/json" } },
-      );
-    }
-    firstData = await firstRes.json();
-  } catch (err) {
-    return new Response(
-      JSON.stringify({ error: `네트워크 오류: ${String(err)}` }),
-      { status: 502, headers: { "Content-Type": "application/json" } },
-    );
-  }
-
-  // ── 2단계: 도구 실행 여부 판단 ──────────────────────────────────────────
-  const toolUseBlocks = firstData.content.filter((b) => b.type === "tool_use");
-
-  // 도구 없이 텍스트 바로 반환
-  if (toolUseBlocks.length === 0) {
-    writeLog("[CHATBOT] No tools selected — answering directly");
-    const text = firstData.content
-      .filter((b) => b.type === "text")
-      .map((b) => b.text ?? "")
-      .join("");
-    return new Response(createSSEStream(text), { headers: SSE_HEADERS });
-  }
-
-  // ── 3단계: 도구 병렬 실행 ────────────────────────────────────────────────
-  const TOOL_LABELS: Record<string, string> = {
-    search_laws: "법령 검색        → POST /rag/search",
-    search_subsidies: "지원사업 검색     → POST /subsidies/search",
-    get_tax_deadlines: "세금 신고 기한    → GET  /tax/deadlines",
-    get_ongoing_subsidies: "상시 지원사업     → GET  /subsidies/ongoing",
+  // ── UI에 표시할 도구별 상태 메시지 ──────────────────────────────────────
+  const TOOL_STATUS_LABELS: Record<string, string> = {
+    search_laws:            "📚 법령 DB 검색 중...",
+    search_subsidies:       "📢 지원사업 조회 중...",
+    get_tax_deadlines:      "🗓 세금 신고 기한 확인 중...",
+    get_ongoing_subsidies:  "📢 상시 지원사업 조회 중...",
+    get_location_districts: "📍 마포구 상권 분석 중...",
+  };
+  const TOOL_LOG_LABELS: Record<string, string> = {
+    search_laws:            "법령 검색        → POST /rag/search",
+    search_subsidies:       "지원사업 검색     → POST /subsidies/search",
+    get_tax_deadlines:      "세금 신고 기한    → GET  /tax/deadlines",
+    get_ongoing_subsidies:  "상시 지원사업     → GET  /subsidies/ongoing",
     get_location_districts: "마포구 상권 정보  → GET  /location/districts",
   };
 
-  writeLog(`[CHATBOT] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-  writeLog(
-    `[CHATBOT] 선택된 툴 ${toolUseBlocks.length}개: ${toolUseBlocks.map((b) => b.name).join(", ")}`,
-  );
-
-  const toolResults = await Promise.all(
-    toolUseBlocks.map(async (block) => {
-      const toolName = block.name!;
-      const toolInput = block.input ?? {};
-      const label = TOOL_LABELS[toolName] ?? toolName;
-      writeLog(`[CHATBOT] ▶ ${label}`);
-      writeLog(`[CHATBOT]   입력값: ${JSON.stringify(toolInput)}`);
-
-      const result = await executeTool(toolName, toolInput);
-
-      const isError =
-        result && typeof result === "object" && "error" in (result as object);
-      if (isError) {
-        writeLog(
-          `[CHATBOT] ✗ 실패: ${label} → ${(result as { error: string }).error}`,
-        );
-      } else {
-        writeLog(`[CHATBOT] ✓ 성공: ${label}`);
-      }
-
-      return {
-        type: "tool_result",
-        tool_use_id: block.id,
-        content: JSON.stringify(result),
-      };
-    }),
-  );
-
-  // ── 4단계: 도구 결과 포함 2차 호출 (스트리밍) ───────────────────────────
-  const secondMessages = [
-    ...recentHistory,
-    { role: "user", content: message },
-    { role: "assistant", content: firstData.content },
-    { role: "user", content: toolResults },
-  ];
-
-  let streamRes: Response;
-  try {
-    streamRes = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: commonHeaders,
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 1500,
-        stream: true,
-        system: systemBlocks,
-        tools: BOSS_TOOLS,
-        messages: secondMessages,
-      }),
-    });
-
-    if (!streamRes.ok) {
-      const err = await streamRes.text();
-      return new Response(JSON.stringify({ error: `스트리밍 오류: ${err}` }), {
-        status: 502,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-  } catch (err) {
-    return new Response(
-      JSON.stringify({ error: `스트리밍 연결 오류: ${String(err)}` }),
-      { status: 502, headers: { "Content-Type": "application/json" } },
-    );
-  }
-
-  // Anthropic SSE → 클라이언트 SSE 파이프
+  // ── 즉시 SSE 스트림 시작 — 클라이언트에 실시간 상태 전달 ─────────────────
   const encoder = new TextEncoder();
+
   const readable = new ReadableStream({
     async start(controller) {
-      const reader = streamRes.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
+      const enqueue = (data: Record<string, string> | string) => {
+        const payload = typeof data === "string" ? data : JSON.stringify(data);
+        controller.enqueue(encoder.encode(`data: ${payload}\n\n`));
+      };
+      const sendStatus = (text: string) => enqueue({ type: "status", text });
+      const sendText   = (text: string) => enqueue({ type: "text",   text });
+      const sendDone   = () => { enqueue("[DONE]"); controller.close(); };
 
       try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+        sendStatus("질문 분석 중...");
 
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() ?? "";
+        // ── 에이전틱 루프: 최대 MAX_TOOL_ROUNDS 라운드 도구 재호출 지원 ─────
+        const MAX_TOOL_ROUNDS = 4;
+        let messages: Array<{ role: string; content: unknown }> = [
+          ...recentHistory,
+          { role: "user", content: message },
+        ];
 
-          for (const line of lines) {
-            if (!line.startsWith("data:")) continue;
-            const raw = line.slice(5).trim();
-            if (!raw || raw === "[DONE]") continue;
-            try {
-              const parsed = JSON.parse(raw);
-              if (
-                parsed.type === "content_block_delta" &&
-                parsed.delta?.type === "text_delta"
-              ) {
-                controller.enqueue(
-                  encoder.encode(
-                    `data: ${JSON.stringify({ text: parsed.delta.text })}\n\n`,
-                  ),
-                );
-              }
-            } catch {
-              // JSON 파싱 실패 무시
+        for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+          // 매 라운드 Claude 호출 (논스트리밍 — 도구 재호출 감지 필요)
+          let roundData: { content: AnthropicContentBlock[]; stop_reason: string };
+          try {
+            const roundRes = await fetch("https://api.anthropic.com/v1/messages", {
+              method: "POST",
+              headers: commonHeaders,
+              body: JSON.stringify({
+                model: MODEL,
+                max_tokens: round === 0 ? 1024 : 1500,
+                system: systemBlocks,
+                tools: BOSS_TOOLS,
+                tool_choice: { type: "auto" },
+                messages,
+              }),
+            });
+            if (!roundRes.ok) {
+              sendText(`[오류] Claude API 응답 실패 (${roundRes.status})`);
+              return;
             }
+            roundData = await roundRes.json();
+          } catch (err) {
+            sendText(`[오류] 네트워크 오류: ${String(err)}`);
+            return;
           }
+
+          const toolUseBlocks = roundData.content.filter((b) => b.type === "tool_use");
+
+          // 도구 호출 없음 → 최종 답변 스트리밍
+          if (toolUseBlocks.length === 0 || roundData.stop_reason === "end_turn") {
+            writeLog(`[CHATBOT] round=${round + 1} end_turn — 답변 스트리밍 시작`);
+            const finalText = roundData.content
+              .filter((b) => b.type === "text")
+              .map((b) => b.text ?? "")
+              .join("");
+
+            // 50자 청크로 타이핑 효과 스트리밍
+            const chunks = finalText.match(/.{1,50}/gs) ?? [finalText];
+            for (const chunk of chunks) {
+              sendText(chunk);
+              await new Promise((r) => setTimeout(r, 0));
+            }
+            return;
+          }
+
+          // 도구 호출 있음 → 상태 표시 + 병렬 실행
+          writeLog(`[CHATBOT] round=${round + 1} tool_use ${toolUseBlocks.length}개: ${toolUseBlocks.map((b) => b.name).join(", ")}`);
+          for (const block of toolUseBlocks) {
+            sendStatus(TOOL_STATUS_LABELS[block.name!] ?? "데이터 조회 중...");
+          }
+
+          const toolResults = await Promise.all(
+            toolUseBlocks.map(async (block) => {
+              const toolName  = block.name!;
+              const toolInput = block.input ?? {};
+              const logLabel  = TOOL_LOG_LABELS[toolName] ?? toolName;
+              writeLog(`[CHATBOT] ▶ ${logLabel}`);
+              writeLog(`[CHATBOT]   입력값: ${JSON.stringify(toolInput)}`);
+              const result = await executeTool(toolName, toolInput);
+              writeLog(`[CHATBOT] ✓ 완료: ${logLabel}`);
+              return { type: "tool_result", tool_use_id: block.id, content: JSON.stringify(result) };
+            })
+          );
+
+          // 다음 라운드를 위해 메시지에 도구 결과 추가
+          messages = [
+            ...messages,
+            { role: "assistant", content: roundData.content },
+            { role: "user",      content: toolResults },
+          ];
+          sendStatus("답변 생성 중...");
         }
+
+        // MAX_TOOL_ROUNDS 초과 시 안내
+        sendText("죄송합니다, 정보를 찾는 중 문제가 발생했습니다. 질문을 좀 더 구체적으로 입력해 주세요.");
+
       } finally {
-        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-        controller.close();
-        reader.releaseLock();
+        sendDone();
       }
     },
   });

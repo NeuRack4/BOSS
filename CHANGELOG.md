@@ -4,6 +4,140 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
 
 ---
 
+## [v0.15.4] — 2026-04-16
+
+### 기능 — 챗봇 내부 링크 버튼 렌더링 + 대화 세션 유지
+
+#### Added
+
+- **챗봇 BOSS 내부 링크 → 클릭 가능한 버튼으로 렌더링** (`frontend/components/chat/ChatWindow.tsx`)
+  - ReactMarkdown 커스텀 `a` 컴포넌트 추가
+  - `/` 로 시작하는 내부 경로: Next.js `<Link>`로 렌더링 — brand 스타일 버튼 (bg-brand-50, border-brand-200, 화살표 아이콘)
+  - 외부 URL: `target="_blank" rel="noopener noreferrer"` 처리
+- **시스템 프롬프트 링크 형식 지시 추가** (`frontend/app/api/chat/route.ts`)
+  - Claude가 BOSS 내부 경로를 마크다운 링크 `[label](/path)` 형식으로 출력하도록 명시
+  - 서비스 10개 경로 예시 포함 (서류 초안 4종, 대시보드 메뉴 6종)
+
+#### Fixed
+
+- **페이지 이동 후 복귀 시 대화 내용 소실 문제** (`frontend/components/chat/ChatWindow.tsx`)
+  - `sessionStorage` 기반 세션 유지 추가 — 페이지 이동·뒤로가기 후에도 대화 복원
+  - 컴포넌트 마운트 시 저장된 세션 복원 (진행 중 스트리밍 상태는 완료로 초기화)
+  - messages·userTurns 변경 시 자동 저장
+  - "새 대화 시작" 버튼 클릭 시 sessionStorage 명시적 삭제
+  - 탭 종료 시 자동 소거 (DB 저장 없음)
+
+- **입지 분석 링크 404 수정** (`frontend/app/api/chat/route.ts`)
+  - 시스템 프롬프트 내 `/location` → `/dashboard/location` 경로 수정
+
+- **도구 재호출 시 챗봇 응답 멈춤 현상** (`frontend/app/api/chat/route.ts`)
+  - 고정 2단계 호출 → while 루프 최대 4라운드로 교체
+  - Claude가 검색 결과 없음 후 재검색을 시도할 때 루프가 계속 돌아 정상 완료
+
+- **검색 실패 시 할루시네이션 ("데이터베이스 업데이트 중" 등)** (`frontend/app/api/chat/route.ts`)
+  - 시스템 프롬프트에 검색 과정 노출 금지 규칙 추가
+  - 결과 없을 때 거짓 이유 생성 금지 — 자연스럽게 일반 지식으로 바로 답변
+
+---
+
+## [v0.15.3] — 2026-04-16
+
+### 기능 — 온보딩 분기형 플로우
+
+#### Added
+
+- **창업 단계별 온보딩 스텝 수 동적 결정** (`frontend/app/onboarding/page.tsx`, `frontend/components/onboarding/StepIndicator.tsx`)
+  - `planning` 단계: Step 1(기본 정보) + Step 2(사업 계획) = 2스텝
+  - `contracted` / `preparing` 단계: 전체 4스텝 (사업장 정보 + 서류 선택 포함)
+  - Step 2에서 창업 단계 선택 즉시 총 스텝 수 동적 반영
+  - `planning` 완료 화면: 프로필 보완 유도 앰버 배너 추가
+- **StepIndicator `total` prop** — 기본값 4, 동적 스텝 수 지원
+
+---
+
+## [v0.15.2] — 2026-04-16
+
+### 기능 — 챗봇 실시간 도구 상태 표시 + 15턴 컨텍스트 통일
+
+#### Added
+
+- **실시간 도구 실행 상태 메시지** (`frontend/app/api/chat/route.ts`, `frontend/components/chat/ChatWindow.tsx`)
+  - 도구 호출 전 즉시 SSE 스트림 시작 — 클라이언트에 실시간 상태 전달
+  - `{"type":"status","text":"..."}` 이벤트로 단계별 상태 표시:
+    - 질문 수신 → `"질문 분석 중..."`
+    - 도구 선택 → `"📚 법령 DB 검색 중..."` / `"📢 지원사업 조회 중..."` 등 도구별 메시지
+    - 2차 호출 직전 → `"답변 생성 중..."`
+    - 첫 텍스트 수신 시 상태 메시지 자동 소거
+  - 기존 블라인드 setTimeout 타이머 제거 → 실제 서버 단계에 동기화
+
+#### Changed
+
+- **히스토리 컨텍스트 15턴 통일** (발표자료 기준)
+  - `route.ts`: `history.slice(-10)` → `history.slice(-30)` (30개 = 15턴)
+  - `ChatWindow.tsx`: `messages.slice(-20)` → `messages.slice(-30)` (30개 = 15턴)
+  - `agent.ts`: `history.slice(-10)` → `history.slice(-30)` (30개 = 15턴)
+  - 추가 비용: haiku 기준 약 $0.00016/요청 (무시 가능)
+
+- **테스트 하네스 결과 파일명** (`frontend/scripts/test_harness.ts`)
+  - `YYYYMMDD` → `YYYYMMDD-HHMMSS` 형식 — 같은 날 실행해도 덮어쓰지 않고 누적 저장
+
+---
+
+## [v0.15.1] — 2026-04-16
+
+### 수정 — 챗봇 응답 속도 + 테스트 하네스 채점 로직 개선
+
+#### Fixed
+
+- **`tool_choice: "any"` → `"auto"` 변경** (`frontend/app/api/chat/route.ts`)
+  - 기존: Claude가 모든 질문에 무조건 도구 호출 강제 → 불필요한 RAG 검색으로 응답 지연
+  - 변경: Claude가 필요한 경우에만 도구 선택 → 단순 질문 직답 가능, 평균 응답 속도 개선
+
+- **테스트 하네스 채점 로직 수정** (`frontend/scripts/test_harness.ts`)
+  - 기존: Claude 최종 응답에서 `【법령 N】` 포맷 마커 탐색 → 실제론 Claude가 자연어로 재작성하므로 전부 0점 오채점
+  - 변경: 응답 텍스트 내 **간접 증거 패턴** (법령 조항 번호 `/제\d+조/`, 구체적 날짜 `/\d{4}년 \d+월 \d+일/`, 마포구 상권명 등)으로 도구 호출 여부 판정
+  - 채점 신뢰도 대폭 향상
+
+---
+
+## [v0.15.0] — 2026-04-16
+
+### 기능 — 챗봇 테스트 하네스 + 프로필 컨텍스트 주입 + LangChain 마이그레이션
+
+#### Added
+
+- **챗봇 자동 테스트 하네스** (`frontend/scripts/test_harness.ts`)
+  - 5개 시나리오(식품위생·지원사업·세금기한·입지·근로계약) 자동 평가
+  - 도구 호출 정확도(40점) + 키워드 포함(40점) + 응답시간(20점) 채점
+  - v1/v2 비교 지원 — `docs/chatbot-test-results-YYYYMMDD.md` 자동 저장
+  - 실행: `npx tsx scripts/test_harness.ts` (Next.js dev server 필요)
+
+- **LangChain Tool 정의** (`frontend/lib/chatbot/tools.ts`)
+  - 5개 도구를 LangChain `tool()` 포맷 + zod 스키마로 정의
+  - 기존 `executeTool()` 정규화 로직 그대로 재사용
+
+- **LangChain AgentExecutor** (`frontend/lib/chatbot/agent.ts`)
+  - `createReactAgent(llm, tools)` — 도구 루프 자동 처리
+  - `runBossAgent()` — 스트리밍 ReadableStream 반환
+
+- **챗봇 API v2** (`frontend/app/api/chat-v2/route.ts`)
+  - LangChain 기반 `/api/chat-v2` 엔드포인트
+  - 기존 `/api/chat` (raw fetch) 보존 — 비교 테스트 가능
+
+#### Changed
+
+- **프로필 컨텍스트 주입** (`frontend/app/api/chat/route.ts`)
+  - `ChatRequest`에 `userId?` 필드 추가
+  - `userId` 전달 시 Supabase에서 창업자 프로필 조회 → 시스템 프롬프트 동적 주입
+  - 프로필 미전달 시 기존 동작 그대로 (fallback)
+  - 토큰 영향: +50~80 토큰 / 요청 (캐싱 적용으로 실질 추가 비용 미미)
+
+#### Dependencies
+
+- `@langchain/anthropic ^1.3.26`, `@langchain/core ^1.1.40`, `@langchain/langgraph ^1.2.8`, `zod ^4.3.6` 추가
+
+---
+
 ## [v0.14.2] — 2026-04-15
 
 ### 수정 — AI 챗봇 응답 정규화 + 로그 파일 저장
