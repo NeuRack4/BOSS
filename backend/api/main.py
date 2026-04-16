@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from backend.core.config import get_settings
-from backend.api.routers import health, founders, triggers, drafts, subsidies, tax, location, sales, insights, rag, pdf_forms, expenses, marketing, ocr, menus, sales_items, map as map_router, recommend, hire
+from backend.api.routers import health, founders, triggers, drafts, subsidies, tax, location, sales, insights, rag, pdf_forms, expenses, marketing, ocr, menus, sales_items, map as map_router, recommend, hire, menu_analysis
 from backend.triggers.scheduler import start_scheduler, stop_scheduler
 
 
@@ -68,6 +68,7 @@ def create_app() -> FastAPI:
     app.include_router(recommend.router, prefix="/recommend", tags=["recommend"])
     app.include_router(rag.router, prefix="/rag", tags=["rag"])
     app.include_router(hire.router, prefix="/hire", tags=["hire"])
+    app.include_router(menu_analysis.router, prefix="/menu-analysis", tags=["menu-analysis"])
     app.include_router(pdf_forms.router)  # prefix="/drafts" 내부 정의
 
     return app
