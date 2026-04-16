@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { APP_VERSION } from "@/lib/version";
 
 export default function Footer() {
@@ -21,7 +22,21 @@ export default function Footer() {
         <p className="text-gray-300 text-xs">
           © 2026 BOSS · AI 심화과정 조별과제
         </p>
-        <p className="text-gray-300 text-xs">v{APP_VERSION} · MIT License</p>
+        <div className="flex items-center gap-4">
+          <Link
+            href="/terms"
+            className="text-gray-300 text-xs hover:text-gray-500 transition-colors"
+          >
+            이용약관
+          </Link>
+          <Link
+            href="/privacy"
+            className="text-gray-300 text-xs hover:text-gray-500 transition-colors"
+          >
+            개인정보 처리방침
+          </Link>
+          <p className="text-gray-300 text-xs">v{APP_VERSION} · MIT License</p>
+        </div>
       </div>
     </footer>
   );

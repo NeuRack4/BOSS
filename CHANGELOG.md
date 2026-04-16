@@ -4,6 +4,26 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
 
 ---
 
+## [v0.17.1] — 2026-04-16
+
+### 기능 — 이용약관 · 개인정보 처리방침 페이지 추가
+
+#### Added
+
+- **이용약관 페이지** (`frontend/app/terms/page.tsx`)
+  - 8개 조항 (목적·정의·서비스 이용·AI 생성 콘텐츠 면책고지·이용자 의무·책임 제한·분쟁 해결 등)
+  - 시행일: 2026년 4월 16일
+
+- **개인정보 처리방침 페이지** (`frontend/app/privacy/page.tsx`)
+  - 9개 조항 (처리 목적·수집 항목·보유 기간·제3자 제공·처리 위탁·이용자 권리·파기·보호책임자·세션 스토리지)
+  - Supabase / Anthropic Claude API / Vercel 수탁 명시
+  - 시행일: 2026년 4월 16일
+
+- **푸터 링크 추가** (`frontend/components/Footer.tsx`)
+  - 하단 우측에 "이용약관" · "개인정보 처리방침" Next.js Link 버튼 추가
+
+---
+
 ## [v0.17.0] — 2026-04-16
 
 ### 기능 — 메뉴 관리 탭 내 AI 메뉴 분석 기능 추가
