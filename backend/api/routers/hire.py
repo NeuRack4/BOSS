@@ -35,6 +35,8 @@ class JobPostingRequest(BaseModel):
     neighborhood: str = Field(default="마포구", description="근무 상권")
     weekly_hours: float = Field(default=20.0, ge=1, le=52, description="주 근무 시간")
     hourly_wage: int = Field(default=MIN_WAGE_2025, ge=MIN_WAGE_2025, description="시급 (최저임금 이상)")
+    wage_mode: str = Field(default="hourly", description="임금 방식 ('hourly' | 'annual')")
+    annual_salary: int = Field(default=0, ge=0, description="세전 연봉 (연봉제일 때 사용)")
     # 카페 정보 (DB 프리필 or 직접 입력)
     business_name: str = Field(default="", description="카페 상호명")
     address: str = Field(default="", description="근무지 주소")
@@ -50,6 +52,9 @@ class JobPostingRequest(BaseModel):
     # 복리후생 & 추가 안내
     benefits: list[str] = Field(default=[], description="복리후생 목록")
     extra_note: str = Field(default="", description="추가 안내 사항 (자유 입력)")
+    # 공고 기간
+    posting_start: str = Field(default="", description="지원 접수 시작일 (YYYY-MM-DD)")
+    posting_end: str = Field(default="", description="지원 접수 마감일 (YYYY-MM-DD)")
 
 
 class JobPostingVisualRequest(JobPostingRequest):
@@ -57,8 +62,33 @@ class JobPostingVisualRequest(JobPostingRequest):
 
 
 class LaborContractRequest(BaseModel):
+    # 임금 / 시간
     weekly_hours: float = Field(default=20.0, ge=1, le=52, description="주 근무 시간")
     hourly_wage: int = Field(default=MIN_WAGE_2025, ge=MIN_WAGE_2025, description="시급")
+    # 당사자
+    worker_name: str = Field(default="", description="근로자 이름")
+    business_name: str = Field(default="", description="사업장명")
+    employer_name: str = Field(default="", description="사용자(고용주)명")
+    address: str = Field(default="", description="근무 장소")
+    # 계약 기간
+    contract_start: str = Field(default="", description="계약 시작일 (YYYY-MM-DD)")
+    contract_end: str = Field(default="", description="계약 종료일 (비워두면 기간 정함 없음)")
+    # 근무 조건
+    work_days: list[str] = Field(default=[], description="근무 요일")
+    work_start: str = Field(default="", description="근무 시작 시간 (예: 09:00)")
+    work_end: str = Field(default="", description="근무 종료 시간 (예: 14:00)")
+    break_time: int = Field(default=60, ge=0, description="휴게시간 (분)")
+    weekly_holiday: str = Field(default="일요일", description="주휴일")
+    # 업무 내용
+    job_duties: list[str] = Field(default=[], description="업무 내용 목록")
+    # 임금 조건
+    wage_conditions: list[str] = Field(default=[], description="임금에 포함된 조건 (예: 주휴수당 포함, 식대 별도)")
+    # 임금 지급
+    pay_date: int = Field(default=25, ge=1, le=31, description="급여 지급일 (매월 N일)")
+    pay_method: str = Field(default="계좌이체", description="급여 지급 방법")
+    # 임금 모드
+    wage_mode: str = Field(default="hourly", description="임금 모드 ('hourly' | 'annual')")
+    annual_salary: int = Field(default=0, ge=0, description="세전 연봉 (연봉제일 때 사용)")
 
 
 class InferenceRequest(BaseModel):
@@ -222,6 +252,8 @@ async def create_job_posting(
         "address": body.address,
         "hourly_wage": body.hourly_wage,
         "weekly_hours": body.weekly_hours,
+        "wage_mode": body.wage_mode,
+        "annual_salary": body.annual_salary,
         "work_days": body.work_days,
         "work_start": body.work_start,
         "work_end": body.work_end,
@@ -256,6 +288,8 @@ async def create_job_posting_visual(
         "neighborhood": body.neighborhood,
         "hourly_wage": body.hourly_wage,
         "weekly_hours": body.weekly_hours,
+        "wage_mode": body.wage_mode,
+        "annual_salary": body.annual_salary,
         "work_days": body.work_days,
         "work_start": body.work_start,
         "work_end": body.work_end,
@@ -286,12 +320,165 @@ async def create_labor_contract(
     class _Ctx:
         pass
 
+    extra = {
+        "hourly_wage": body.hourly_wage,
+        "worker_name": body.worker_name,
+        "business_name": body.business_name,
+        "employer_name": body.employer_name,
+        "address": body.address,
+        "contract_start": body.contract_start,
+        "contract_end": body.contract_end,
+        "work_days": body.work_days,
+        "work_start": body.work_start,
+        "work_end": body.work_end,
+        "break_time": body.break_time,
+        "weekly_holiday": body.weekly_holiday,
+        "job_duties": body.job_duties,
+        "wage_conditions": body.wage_conditions,
+        "pay_date": body.pay_date,
+        "pay_method": body.pay_method,
+        "wage_mode": body.wage_mode,
+        "annual_salary": body.annual_salary,
+    }
+
     try:
-        result = await generate_labor_contract_draft(_Ctx(), weekly_hours=body.weekly_hours)
+        result = await generate_labor_contract_draft(_Ctx(), weekly_hours=body.weekly_hours, extra=extra)
         return result
     except Exception as e:
         logger.error("근로계약서 초안 생성 실패: %s", e)
         raise HTTPException(status_code=500, detail=f"초안 생성 실패: {e}")
+
+
+class SaveLaborContractRequest(BaseModel):
+    title: str = Field(..., description="계약서 저장 이름 (예: 홍길동 근로계약서)")
+    draft: str = Field(..., description="계약서 전문")
+    inputs: dict = Field(default={}, description="폼 입력값 전체 (재사용용)")
+    wage_simulation: dict = Field(default={}, description="임금 산정 스냅샷")
+
+
+@router.post("/labor-contract/save")
+async def save_labor_contract(
+    body: SaveLaborContractRequest,
+    user_id: str = Depends(get_current_user_id),
+    supabase: Client = Depends(db),
+):
+    """근로계약서 초안 저장"""
+    result = (
+        supabase.table("drafts")
+        .insert({
+            "user_id": user_id,
+            "type": "labor_contract",
+            "storage_path": "",
+            "metadata": {
+                "title": body.title,
+                "draft": body.draft,
+                "inputs": body.inputs,
+                "wage_simulation": body.wage_simulation,
+            },
+        })
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=500, detail="저장 실패")
+    return result.data[0]
+
+
+@router.get("/labor-contract/saved")
+async def list_saved_labor_contracts(
+    user_id: str = Depends(get_current_user_id),
+    supabase: Client = Depends(db),
+):
+    """저장된 근로계약서 목록"""
+    result = (
+        supabase.table("drafts")
+        .select("id, metadata, created_at")
+        .eq("user_id", user_id)
+        .eq("type", "labor_contract")
+        .order("created_at", desc=True)
+        .execute()
+    )
+    return result.data or []
+
+
+@router.delete("/labor-contract/saved/{draft_id}")
+async def delete_saved_labor_contract(
+    draft_id: str,
+    user_id: str = Depends(get_current_user_id),
+    supabase: Client = Depends(db),
+):
+    """저장된 근로계약서 삭제"""
+    supabase.table("drafts").delete().eq("id", draft_id).eq("user_id", user_id).execute()
+    return {"ok": True}
+
+
+class SaveJobPostingRequest(BaseModel):
+    title: str = Field(..., description="저장 이름 (예: 홍대 알바 공고 5월)")
+    platforms: dict = Field(default={}, description="플랫폼별 초안 텍스트")
+    html: str = Field(default="", description="디자인 HTML (없으면 빈 문자열)")
+    wage_simulation: dict = Field(default={}, description="인건비 시뮬레이션 스냅샷")
+    inputs: dict = Field(default={}, description="폼 입력값 전체 (재사용용)")
+    calculated_at: str = Field(default="", description="생성일")
+    posting_start: str = Field(default="", description="지원 접수 시작일 (YYYY-MM-DD)")
+    posting_end: str = Field(default="", description="지원 접수 마감일 (YYYY-MM-DD)")
+
+
+@router.post("/job-posting/save")
+async def save_job_posting(
+    body: SaveJobPostingRequest,
+    user_id: str = Depends(get_current_user_id),
+    supabase: Client = Depends(db),
+):
+    """채용공고 초안 저장 (텍스트 + HTML 디자인 포함)"""
+    result = (
+        supabase.table("drafts")
+        .insert({
+            "user_id": user_id,
+            "type": "job_posting",
+            "storage_path": "",
+            "metadata": {
+                "title": body.title,
+                "platforms": body.platforms,
+                "html": body.html,
+                "wage_simulation": body.wage_simulation,
+                "inputs": body.inputs,
+                "calculated_at": body.calculated_at,
+                "posting_start": body.posting_start,
+                "posting_end": body.posting_end,
+            },
+        })
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=500, detail="저장 실패")
+    return result.data[0]
+
+
+@router.get("/job-posting/saved")
+async def list_saved_job_postings(
+    user_id: str = Depends(get_current_user_id),
+    supabase: Client = Depends(db),
+):
+    """저장된 채용공고 목록"""
+    result = (
+        supabase.table("drafts")
+        .select("id, metadata, created_at")
+        .eq("user_id", user_id)
+        .eq("type", "job_posting")
+        .order("created_at", desc=True)
+        .execute()
+    )
+    return result.data or []
+
+
+@router.delete("/job-posting/saved/{draft_id}")
+async def delete_saved_job_posting(
+    draft_id: str,
+    user_id: str = Depends(get_current_user_id),
+    supabase: Client = Depends(db),
+):
+    """저장된 채용공고 삭제"""
+    supabase.table("drafts").delete().eq("id", draft_id).eq("user_id", user_id).execute()
+    return {"ok": True}
 
 
 @router.get("/wage-simulation")

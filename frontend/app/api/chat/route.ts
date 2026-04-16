@@ -127,7 +127,8 @@ const BOSS_TOOLS = [
       properties: {
         query: {
           type: "string",
-          description: "검색 키워드 (예: '식품위생법 영업신고', '근로계약 최저임금')",
+          description:
+            "검색 키워드 (예: '식품위생법 영업신고', '근로계약 최저임금')",
         },
         category: {
           type: "string",
@@ -149,7 +150,8 @@ const BOSS_TOOLS = [
       properties: {
         query: {
           type: "string",
-          description: "검색 키워드 (예: '카페 창업 자금', '소상공인 임차료 지원')",
+          description:
+            "검색 키워드 (예: '카페 창업 자금', '소상공인 임차료 지원')",
         },
       },
       required: ["query"],
@@ -198,7 +200,7 @@ const BOSS_TOOLS = [
 // ── 도구 실행 (팀원 API 호출 — 소스 수정 없음) ───────────────────────────────
 async function executeTool(
   name: string,
-  input: Record<string, unknown>
+  input: Record<string, unknown>,
 ): Promise<string> {
   try {
     switch (name) {
@@ -218,12 +220,16 @@ async function executeTool(
           content: string;
           metadata: Record<string, unknown>;
         }>;
-        if (!data.length) return "[법령 검색 결과 없음] 관련 법령을 찾지 못했습니다.";
-        return data.slice(0, 5).map((r, i) => {
-          const source = r.metadata?.source ?? "출처 미상";
-          const article = r.metadata?.article ? ` ${r.metadata.article}` : "";
-          return `【법령 ${i + 1}】${source}${article}\n${r.content.slice(0, 500)}`;
-        }).join("\n\n");
+        if (!data.length)
+          return "[법령 검색 결과 없음] 관련 법령을 찾지 못했습니다.";
+        return data
+          .slice(0, 5)
+          .map((r, i) => {
+            const source = r.metadata?.source ?? "출처 미상";
+            const article = r.metadata?.article ? ` ${r.metadata.article}` : "";
+            return `【법령 ${i + 1}】${source}${article}\n${r.content.slice(0, 500)}`;
+          })
+          .join("\n\n");
       }
 
       case "search_subsidies": {
@@ -233,59 +239,96 @@ async function executeTool(
           body: JSON.stringify({ query: input.query, match_count: 5 }),
           signal: AbortSignal.timeout(8000),
         });
-        if (!res.ok) return `[지원사업 검색 실패] 백엔드 응답 오류 (${res.status})`;
+        if (!res.ok)
+          return `[지원사업 검색 실패] 백엔드 응답 오류 (${res.status})`;
         const data = (await res.json()) as Array<Record<string, unknown>>;
-        if (!data.length) return "[지원사업 검색 결과 없음] 관련 지원사업을 찾지 못했습니다.";
-        return data.slice(0, 5).map((r, i) => {
-          const deadline = r.end_date ? `마감: ${r.end_date}` : r.is_ongoing ? "상시 모집" : "마감일 미정";
-          const target = r.target ? `대상: ${r.target}` : "";
-          return `【지원사업 ${i + 1}】${r.title} (${r.organization})\n${deadline}${target ? " | " + target : ""}\n${String(r.description ?? "").slice(0, 250)}`;
-        }).join("\n\n");
+        if (!data.length)
+          return "[지원사업 검색 결과 없음] 관련 지원사업을 찾지 못했습니다.";
+        return data
+          .slice(0, 5)
+          .map((r, i) => {
+            const deadline = r.end_date
+              ? `마감: ${r.end_date}`
+              : r.is_ongoing
+                ? "상시 모집"
+                : "마감일 미정";
+            const target = r.target ? `대상: ${r.target}` : "";
+            return `【지원사업 ${i + 1}】${r.title} (${r.organization})\n${deadline}${target ? " | " + target : ""}\n${String(r.description ?? "").slice(0, 250)}`;
+          })
+          .join("\n\n");
       }
 
       case "get_tax_deadlines": {
         const days = (input.days_ahead as number) ?? 90;
-        const res = await fetch(`${API_BASE}/tax/deadlines?days_ahead=${days}`, {
-          signal: AbortSignal.timeout(5000),
-        });
-        if (!res.ok) return `[세금 기한 조회 실패] 백엔드 응답 오류 (${res.status})`;
+        const res = await fetch(
+          `${API_BASE}/tax/deadlines?days_ahead=${days}`,
+          {
+            signal: AbortSignal.timeout(5000),
+          },
+        );
+        if (!res.ok)
+          return `[세금 기한 조회 실패] 백엔드 응답 오류 (${res.status})`;
         const data = (await res.json()) as {
           deadlines: Array<Record<string, unknown>>;
         };
         const deadlines = data.deadlines ?? [];
-        if (!deadlines.length) return "[세금 신고 기한 없음] 해당 기간 내 예정된 세금 신고가 없습니다.";
-        return "【세금 신고 기한 목록】\n" + deadlines.slice(0, 10).map((d) =>
-          `- ${d.deadline_date} | ${d.title} (${d.tax_type})\n  ${String(d.description ?? "").slice(0, 150)}`
-        ).join("\n");
+        if (!deadlines.length)
+          return "[세금 신고 기한 없음] 해당 기간 내 예정된 세금 신고가 없습니다.";
+        return (
+          "【세금 신고 기한 목록】\n" +
+          deadlines
+            .slice(0, 10)
+            .map(
+              (d) =>
+                `- ${d.deadline_date} | ${d.title} (${d.tax_type})\n  ${String(d.description ?? "").slice(0, 150)}`,
+            )
+            .join("\n")
+        );
       }
 
       case "get_ongoing_subsidies": {
         const res = await fetch(`${API_BASE}/subsidies/ongoing`, {
           signal: AbortSignal.timeout(5000),
         });
-        if (!res.ok) return `[상시 지원사업 조회 실패] 백엔드 응답 오류 (${res.status})`;
+        if (!res.ok)
+          return `[상시 지원사업 조회 실패] 백엔드 응답 오류 (${res.status})`;
         const data = (await res.json()) as Array<Record<string, unknown>>;
-        if (!data.length) return "[상시 지원사업 없음] 현재 상시 모집 중인 지원사업이 없습니다.";
-        return "【상시 모집 지원사업】\n" + data.slice(0, 8).map((r, i) => {
-          const target = r.target ? ` | 대상: ${r.target}` : "";
-          return `${i + 1}. ${r.title} (${r.organization})${target}\n   ${String(r.description ?? "").slice(0, 200)}`;
-        }).join("\n\n");
+        if (!data.length)
+          return "[상시 지원사업 없음] 현재 상시 모집 중인 지원사업이 없습니다.";
+        return (
+          "【상시 모집 지원사업】\n" +
+          data
+            .slice(0, 8)
+            .map((r, i) => {
+              const target = r.target ? ` | 대상: ${r.target}` : "";
+              return `${i + 1}. ${r.title} (${r.organization})${target}\n   ${String(r.description ?? "").slice(0, 200)}`;
+            })
+            .join("\n\n")
+        );
       }
 
       case "get_location_districts": {
         const res = await fetch(`${API_BASE}/location/districts`, {
           signal: AbortSignal.timeout(5000),
         });
-        if (!res.ok) return `[상권 정보 조회 실패] 백엔드 응답 오류 (${res.status})`;
+        if (!res.ok)
+          return `[상권 정보 조회 실패] 백엔드 응답 오류 (${res.status})`;
         const data = (await res.json()) as Array<Record<string, unknown>>;
-        if (!data || (Array.isArray(data) && !data.length)) return "[상권 정보 없음] 상권 데이터를 불러오지 못했습니다.";
+        if (!data || (Array.isArray(data) && !data.length))
+          return "[상권 정보 없음] 상권 데이터를 불러오지 못했습니다.";
         if (Array.isArray(data)) {
-          return "【마포구 9개 상권 정보】\n" + data.map((d) => {
-            const name = d.name ?? d.district_name ?? d.area_name ?? "";
-            const desc = d.description ?? d.characteristics ?? d.summary ?? "";
-            const score = d.score ?? d.rating ?? "";
-            return `- ${name}${score ? ` (점수: ${score})` : ""}${desc ? `: ${String(desc).slice(0, 150)}` : ""}`;
-          }).join("\n");
+          return (
+            "【마포구 9개 상권 정보】\n" +
+            data
+              .map((d) => {
+                const name = d.name ?? d.district_name ?? d.area_name ?? "";
+                const desc =
+                  d.description ?? d.characteristics ?? d.summary ?? "";
+                const score = d.score ?? d.rating ?? "";
+                return `- ${name}${score ? ` (점수: ${score})` : ""}${desc ? `: ${String(desc).slice(0, 150)}` : ""}`;
+              })
+              .join("\n")
+          );
         }
         return `【마포구 상권 정보】\n${JSON.stringify(data).slice(0, 800)}`;
       }
@@ -332,7 +375,7 @@ function createSSEStream(text: string): ReadableStream {
           return;
         }
         controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ text: chunks[i] })}\n\n`)
+          encoder.encode(`data: ${JSON.stringify({ text: chunks[i] })}\n\n`),
         );
         i++;
         setTimeout(send, 0);
@@ -353,7 +396,7 @@ export async function POST(req: NextRequest) {
   if (!ANTHROPIC_KEY) {
     return new Response(
       JSON.stringify({ error: "ANTHROPIC_API_KEY가 설정되지 않았습니다." }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
+      { status: 500, headers: { "Content-Type": "application/json" } },
     );
   }
 
@@ -361,18 +404,18 @@ export async function POST(req: NextRequest) {
   try {
     body = await req.json();
   } catch {
-    return new Response(
-      JSON.stringify({ error: "잘못된 요청 형식입니다." }),
-      { status: 400, headers: { "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: "잘못된 요청 형식입니다." }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   const { message, history = [] } = body;
   if (!message?.trim()) {
-    return new Response(
-      JSON.stringify({ error: "메시지를 입력해주세요." }),
-      { status: 400, headers: { "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: "메시지를 입력해주세요." }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   const recentHistory = history.slice(-10);
@@ -406,14 +449,14 @@ export async function POST(req: NextRequest) {
       const err = await firstRes.text();
       return new Response(
         JSON.stringify({ error: `Claude API 오류: ${err}` }),
-        { status: 502, headers: { "Content-Type": "application/json" } }
+        { status: 502, headers: { "Content-Type": "application/json" } },
       );
     }
     firstData = await firstRes.json();
   } catch (err) {
     return new Response(
       JSON.stringify({ error: `네트워크 오류: ${String(err)}` }),
-      { status: 502, headers: { "Content-Type": "application/json" } }
+      { status: 502, headers: { "Content-Type": "application/json" } },
     );
   }
 
@@ -432,15 +475,17 @@ export async function POST(req: NextRequest) {
 
   // ── 3단계: 도구 병렬 실행 ────────────────────────────────────────────────
   const TOOL_LABELS: Record<string, string> = {
-    search_laws:           "법령 검색        → POST /rag/search",
-    search_subsidies:      "지원사업 검색     → POST /subsidies/search",
-    get_tax_deadlines:     "세금 신고 기한    → GET  /tax/deadlines",
+    search_laws: "법령 검색        → POST /rag/search",
+    search_subsidies: "지원사업 검색     → POST /subsidies/search",
+    get_tax_deadlines: "세금 신고 기한    → GET  /tax/deadlines",
     get_ongoing_subsidies: "상시 지원사업     → GET  /subsidies/ongoing",
-    get_location_districts:"마포구 상권 정보  → GET  /location/districts",
+    get_location_districts: "마포구 상권 정보  → GET  /location/districts",
   };
 
   writeLog(`[CHATBOT] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-  writeLog(`[CHATBOT] 선택된 툴 ${toolUseBlocks.length}개: ${toolUseBlocks.map((b) => b.name).join(", ")}`);
+  writeLog(
+    `[CHATBOT] 선택된 툴 ${toolUseBlocks.length}개: ${toolUseBlocks.map((b) => b.name).join(", ")}`,
+  );
 
   const toolResults = await Promise.all(
     toolUseBlocks.map(async (block) => {
@@ -452,9 +497,12 @@ export async function POST(req: NextRequest) {
 
       const result = await executeTool(toolName, toolInput);
 
-      const isError = result && typeof result === "object" && "error" in (result as object);
+      const isError =
+        result && typeof result === "object" && "error" in (result as object);
       if (isError) {
-        writeLog(`[CHATBOT] ✗ 실패: ${label} → ${(result as { error: string }).error}`);
+        writeLog(
+          `[CHATBOT] ✗ 실패: ${label} → ${(result as { error: string }).error}`,
+        );
       } else {
         writeLog(`[CHATBOT] ✓ 성공: ${label}`);
       }
@@ -464,7 +512,7 @@ export async function POST(req: NextRequest) {
         tool_use_id: block.id,
         content: JSON.stringify(result),
       };
-    })
+    }),
   );
 
   // ── 4단계: 도구 결과 포함 2차 호출 (스트리밍) ───────────────────────────
@@ -492,15 +540,15 @@ export async function POST(req: NextRequest) {
 
     if (!streamRes.ok) {
       const err = await streamRes.text();
-      return new Response(
-        JSON.stringify({ error: `스트리밍 오류: ${err}` }),
-        { status: 502, headers: { "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: `스트리밍 오류: ${err}` }), {
+        status: 502,
+        headers: { "Content-Type": "application/json" },
+      });
     }
   } catch (err) {
     return new Response(
       JSON.stringify({ error: `스트리밍 연결 오류: ${String(err)}` }),
-      { status: 502, headers: { "Content-Type": "application/json" } }
+      { status: 502, headers: { "Content-Type": "application/json" } },
     );
   }
 
@@ -533,8 +581,8 @@ export async function POST(req: NextRequest) {
               ) {
                 controller.enqueue(
                   encoder.encode(
-                    `data: ${JSON.stringify({ text: parsed.delta.text })}\n\n`
-                  )
+                    `data: ${JSON.stringify({ text: parsed.delta.text })}\n\n`,
+                  ),
                 );
               }
             } catch {
