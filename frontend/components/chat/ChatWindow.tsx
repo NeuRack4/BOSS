@@ -151,14 +151,47 @@ function TurnBadge({ turns }: { turns: number }) {
   );
 }
 
+// ── sessionStorage 키 ────────────────────────────────────────────────────────
+const SESSION_KEY = "boss_chat_session";
+
+function saveSession(messages: ChatMessage[], turns: number) {
+  try {
+    sessionStorage.setItem(
+      SESSION_KEY,
+      JSON.stringify({ messages, turns })
+    );
+  } catch {
+    // sessionStorage 접근 불가 시 무시 (SSR 등)
+  }
+}
+
+function loadSession(): { messages: ChatMessage[]; turns: number } | null {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
 // ── 메인 컴포넌트 ─────────────────────────────────────────────────────────────
 export default function ChatWindow() {
-  const [messages, setMessages] = useState<ChatMessage[]>([INITIAL_MESSAGE]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    const saved = loadSession();
+    return saved ? saved.messages.map((m) => ({ ...m, isStreaming: false })) : [INITIAL_MESSAGE];
+  });
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(true);
+  const [showSuggestions, setShowSuggestions] = useState(() => {
+    const saved = loadSession();
+    return saved ? saved.messages.length <= 1 : true;
+  });
   /** 사용자 발화 횟수 (assistant 메시지 제외) */
-  const [userTurns, setUserTurns] = useState(0);
+  const [userTurns, setUserTurns] = useState(() => {
+    const saved = loadSession();
+    return saved ? saved.turns : 0;
+  });
   /** 도구 실행 중 상태 메시지 */
   const [toolStatus, setToolStatus] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -168,8 +201,14 @@ export default function ChatWindow() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // 메시지·턴 변경 시 sessionStorage에 저장
+  useEffect(() => {
+    saveSession(messages, userTurns);
+  }, [messages, userTurns]);
+
   /** 대화 완전 초기화 — 새 세션 시작 */
   const resetChat = useCallback(() => {
+    sessionStorage.removeItem(SESSION_KEY);
     setMessages([INITIAL_MESSAGE]);
     setInput("");
     setIsLoading(false);

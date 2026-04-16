@@ -6,7 +6,7 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
 
 ## [v0.15.4] — 2026-04-16
 
-### 기능 — 챗봇 내부 링크 버튼 렌더링
+### 기능 — 챗봇 내부 링크 버튼 렌더링 + 대화 세션 유지
 
 #### Added
 
@@ -17,6 +17,26 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
 - **시스템 프롬프트 링크 형식 지시 추가** (`frontend/app/api/chat/route.ts`)
   - Claude가 BOSS 내부 경로를 마크다운 링크 `[label](/path)` 형식으로 출력하도록 명시
   - 서비스 10개 경로 예시 포함 (서류 초안 4종, 대시보드 메뉴 6종)
+
+#### Fixed
+
+- **페이지 이동 후 복귀 시 대화 내용 소실 문제** (`frontend/components/chat/ChatWindow.tsx`)
+  - `sessionStorage` 기반 세션 유지 추가 — 페이지 이동·뒤로가기 후에도 대화 복원
+  - 컴포넌트 마운트 시 저장된 세션 복원 (진행 중 스트리밍 상태는 완료로 초기화)
+  - messages·userTurns 변경 시 자동 저장
+  - "새 대화 시작" 버튼 클릭 시 sessionStorage 명시적 삭제
+  - 탭 종료 시 자동 소거 (DB 저장 없음)
+
+- **입지 분석 링크 404 수정** (`frontend/app/api/chat/route.ts`)
+  - 시스템 프롬프트 내 `/location` → `/dashboard/location` 경로 수정
+
+- **도구 재호출 시 챗봇 응답 멈춤 현상** (`frontend/app/api/chat/route.ts`)
+  - 고정 2단계 호출 → while 루프 최대 4라운드로 교체
+  - Claude가 검색 결과 없음 후 재검색을 시도할 때 루프가 계속 돌아 정상 완료
+
+- **검색 실패 시 할루시네이션 ("데이터베이스 업데이트 중" 등)** (`frontend/app/api/chat/route.ts`)
+  - 시스템 프롬프트에 검색 과정 노출 금지 규칙 추가
+  - 결과 없을 때 거짓 이유 생성 금지 — 자연스럽게 일반 지식으로 바로 답변
 
 ---
 
