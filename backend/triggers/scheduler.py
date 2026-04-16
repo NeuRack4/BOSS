@@ -9,6 +9,7 @@ from apscheduler.triggers.cron import CronTrigger
 
 from backend.triggers.state import fire_tax_deadline_triggers
 from backend.triggers.state import fire_subsidy_deadline_triggers
+from backend.triggers.state import fire_job_posting_deadline_triggers
 
 _scheduler = AsyncIOScheduler(timezone="Asia/Seoul")
 
@@ -24,6 +25,12 @@ def start_scheduler() -> None:
         fire_subsidy_deadline_triggers,
         CronTrigger(hour=6, minute=30),
         id="subsidy_deadline",
+        replace_existing=True,
+    )
+    _scheduler.add_job(
+        fire_job_posting_deadline_triggers,
+        CronTrigger(hour=7, minute=0),
+        id="job_posting_deadline",
         replace_existing=True,
     )
     _scheduler.start()

@@ -23,7 +23,9 @@ export default function ChatPage() {
             </p>
           </div>
           <div className="ml-auto flex items-center gap-2">
-            <span className="text-xs text-gray-400 hidden sm:block">PDF 서류 작성 →</span>
+            <span className="text-xs text-gray-400 hidden sm:block">
+              PDF 서류 작성 →
+            </span>
             <a
               href="/drafts/business-registration"
               className="text-xs px-2.5 py-1 rounded-lg border border-surface-300 text-gray-600 hover:border-brand-400 hover:text-brand-600 transition-colors"

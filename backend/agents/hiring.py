@@ -121,6 +121,8 @@ async def generate_job_posting_draft(ctx, extra: dict | None = None) -> dict:
     neighborhood = getattr(ctx, "region", "마포구")
     ex = extra or {}
 
+    wage_mode = ex.get("wage_mode", "hourly")
+    annual_salary = ex.get("annual_salary", 0)
     hourly_wage = ex.get("hourly_wage", MIN_WAGE_2025)
     weekly_hours = ex.get("weekly_hours", 20)
     business_name = ex.get("business_name") or f"서울 {neighborhood} 카페"
@@ -151,6 +153,15 @@ async def generate_job_posting_draft(ctx, extra: dict | None = None) -> dict:
     )
     extra_note_str = ex.get("extra_note") or ""
 
+    # 임금 표기 문자열
+    if wage_mode == "annual" and annual_salary > 0:
+        monthly_gross = annual_salary // 12
+        wage_str = (
+            f"세전 연봉 {annual_salary:,}원 (월 환산 {monthly_gross:,}원)"
+        )
+    else:
+        wage_str = f"시급 {hourly_wage:,}원 (주 {weekly_hours}시간 기준)"
+
     message = await client.messages.create(
         model=settings.claude_model,
         max_tokens=3000,
@@ -165,7 +176,7 @@ async def generate_job_posting_draft(ctx, extra: dict | None = None) -> dict:
                     f"- 근무지: {address}\n"
                     f"- 모집 인원: {headcount}명\n"
                     f"- 모집 직무: {duties_str}\n"
-                    f"- 시급: {hourly_wage:,}원\n"
+                    f"- 급여: {wage_str}\n"
                     f"- 주 근무시간: {weekly_hours}시간\n"
                     f"- 근무 요일: {work_days_str}\n"
                     f"- 근무 시간대: {work_time_str}\n"
@@ -229,9 +240,18 @@ def _parse_platform_sections(text: str) -> dict:
 
 # ── 근로계약서 초안 생성 ────────────────────────────────────────────────────
 
-async def generate_labor_contract_draft(ctx, weekly_hours: float = 20.0) -> dict:
+async def generate_labor_contract_draft(
+    ctx, weekly_hours: float = 20.0, extra: dict | None = None
+) -> dict:
     """
-    표준 근로계약서 초안 생성.
+    근로계약서 초안 생성.
+
+    extra: 프론트에서 입력한 추가 정보
+    {
+        hourly_wage, worker_name, business_name, employer_name, address,
+        contract_start, contract_end, work_days, work_start, work_end,
+        break_time, weekly_holiday, job_duties, pay_date, pay_method
+    }
 
     반환:
     {
@@ -244,36 +264,103 @@ async def generate_labor_contract_draft(ctx, weekly_hours: float = 20.0) -> dict
     client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
 
     docs = await retrieve(
-        query="표준 근로계약서 카페 아르바이트 주휴수당 4대보험",
+        query="근로계약서 카페 아르바이트 주휴수당 4대보험 연차",
         category="labor",
         match_count=5,
     )
     context = "\n\n".join(d["content"] for d in docs)
 
-    wage_sim = calc_total_labor_cost(MIN_WAGE_2025, weekly_hours)
+    ex = extra or {}
+    wage_mode = ex.get("wage_mode", "hourly")
+    annual_salary = ex.get("annual_salary", 0)
+    hourly_wage = ex.get("hourly_wage", MIN_WAGE_2025)
+    wage_sim = calc_total_labor_cost(hourly_wage, weekly_hours)
+    # 연봉제일 때 월 기준 임금 산정
+    monthly_gross = (
+        annual_salary // 12 if wage_mode == "annual" and annual_salary > 0
+        else wage_sim["monthly_total"]
+    )
+
+    # 당사자
+    worker_name = ex.get("worker_name") or "[   ]"
+    business_name = ex.get("business_name") or "[   ]"
+    employer_name = ex.get("employer_name") or "[   ]"
+    address = ex.get("address") or "[   ]"
+
+    # 계약 기간
+    contract_start = ex.get("contract_start") or "[   ]"
+    contract_end = ex.get("contract_end") or "기간의 정함이 없음"
+
+    # 근무 조건
+    work_days = ex.get("work_days") or []
+    work_days_str = "·".join(work_days) if work_days else "[   ]"
+    work_start = ex.get("work_start") or "[   ]"
+    work_end = ex.get("work_end") or "[   ]"
+    break_time = ex.get("break_time", 60)
+    weekly_holiday = ex.get("weekly_holiday") or "일요일"
+
+    # 업무 내용
+    job_duties = ex.get("job_duties") or []
+    duties_str = ", ".join(job_duties) if job_duties else "[   ]"
+
+    # 임금 조건
+    wage_conditions = ex.get("wage_conditions") or []
+    wage_conditions_str = (
+        "\n".join(f"  · {c}" for c in wage_conditions) if wage_conditions else "  · (없음)"
+    )
+    # 임금 지급
+    pay_date = ex.get("pay_date", 25)
+    pay_method = ex.get("pay_method") or "계좌이체"
+
+    # 일 순근로시간 산정 (프론트와 동일 로직)
+    daily_net_hours: float = weekly_hours / max(len(work_days), 1) if work_days else 0
 
     message = await client.messages.create(
-        model=get_settings().claude_model,
-        max_tokens=3000,
+        model=settings.claude_model,
+        max_tokens=4000,
         system=_CONTRACT_SYSTEM_PROMPT,
         messages=[
             {
                 "role": "user",
                 "content": (
-                    "마포구 카페 아르바이트 근로계약서 초안을 작성해주세요.\n\n"
-                    "[근로 조건]\n"
-                    "- 사업장명: [   ] 카페 (창업자 채울 항목)\n"
-                    "- 근무지: 서울 마포구 [   ] (창업자 채울 항목)\n"
-                    f"- 근로 형태: 단시간 근로자 (주 {weekly_hours}시간)\n"
-                    f"- 시급: {MIN_WAGE_2025:,}원 (2026년 최저임금 기준)\n"
-                    f"- 월 예상 급여: {wage_sim['monthly_total']:,}원 "
-                    f"(기본급 {wage_sim['monthly_base_pay']:,}원 + "
-                    f"주휴수당 {wage_sim['monthly_holiday_pay']:,}원)\n"
-                    f"- 4대보험: {'가입 의무' if wage_sim['four_insurance_required'] else '미가입 가능 (주 15시간 미만)'}\n"
-                    "- 근무 기간: [   ] ~ [   ] (창업자 채울 항목)\n"
-                    "- 근무 시간: [   ] ~ [   ] (창업자 채울 항목)\n\n"
-                    "[표준 근로계약서 참고 자료]\n"
+                    "아래 정보를 바탕으로 근로계약서 초안을 작성해주세요.\n\n"
+                    "[당사자]\n"
+                    f"- 사업장명: {business_name}\n"
+                    f"- 사용자(고용주)명: {employer_name}\n"
+                    f"- 근로자명: {worker_name}\n\n"
+                    "[계약 기간]\n"
+                    f"- 시작일: {contract_start}\n"
+                    f"- 종료일: {contract_end}\n\n"
+                    "[근무 조건]\n"
+                    f"- 근무 장소: {address}\n"
+                    f"- 업무 내용: {duties_str}\n"
+                    f"- 근무 요일: {work_days_str} ({len(work_days)}일/주)\n"
+                    f"- 소정근로시간: {work_start} ~ {work_end} (휴게 {break_time}분)\n"
+                    f"- 일 순근로시간: {daily_net_hours:.1f}시간\n"
+                    f"- 주 총 근로시간: {weekly_hours}시간\n"
+                    f"- 주휴일: {weekly_holiday}\n\n"
+                    "[임금 산정]\n"
+                    + (
+                        f"- 임금 방식: 연봉제\n"
+                        f"- 세전 연봉: {annual_salary:,}원\n"
+                        f"- 월 기본급(세전): {monthly_gross:,}원 (연봉 ÷ 12)\n"
+                        if wage_mode == "annual" and annual_salary > 0
+                        else
+                        f"- 임금 방식: 시급제\n"
+                        f"- 시급: {hourly_wage:,}원 (2026년 최저임금 {MIN_WAGE_2025:,}원 이상)\n"
+                        f"- 월 기본급: {hourly_wage:,}원 × {weekly_hours}h × 4.345 = {wage_sim['monthly_base_pay']:,}원\n"
+                        f"- 주휴수당(월): {wage_sim['monthly_holiday_pay']:,}원"
+                        f"{' (주 15시간 이상 발생)' if wage_sim['four_insurance_required'] else ' (주 15시간 미만 — 미발생)'}\n"
+                    )
+                    + f"- 월 총 지급액(세전): {monthly_gross:,}원\n"
+                    f"- 임금에 포함된 조건:\n{wage_conditions_str}\n"
+                    f"- 급여 지급일: 매월 {pay_date}일\n"
+                    f"- 지급 방법: {pay_method}\n"
+                    f"- 4대보험: {'가입 의무 (주 15시간 이상)' if wage_sim['four_insurance_required'] else '미가입 가능 (주 15시간 미만)'}\n\n"
+                    "[참고 자료]\n"
                     f"{context}\n\n"
+                    "근로기준법 제17조 필수 기재사항(임금 구성·계산·지급방법, 소정근로시간, 휴일, "
+                    "연차유급휴가, 취업 장소, 업무 내용, 계약 기간)이 모두 포함되어야 합니다.\n"
                     "빈칸([   ])은 창업자가 실제 상황에 맞게 채워야 하는 항목입니다.\n"
                     f"\n---\n{LEGAL_DISCLAIMER}"
                 ),
@@ -320,9 +407,21 @@ async def generate_job_posting_visual(job_data: dict, style_prompt: str = "") ->
     client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
 
     ex = job_data
+    wage_mode = ex.get("wage_mode", "hourly")
+    annual_salary = ex.get("annual_salary", 0)
     hourly_wage = ex.get("hourly_wage", MIN_WAGE_2025)
     weekly_hours = ex.get("weekly_hours", 20)
     wage_sim = calc_total_labor_cost(hourly_wage, weekly_hours)
+
+    # 임금 표기
+    if wage_mode == "annual" and annual_salary > 0:
+        monthly_gross = annual_salary // 12
+        wage_line = f"세전 연봉: {annual_salary:,}원 (월 환산 {monthly_gross:,}원)"
+    else:
+        wage_line = (
+            f"시급: {hourly_wage:,}원 / "
+            f"월 예상 급여: {wage_sim['monthly_total']:,}원 (주휴수당 포함)"
+        )
 
     work_days_str = "·".join(ex.get("work_days", [])) or "협의"
     work_time_str = (
@@ -343,9 +442,8 @@ async def generate_job_posting_visual(job_data: dict, style_prompt: str = "") ->
 카페명: {ex.get('business_name') or '○○ 카페'}
 주소: {ex.get('address') or '서울 마포구'}
 모집 인원: {ex.get('headcount', 1)}명
-시급: {hourly_wage:,}원
+급여: {wage_line}
 주 근무시간: {weekly_hours}시간
-월 예상 급여: {wage_sim['monthly_total']:,}원 (주휴수당 포함)
 4대보험: {'가입' if wage_sim['four_insurance_required'] else '미가입 (주 15시간 미만)'}
 근무 요일: {work_days_str}
 근무 시간: {work_time_str}
