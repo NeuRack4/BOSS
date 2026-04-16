@@ -455,7 +455,8 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const recentHistory = history.slice(-10);
+  // 15턴 = 메시지 30개 (발표자료 기준 통일)
+  const recentHistory = history.slice(-30);
   const commonHeaders = {
     "Content-Type": "application/json",
     "x-api-key": ANTHROPIC_KEY,
@@ -466,140 +467,146 @@ export async function POST(req: NextRequest) {
     { type: "text", text: systemText, cache_control: { type: "ephemeral" } },
   ];
 
-  // ── 1단계: 도구 포함 1차 호출 (논스트리밍) ──────────────────────────────
-  let firstData: { content: AnthropicContentBlock[]; stop_reason: string };
-  try {
-    const firstRes = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: commonHeaders,
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 1024,
-        system: systemBlocks,
-        tools: BOSS_TOOLS,
-        tool_choice: { type: "auto" },
-        messages: [...recentHistory, { role: "user", content: message }],
-      }),
-    });
-
-    if (!firstRes.ok) {
-      const err = await firstRes.text();
-      return new Response(
-        JSON.stringify({ error: `Claude API 오류: ${err}` }),
-        { status: 502, headers: { "Content-Type": "application/json" } }
-      );
-    }
-    firstData = await firstRes.json();
-  } catch (err) {
-    return new Response(
-      JSON.stringify({ error: `네트워크 오류: ${String(err)}` }),
-      { status: 502, headers: { "Content-Type": "application/json" } }
-    );
-  }
-
-  // ── 2단계: 도구 실행 여부 판단 ──────────────────────────────────────────
-  const toolUseBlocks = firstData.content.filter((b) => b.type === "tool_use");
-
-  // 도구 없이 텍스트 바로 반환
-  if (toolUseBlocks.length === 0) {
-    writeLog("[CHATBOT] No tools selected — answering directly");
-    const text = firstData.content
-      .filter((b) => b.type === "text")
-      .map((b) => b.text ?? "")
-      .join("");
-    return new Response(createSSEStream(text), { headers: SSE_HEADERS });
-  }
-
-  // ── 3단계: 도구 병렬 실행 ────────────────────────────────────────────────
-  const TOOL_LABELS: Record<string, string> = {
-    search_laws:           "법령 검색        → POST /rag/search",
-    search_subsidies:      "지원사업 검색     → POST /subsidies/search",
-    get_tax_deadlines:     "세금 신고 기한    → GET  /tax/deadlines",
-    get_ongoing_subsidies: "상시 지원사업     → GET  /subsidies/ongoing",
-    get_location_districts:"마포구 상권 정보  → GET  /location/districts",
+  // ── UI에 표시할 도구별 상태 메시지 ──────────────────────────────────────
+  const TOOL_STATUS_LABELS: Record<string, string> = {
+    search_laws:            "📚 법령 DB 검색 중...",
+    search_subsidies:       "📢 지원사업 조회 중...",
+    get_tax_deadlines:      "🗓 세금 신고 기한 확인 중...",
+    get_ongoing_subsidies:  "📢 상시 지원사업 조회 중...",
+    get_location_districts: "📍 마포구 상권 분석 중...",
+  };
+  const TOOL_LOG_LABELS: Record<string, string> = {
+    search_laws:            "법령 검색        → POST /rag/search",
+    search_subsidies:       "지원사업 검색     → POST /subsidies/search",
+    get_tax_deadlines:      "세금 신고 기한    → GET  /tax/deadlines",
+    get_ongoing_subsidies:  "상시 지원사업     → GET  /subsidies/ongoing",
+    get_location_districts: "마포구 상권 정보  → GET  /location/districts",
   };
 
-  writeLog(`[CHATBOT] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-  writeLog(`[CHATBOT] 선택된 툴 ${toolUseBlocks.length}개: ${toolUseBlocks.map((b) => b.name).join(", ")}`);
-
-  const toolResults = await Promise.all(
-    toolUseBlocks.map(async (block) => {
-      const toolName = block.name!;
-      const toolInput = block.input ?? {};
-      const label = TOOL_LABELS[toolName] ?? toolName;
-      writeLog(`[CHATBOT] ▶ ${label}`);
-      writeLog(`[CHATBOT]   입력값: ${JSON.stringify(toolInput)}`);
-
-      const result = await executeTool(toolName, toolInput);
-
-      const isError = result && typeof result === "object" && "error" in (result as object);
-      if (isError) {
-        writeLog(`[CHATBOT] ✗ 실패: ${label} → ${(result as { error: string }).error}`);
-      } else {
-        writeLog(`[CHATBOT] ✓ 성공: ${label}`);
-      }
-
-      return {
-        type: "tool_result",
-        tool_use_id: block.id,
-        content: JSON.stringify(result),
-      };
-    })
-  );
-
-  // ── 4단계: 도구 결과 포함 2차 호출 (스트리밍) ───────────────────────────
-  const secondMessages = [
-    ...recentHistory,
-    { role: "user", content: message },
-    { role: "assistant", content: firstData.content },
-    { role: "user", content: toolResults },
-  ];
-
-  let streamRes: Response;
-  try {
-    streamRes = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: commonHeaders,
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 1500,
-        stream: true,
-        system: systemBlocks,
-        tools: BOSS_TOOLS,
-        messages: secondMessages,
-      }),
-    });
-
-    if (!streamRes.ok) {
-      const err = await streamRes.text();
-      return new Response(
-        JSON.stringify({ error: `스트리밍 오류: ${err}` }),
-        { status: 502, headers: { "Content-Type": "application/json" } }
-      );
-    }
-  } catch (err) {
-    return new Response(
-      JSON.stringify({ error: `스트리밍 연결 오류: ${String(err)}` }),
-      { status: 502, headers: { "Content-Type": "application/json" } }
-    );
-  }
-
-  // Anthropic SSE → 클라이언트 SSE 파이프
+  // ── 즉시 SSE 스트림 시작 — 클라이언트에 실시간 상태 전달 ─────────────────
   const encoder = new TextEncoder();
+
   const readable = new ReadableStream({
     async start(controller) {
-      const reader = streamRes.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
+      const enqueue = (data: Record<string, string> | string) => {
+        const payload = typeof data === "string" ? data : JSON.stringify(data);
+        controller.enqueue(encoder.encode(`data: ${payload}\n\n`));
+      };
+      const sendStatus = (text: string) => enqueue({ type: "status", text });
+      const sendText   = (text: string) => enqueue({ type: "text",   text });
+      const sendDone   = () => { enqueue("[DONE]"); controller.close(); };
 
       try {
+        sendStatus("질문 분석 중...");
+
+        // ── 1단계: 도구 포함 1차 호출 (논스트리밍) ─────────────────────────
+        let firstData: { content: AnthropicContentBlock[]; stop_reason: string };
+        try {
+          const firstRes = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST",
+            headers: commonHeaders,
+            body: JSON.stringify({
+              model: MODEL,
+              max_tokens: 1024,
+              system: systemBlocks,
+              tools: BOSS_TOOLS,
+              tool_choice: { type: "auto" },
+              messages: [...recentHistory, { role: "user", content: message }],
+            }),
+          });
+          if (!firstRes.ok) {
+            sendText(`[오류] Claude API 응답 실패 (${firstRes.status})`);
+            return;
+          }
+          firstData = await firstRes.json();
+        } catch (err) {
+          sendText(`[오류] 네트워크 오류: ${String(err)}`);
+          return;
+        }
+
+        // ── 2단계: 도구 선택 여부 판단 ──────────────────────────────────────
+        const toolUseBlocks = firstData.content.filter((b) => b.type === "tool_use");
+
+        if (toolUseBlocks.length === 0) {
+          // 도구 없이 직접 답변
+          writeLog("[CHATBOT] No tools selected — answering directly");
+          const directText = firstData.content
+            .filter((b) => b.type === "text")
+            .map((b) => b.text ?? "")
+            .join("");
+          sendText(directText);
+          return;
+        }
+
+        // ── 3단계: 선택된 도구 상태 UI 표시 + 병렬 실행 ────────────────────
+        writeLog(`[CHATBOT] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        writeLog(`[CHATBOT] 선택된 툴 ${toolUseBlocks.length}개: ${toolUseBlocks.map((b) => b.name).join(", ")}`);
+
+        // 선택된 도구들을 UI에 순서대로 표시
+        for (const block of toolUseBlocks) {
+          sendStatus(TOOL_STATUS_LABELS[block.name!] ?? "데이터 조회 중...");
+        }
+
+        const toolResults = await Promise.all(
+          toolUseBlocks.map(async (block) => {
+            const toolName  = block.name!;
+            const toolInput = block.input ?? {};
+            const logLabel  = TOOL_LOG_LABELS[toolName] ?? toolName;
+            writeLog(`[CHATBOT] ▶ ${logLabel}`);
+            writeLog(`[CHATBOT]   입력값: ${JSON.stringify(toolInput)}`);
+
+            const result = await executeTool(toolName, toolInput);
+            writeLog(`[CHATBOT] ✓ 완료: ${logLabel}`);
+
+            return { type: "tool_result", tool_use_id: block.id, content: JSON.stringify(result) };
+          })
+        );
+
+        // ── 4단계: 도구 결과 포함 2차 호출 (스트리밍) ───────────────────────
+        sendStatus("답변 생성 중...");
+
+        const secondMessages = [
+          ...recentHistory,
+          { role: "user",      content: message },
+          { role: "assistant", content: firstData.content },
+          { role: "user",      content: toolResults },
+        ];
+
+        let streamRes: Response;
+        try {
+          streamRes = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST",
+            headers: commonHeaders,
+            body: JSON.stringify({
+              model: MODEL,
+              max_tokens: 1500,
+              stream: true,
+              system: systemBlocks,
+              tools: BOSS_TOOLS,
+              messages: secondMessages,
+            }),
+          });
+          if (!streamRes.ok) {
+            sendText(`[오류] 스트리밍 실패 (${streamRes.status})`);
+            return;
+          }
+        } catch (err) {
+          sendText(`[오류] 스트리밍 연결 오류: ${String(err)}`);
+          return;
+        }
+
+        // Anthropic SSE → 클라이언트 text 이벤트 파이프
+        const reader  = streamRes.body!.getReader();
+        const decoder = new TextDecoder();
+        let buf = "";
+
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
 
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() ?? "";
+          buf += decoder.decode(value, { stream: true });
+          const lines = buf.split("\n");
+          buf = lines.pop() ?? "";
 
           for (const line of lines) {
             if (!line.startsWith("data:")) continue;
@@ -607,25 +614,16 @@ export async function POST(req: NextRequest) {
             if (!raw || raw === "[DONE]") continue;
             try {
               const parsed = JSON.parse(raw);
-              if (
-                parsed.type === "content_block_delta" &&
-                parsed.delta?.type === "text_delta"
-              ) {
-                controller.enqueue(
-                  encoder.encode(
-                    `data: ${JSON.stringify({ text: parsed.delta.text })}\n\n`
-                  )
-                );
+              if (parsed.type === "content_block_delta" && parsed.delta?.type === "text_delta") {
+                sendText(parsed.delta.text);
               }
-            } catch {
-              // JSON 파싱 실패 무시
-            }
+            } catch { /* JSON 파싱 실패 무시 */ }
           }
         }
-      } finally {
-        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-        controller.close();
         reader.releaseLock();
+
+      } finally {
+        sendDone();
       }
     },
   });

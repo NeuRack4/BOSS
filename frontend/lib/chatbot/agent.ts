@@ -40,7 +40,7 @@ export async function runBossAgent(options: RunAgentOptions): Promise<ReadableSt
   });
 
   // 대화 히스토리 → LangChain 메시지 변환
-  const langchainHistory = history.slice(-10).map((m) =>
+  const langchainHistory = history.slice(-30).map((m) =>
     m.role === "user" ? new HumanMessage(m.content) : new AIMessage(m.content)
   );
 
