@@ -4,6 +4,61 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
 
 ---
 
+## [v0.15.1] — 2026-04-16
+
+### 수정 — 챗봇 응답 속도 + 테스트 하네스 채점 로직 개선
+
+#### Fixed
+
+- **`tool_choice: "any"` → `"auto"` 변경** (`frontend/app/api/chat/route.ts`)
+  - 기존: Claude가 모든 질문에 무조건 도구 호출 강제 → 불필요한 RAG 검색으로 응답 지연
+  - 변경: Claude가 필요한 경우에만 도구 선택 → 단순 질문 직답 가능, 평균 응답 속도 개선
+
+- **테스트 하네스 채점 로직 수정** (`frontend/scripts/test_harness.ts`)
+  - 기존: Claude 최종 응답에서 `【법령 N】` 포맷 마커 탐색 → 실제론 Claude가 자연어로 재작성하므로 전부 0점 오채점
+  - 변경: 응답 텍스트 내 **간접 증거 패턴** (법령 조항 번호 `/제\d+조/`, 구체적 날짜 `/\d{4}년 \d+월 \d+일/`, 마포구 상권명 등)으로 도구 호출 여부 판정
+  - 채점 신뢰도 대폭 향상
+
+---
+
+## [v0.15.0] — 2026-04-16
+
+### 기능 — 챗봇 테스트 하네스 + 프로필 컨텍스트 주입 + LangChain 마이그레이션
+
+#### Added
+
+- **챗봇 자동 테스트 하네스** (`frontend/scripts/test_harness.ts`)
+  - 5개 시나리오(식품위생·지원사업·세금기한·입지·근로계약) 자동 평가
+  - 도구 호출 정확도(40점) + 키워드 포함(40점) + 응답시간(20점) 채점
+  - v1/v2 비교 지원 — `docs/chatbot-test-results-YYYYMMDD.md` 자동 저장
+  - 실행: `npx tsx scripts/test_harness.ts` (Next.js dev server 필요)
+
+- **LangChain Tool 정의** (`frontend/lib/chatbot/tools.ts`)
+  - 5개 도구를 LangChain `tool()` 포맷 + zod 스키마로 정의
+  - 기존 `executeTool()` 정규화 로직 그대로 재사용
+
+- **LangChain AgentExecutor** (`frontend/lib/chatbot/agent.ts`)
+  - `createReactAgent(llm, tools)` — 도구 루프 자동 처리
+  - `runBossAgent()` — 스트리밍 ReadableStream 반환
+
+- **챗봇 API v2** (`frontend/app/api/chat-v2/route.ts`)
+  - LangChain 기반 `/api/chat-v2` 엔드포인트
+  - 기존 `/api/chat` (raw fetch) 보존 — 비교 테스트 가능
+
+#### Changed
+
+- **프로필 컨텍스트 주입** (`frontend/app/api/chat/route.ts`)
+  - `ChatRequest`에 `userId?` 필드 추가
+  - `userId` 전달 시 Supabase에서 창업자 프로필 조회 → 시스템 프롬프트 동적 주입
+  - 프로필 미전달 시 기존 동작 그대로 (fallback)
+  - 토큰 영향: +50~80 토큰 / 요청 (캐싱 적용으로 실질 추가 비용 미미)
+
+#### Dependencies
+
+- `@langchain/anthropic ^1.3.26`, `@langchain/core ^1.1.40`, `@langchain/langgraph ^1.2.8`, `zod ^4.3.6` 추가
+
+---
+
 ## [v0.14.2] — 2026-04-15
 
 ### 수정 — AI 챗봇 응답 정규화 + 로그 파일 저장

@@ -15,6 +15,7 @@
 import { NextRequest } from "next/server";
 import fs from "fs";
 import path from "path";
+import { createClient } from "@supabase/supabase-js";
 
 // ── 파일 로그 (logs/chatbot.log) ─────────────────────────────────────────────
 const LOG_DIR = path.join(process.cwd(), "logs");
@@ -298,6 +299,73 @@ async function executeTool(
   }
 }
 
+// ── Supabase 서버 클라이언트 (서비스 키 사용) ───────────────────────────────
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+const supabaseKey =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ??
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+  "";
+
+// ── 프로필 컨텍스트 빌더 ─────────────────────────────────────────────────────
+interface FounderProfile {
+  business_type?: string;
+  region?: string;
+  stage?: string;
+  tax_type?: string;
+  business_name?: string;
+}
+
+async function fetchFounderProfile(
+  userId: string
+): Promise<FounderProfile | null> {
+  if (!supabaseUrl || !supabaseKey) return null;
+  try {
+    const sb = createClient(supabaseUrl, supabaseKey);
+    const { data } = await sb
+      .from("users")
+      .select("business_type, region, stage")
+      .eq("id", userId)
+      .single();
+
+    if (!data) return null;
+
+    // founder_state에서 상세 단계 조회
+    const { data: stateData } = await sb
+      .from("founder_state")
+      .select("stage, sub_stage")
+      .eq("user_id", userId)
+      .single();
+
+    // founder_business_info에서 사업자 유형 조회
+    const { data: bizData } = await sb
+      .from("founder_business_info")
+      .select("tax_type, business_name")
+      .eq("user_id", userId)
+      .single();
+
+    return {
+      business_type: data.business_type,
+      region: data.region,
+      stage: stateData?.stage ?? data.stage,
+      tax_type: bizData?.tax_type,
+      business_name: bizData?.business_name,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function buildProfileContext(profile: FounderProfile | null): string {
+  if (!profile) return "";
+  const lines: string[] = ["\n\n## 현재 사용자 프로필"];
+  if (profile.business_name) lines.push(`- 상호명: ${profile.business_name}`);
+  if (profile.business_type) lines.push(`- 업종: ${profile.business_type}`);
+  if (profile.region) lines.push(`- 지역: ${profile.region}`);
+  if (profile.stage) lines.push(`- 창업 단계: ${profile.stage}`);
+  if (profile.tax_type) lines.push(`- 사업자 유형: ${profile.tax_type}`);
+  return lines.join("\n");
+}
+
 // ── 타입 ────────────────────────────────────────────────────────────────────
 interface ChatMessage {
   role: "user" | "assistant";
@@ -307,6 +375,7 @@ interface ChatMessage {
 interface ChatRequest {
   message: string;
   history: ChatMessage[];
+  userId?: string;
 }
 
 interface AnthropicContentBlock {
@@ -367,12 +436,23 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { message, history = [] } = body;
+  const { message, history = [], userId } = body;
   if (!message?.trim()) {
     return new Response(
       JSON.stringify({ error: "메시지를 입력해주세요." }),
       { status: 400, headers: { "Content-Type": "application/json" } }
     );
+  }
+
+  // 프로필 컨텍스트 주입 (userId 있을 때만)
+  let systemText = SYSTEM_PROMPT;
+  if (userId) {
+    const profile = await fetchFounderProfile(userId);
+    const profileCtx = buildProfileContext(profile);
+    if (profileCtx) {
+      systemText = SYSTEM_PROMPT + profileCtx;
+      writeLog(`[CHATBOT] 프로필 주입: userId=${userId}, stage=${profile?.stage ?? "미상"}, region=${profile?.region ?? "미상"}`);
+    }
   }
 
   const recentHistory = history.slice(-10);
@@ -383,7 +463,7 @@ export async function POST(req: NextRequest) {
     "anthropic-beta": "prompt-caching-2024-07-31",
   };
   const systemBlocks = [
-    { type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } },
+    { type: "text", text: systemText, cache_control: { type: "ephemeral" } },
   ];
 
   // ── 1단계: 도구 포함 1차 호출 (논스트리밍) ──────────────────────────────
@@ -397,7 +477,7 @@ export async function POST(req: NextRequest) {
         max_tokens: 1024,
         system: systemBlocks,
         tools: BOSS_TOOLS,
-        tool_choice: { type: "any" },
+        tool_choice: { type: "auto" },
         messages: [...recentHistory, { role: "user", content: message }],
       }),
     });
