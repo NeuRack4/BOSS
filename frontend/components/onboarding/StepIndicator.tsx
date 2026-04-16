@@ -1,13 +1,20 @@
 "use client";
 
-const STEPS = [
+const ALL_STEPS = [
   { num: 1, label: "기본 정보" },
   { num: 2, label: "사업 계획" },
   { num: 3, label: "사업장 정보" },
   { num: 4, label: "서류 선택" },
 ];
 
-export default function StepIndicator({ current }: { current: number }) {
+export default function StepIndicator({
+  current,
+  total = 4,
+}: {
+  current: number;
+  total?: number;
+}) {
+  const STEPS = ALL_STEPS.slice(0, total);
   return (
     <div className="w-full max-w-lg mx-auto">
       <div className="flex items-center justify-between relative">

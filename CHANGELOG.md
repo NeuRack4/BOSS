@@ -4,6 +4,30 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
 
 ---
 
+## [v0.15.3] — 2026-04-16
+
+### 기능 — 온보딩 분기형 플로우 (창업 단계별 스텝 수 동적 결정)
+
+#### Changed
+
+- **온보딩 스텝 분기** (`frontend/app/onboarding/page.tsx`)
+  - `"구상 중"` 선택 시: Step 1+2만 진행 → 완료 (사업장 정보 없는 단계 배려)
+  - `"계약 완료"` / `"오픈 준비 중"` 선택 시: Step 1+2+3+4 전체 진행
+  - `totalSteps`가 stage에 따라 2 또는 4로 동적 결정
+  - Top bar `Step N / M`, progress dots, 버튼 텍스트 모두 동적 반영
+
+- **StepIndicator 동적화** (`frontend/components/onboarding/StepIndicator.tsx`)
+  - `total` prop 추가 (기본값 4) — 2스텝일 때 기본정보·사업계획만 표시
+
+#### Added
+
+- **완료 화면 프로필 보완 배너** (`frontend/app/onboarding/page.tsx`)
+  - `"구상 중"` 으로 2스텝 완료 시: 주황색 배너 표시
+  - "계약 완료 후 사업장 정보를 입력하면 서류 초안을 자동 완성해드립니다"
+  - `/profile` 로 바로 이동하는 `프로필 보완하기 →` 버튼 포함
+
+---
+
 ## [v0.15.2] — 2026-04-16
 
 ### 기능 — 챗봇 실시간 도구 상태 표시 + 15턴 컨텍스트 통일
