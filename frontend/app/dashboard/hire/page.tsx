@@ -41,6 +41,8 @@ type HireStatus = {
   has_sales_data: boolean;
   season_signal: { type: string; message: string } | null;
   min_wage_2025: number;
+  active_job_postings: number;
+  hired_count: number;
 };
 
 type InferenceResult = {
@@ -90,6 +92,8 @@ type SavedJobPosting = {
     wage_simulation: WageSim;
     inputs: Record<string, unknown>;
     calculated_at: string;
+    posting_start?: string;
+    posting_end?: string;
   };
 };
 
@@ -229,6 +233,8 @@ const StatusTab = () => {
     has_sales_data,
     season_signal,
     min_wage_2025,
+    active_job_postings,
+    hired_count,
   } = status;
 
   return (
@@ -245,23 +251,24 @@ const StatusTab = () => {
           </p>
         </div>
         <div className="rounded-xl border border-surface-300 bg-white p-4">
-          <p className="text-xs text-gray-400 mb-1">오픈 후</p>
+          <p className="text-xs text-gray-400 mb-1">진행 중인 공고</p>
           <p className="font-semibold text-gray-800">
-            {profile.months_since_open > 0
-              ? `${profile.months_since_open}개월`
-              : "정보 없음"}
-          </p>
-          <p className="text-xs text-gray-400 mt-0.5">{profile.district}</p>
-        </div>
-        <div className="rounded-xl border border-surface-300 bg-white p-4">
-          <p className="text-xs text-gray-400 mb-1">현재 직원</p>
-          <p className="font-semibold text-gray-800">
-            {profile.employee_count > 0
-              ? `${profile.employee_count}명`
-              : "없음 (1인 운영)"}
+            {active_job_postings > 0 ? `${active_job_postings}건` : "없음"}
           </p>
           <p className="text-xs text-gray-400 mt-0.5">
-            2025 최저시급 {min_wage_2025.toLocaleString()}원
+            {active_job_postings > 0
+              ? "공고 기간 진행 중"
+              : "채용공고 작성에서 등록"}
+          </p>
+        </div>
+        <div className="rounded-xl border border-surface-300 bg-white p-4">
+          <p className="text-xs text-gray-400 mb-1">채용된 직원</p>
+          <p className="font-semibold text-gray-800">
+            {hired_count > 0 ? `${hired_count}명` : "없음 (1인 운영)"}
+          </p>
+          <p className="text-xs text-gray-400 mt-0.5">
+            근로계약서 {hired_count}건 · 최저시급{" "}
+            {min_wage_2025.toLocaleString()}원
           </p>
         </div>
       </div>
@@ -799,7 +806,15 @@ const JobPostingTab = () => {
                       )}
                     </div>
                     <p className="text-xs text-gray-400 mt-0.5">
-                      {s.created_at.slice(0, 10)}
+                      저장일 {s.created_at.slice(0, 10)}
+                      {s.metadata.posting_start || s.metadata.posting_end ? (
+                        <span className="ml-2">
+                          · 공고 기간 {s.metadata.posting_start || "—"} ~{" "}
+                          {s.metadata.posting_end || "—"}
+                        </span>
+                      ) : (
+                        <span className="ml-2 text-brand-500">· 상시 채용</span>
+                      )}
                     </p>
                   </div>
                   <div className="flex gap-2">

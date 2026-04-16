@@ -197,6 +197,41 @@ async def get_hire_status(
     sales = _get_recent_sales_summary(supabase, user_id)
 
     today = date.today()
+    today_str = str(today)
+
+    # 진행 중인 채용공고 수 (posting_start <= today <= posting_end)
+    all_postings = (
+        supabase.table("drafts")
+        .select("metadata")
+        .eq("user_id", user_id)
+        .eq("type", "job_posting")
+        .execute()
+        .data or []
+    )
+    active_job_postings = sum(
+        1 for row in all_postings
+        if (m := row.get("metadata") or {})
+        and (
+            # 기간 미설정 → 상시 채용으로 진행 중 간주
+            (not m.get("posting_start") and not m.get("posting_end"))
+            # 기간 설정 → 오늘이 범위 내
+            or (
+                m.get("posting_start", "") <= today_str <= m.get("posting_end", "")
+                and m.get("posting_start") and m.get("posting_end")
+            )
+        )
+    )
+
+    # 채용된 직원 수 (근로계약서 초안 개수)
+    hired_count = (
+        supabase.table("drafts")
+        .select("id", count="exact")
+        .eq("user_id", user_id)
+        .eq("type", "labor_contract")
+        .execute()
+        .count or 0
+    )
+
     season_signal = None
     if today.month == 2:
         season_signal = {"type": "개강시즌", "message": "3월 개강 D-30 — 홍대·연남동 유동인구 급증 대비"}
@@ -211,6 +246,8 @@ async def get_hire_status(
         "has_sales_data": sales is not None,
         "season_signal": season_signal,
         "min_wage_2025": MIN_WAGE_2025,
+        "active_job_postings": active_job_postings,
+        "hired_count": hired_count,
     }
 
 
