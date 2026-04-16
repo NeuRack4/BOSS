@@ -284,12 +284,21 @@ async function runTests(endpoint: string, label: string) {
 }
 
 async function main() {
-  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  // YYYYMMDD-HHMMSS 형식 — 같은 날 여러 번 실행해도 파일이 쌓임
+  const now = new Date();
+  const dateTimeStr =
+    now.getFullYear().toString() +
+    String(now.getMonth() + 1).padStart(2, "0") +
+    String(now.getDate()).padStart(2, "0") +
+    "-" +
+    String(now.getHours()).padStart(2, "0") +
+    String(now.getMinutes()).padStart(2, "0") +
+    String(now.getSeconds()).padStart(2, "0");
   const outputPath = path.join(
     process.cwd(),
     "..",
     "docs",
-    `chatbot-test-results-${dateStr}.md`
+    `chatbot-test-results-${dateTimeStr}.md`
   );
 
   // v1 테스트

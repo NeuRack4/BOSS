@@ -4,6 +4,34 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
 
 ---
 
+## [v0.15.2] — 2026-04-16
+
+### 기능 — 챗봇 실시간 도구 상태 표시 + 15턴 컨텍스트 통일
+
+#### Added
+
+- **실시간 도구 실행 상태 메시지** (`frontend/app/api/chat/route.ts`, `frontend/components/chat/ChatWindow.tsx`)
+  - 도구 호출 전 즉시 SSE 스트림 시작 — 클라이언트에 실시간 상태 전달
+  - `{"type":"status","text":"..."}` 이벤트로 단계별 상태 표시:
+    - 질문 수신 → `"질문 분석 중..."`
+    - 도구 선택 → `"📚 법령 DB 검색 중..."` / `"📢 지원사업 조회 중..."` 등 도구별 메시지
+    - 2차 호출 직전 → `"답변 생성 중..."`
+    - 첫 텍스트 수신 시 상태 메시지 자동 소거
+  - 기존 블라인드 setTimeout 타이머 제거 → 실제 서버 단계에 동기화
+
+#### Changed
+
+- **히스토리 컨텍스트 15턴 통일** (발표자료 기준)
+  - `route.ts`: `history.slice(-10)` → `history.slice(-30)` (30개 = 15턴)
+  - `ChatWindow.tsx`: `messages.slice(-20)` → `messages.slice(-30)` (30개 = 15턴)
+  - `agent.ts`: `history.slice(-10)` → `history.slice(-30)` (30개 = 15턴)
+  - 추가 비용: haiku 기준 약 $0.00016/요청 (무시 가능)
+
+- **테스트 하네스 결과 파일명** (`frontend/scripts/test_harness.ts`)
+  - `YYYYMMDD` → `YYYYMMDD-HHMMSS` 형식 — 같은 날 실행해도 덮어쓰지 않고 누적 저장
+
+---
+
 ## [v0.15.1] — 2026-04-16
 
 ### 수정 — 챗봇 응답 속도 + 테스트 하네스 채점 로직 개선

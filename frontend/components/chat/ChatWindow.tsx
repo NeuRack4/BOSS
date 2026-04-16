@@ -173,17 +173,12 @@ export default function ChatWindow() {
       ]);
 
       try {
-        // history: 초기 환영 메시지 제외, 최근 20개 (10턴)만 전송
+        // history: 초기 환영 메시지 제외, 최근 30개 (15턴) 전송 — 발표자료 기준 통일
         const history = messages
-          .slice(1) // 초기 환영 메시지 제외
+          .slice(1)
           .filter((m) => !m.isStreaming)
-          .slice(-20) // 최근 20개 (= 10턴) — 슬라이딩 윈도우
+          .slice(-30)
           .map(({ role, content }) => ({ role, content }));
-
-        // 도구 실행 중 상태 — 서버 처리 시간 반영
-        setTimeout(() => {
-          if (isLoading) setToolStatus("BOSS 데이터 조회 중...");
-        }, 1500);
 
         const res = await fetch("/api/chat", {
           method: "POST",
@@ -191,7 +186,6 @@ export default function ChatWindow() {
           body: JSON.stringify({ message: trimmed, history }),
         });
 
-        setToolStatus(null);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
         const reader = res.body!.getReader();
@@ -214,7 +208,13 @@ export default function ChatWindow() {
 
             try {
               const parsed = JSON.parse(raw);
-              if (parsed.text) {
+
+              if (parsed.type === "status") {
+                // 서버에서 오는 실시간 도구 상태 메시지
+                setToolStatus(parsed.text);
+              } else if (parsed.type === "text" || parsed.text) {
+                // 첫 텍스트 수신 시 status 숨김
+                setToolStatus(null);
                 accumulated += parsed.text;
                 setMessages((prev) => {
                   const updated = [...prev];
