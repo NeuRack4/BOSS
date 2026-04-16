@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
+import MenuAnalysisPanel from "./MenuAnalysisPanel";
 
 type Menu = {
   id: string;
@@ -33,7 +34,10 @@ type OcrMenuItem = {
 
 const apiUrl = () => process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
+type Tab = "list" | "analysis";
+
 export default function MenusPage() {
+  const [activeTab, setActiveTab] = useState<Tab>("list");
   const [menus, setMenus] = useState<Menu[]>([]);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -217,29 +221,51 @@ export default function MenusPage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-8">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-black text-gray-900">메뉴 관리</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            카페 메뉴를 등록하면 영수증 분석 시 자동으로 매칭됩니다
-          </p>
-        </div>
-        <button
-          onClick={() => {
-            setOcrOpen((v) => !v);
-            setOcrItems([]);
-            setOcrError(null);
-          }}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
-            ocrOpen
-              ? "bg-brand-50 border-brand-500/40 text-brand-600"
-              : "border-surface-300 text-gray-600 hover:border-brand-300 bg-white"
-          }`}
-        >
-          📸 메뉴판 사진으로 등록
-        </button>
+      <div>
+        <h1 className="text-2xl font-black text-gray-900">메뉴 관리</h1>
+        <p className="text-sm text-gray-500 mt-1">
+          카페 메뉴를 등록하면 영수증 분석 시 자동으로 매칭됩니다
+        </p>
       </div>
 
+      {/* 탭 + 메뉴판 사진 등록 버튼 */}
+      <div className="flex items-center justify-between">
+        <div className="flex gap-1 bg-surface-100 p-1 rounded-xl border border-surface-300">
+          {(["list", "analysis"] as Tab[]).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
+                activeTab === tab
+                  ? "bg-white text-brand-600 shadow-sm border border-surface-300"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              {tab === "list" ? "메뉴 목록" : "메뉴 분석"}
+            </button>
+          ))}
+        </div>
+        {activeTab === "list" && (
+          <button
+            onClick={() => {
+              setOcrOpen((v) => !v);
+              setOcrItems([]);
+              setOcrError(null);
+            }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
+              ocrOpen
+                ? "bg-brand-50 border-brand-500/40 text-brand-600"
+                : "border-surface-300 text-gray-600 hover:border-brand-300 bg-white"
+            }`}
+          >
+            📸 메뉴판 사진으로 등록
+          </button>
+        )}
+      </div>
+
+      {activeTab === "analysis" && <MenuAnalysisPanel getHeaders={getHeaders} />}
+
+      {activeTab === "list" && <>
       {/* 메뉴판 OCR 패널 */}
       {ocrOpen && (
         <div className="glass-card rounded-xl p-6 space-y-4 border-brand-500/20">
@@ -566,6 +592,7 @@ export default function MenusPage() {
           })}
         </div>
       )}
+      </>}
     </div>
   );
 }
