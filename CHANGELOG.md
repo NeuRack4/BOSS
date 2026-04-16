@@ -4,27 +4,110 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
 
 ---
 
-## [v0.15.3] — 2026-04-16
+## [v0.16.1] — 2026-04-16
 
-### 기능 — 온보딩 분기형 플로우 (창업 단계별 스텝 수 동적 결정)
-
-#### Changed
-
-- **온보딩 스텝 분기** (`frontend/app/onboarding/page.tsx`)
-  - `"구상 중"` 선택 시: Step 1+2만 진행 → 완료 (사업장 정보 없는 단계 배려)
-  - `"계약 완료"` / `"오픈 준비 중"` 선택 시: Step 1+2+3+4 전체 진행
-  - `totalSteps`가 stage에 따라 2 또는 4로 동적 결정
-  - Top bar `Step N / M`, progress dots, 버튼 텍스트 모두 동적 반영
-
-- **StepIndicator 동적화** (`frontend/components/onboarding/StepIndicator.tsx`)
-  - `total` prop 추가 (기본값 4) — 2스텝일 때 기본정보·사업계획만 표시
+### 기능 — 온보딩 완료 UX 개선 + 마이페이지 온보딩 스텝 표시
 
 #### Added
 
-- **완료 화면 프로필 보완 배너** (`frontend/app/onboarding/page.tsx`)
-  - `"구상 중"` 으로 2스텝 완료 시: 주황색 배너 표시
-  - "계약 완료 후 사업장 정보를 입력하면 서류 초안을 자동 완성해드립니다"
-  - `/profile` 로 바로 이동하는 `프로필 보완하기 →` 버튼 포함
+- **온보딩 완료 화면 로그인 상태 분기** (`frontend/app/onboarding/page.tsx`)
+  - 비로그인: "30초 가입하고 초안 받기" (brand CTA) + "방금 입력하신 정보가 안전하게 저장되었습니다" 서브텍스트
+  - 비로그인: "이미 계정이 있어요 → 로그인" / "나중에 하기" 버튼
+  - 로그인: 기존 "대시보드로 이동" 버튼
+  - 앰버 배너 제거 — 중복 CTA 통합
+
+- **회원가입 후 온보딩 데이터 Supabase 자동 저장** (`frontend/app/auth/signup/page.tsx`)
+  - 가입 성공 직후 `localStorage("boss_profile")` 감지 → `PUT /founders/me` 자동 호출
+  - 저장 성공 후 localStorage 항목 삭제 → 대시보드로 이동
+  - 온보딩 없이 가입 시 기존대로 온보딩으로 이동
+
+- **마이페이지 섹션에 온보딩 스텝 뱃지** (`frontend/app/dashboard/profile/page.tsx`)
+  - "사업 정보" 옆 `온보딩 스텝 3` (brand 컬러, 11px)
+  - "사업장 정보" 옆 `온보딩 스텝 4` (brand 컬러, 11px)
+
+---
+
+## [v0.16.0] — 2026-04-16
+
+### 기능 — 채용공고 고도화 (공고 기간·마감 알림·인건비 시뮬레이션·현황 카드)
+
+#### Added
+
+- **채용공고 인건비 시뮬레이션 실시간 표시** (`frontend/app/dashboard/hire/page.tsx`)
+  - 근로계약서 탭과 동일한 `calcDeductions()` 로직을 채용공고 작성 탭에도 적용
+  - 시급·주간근무시간·연봉 입력 즉시 주휴수당·월 기본급·월 총액·4대보험 세전/세후 공제 내역 자동 계산
+  - useState 추가 없이 파생 변수(`jpWageSim`, `jpMonthlyGross`, `jpTaxCalc`)로 구현
+- **채용공고 지원 기간 입력** (`frontend/app/dashboard/hire/page.tsx`, `backend/api/routers/hire.py`)
+  - 시작일·마감일 date picker UI 추가 (근무 조건 섹션 내)
+  - `posting_start` / `posting_end` 필드를 `drafts.metadata`에 저장
+- **채용공고 마감 D-3/D-1/D-0 Proactive 알림** (`backend/triggers/state.py`, `backend/triggers/scheduler.py`)
+  - `fire_job_posting_deadline_triggers()` 추가 — `drafts` 테이블에서 `posting_end` 보유 공고 조회
+  - 마감 D-3, D-1, D-0 당일 `trigger_log`에 알림 삽입 (중복 방지 체크 포함)
+  - APScheduler에 매일 07:00 KST 크론 잡 등록 (`id="job_posting_deadline"`)
+- **채용 현황 카드 개편** (`frontend/app/dashboard/hire/page.tsx`, `backend/api/routers/hire.py`)
+  - "오픈 후" 카드 제거
+  - "진행 중인 공고" 카드 추가 — 기간 내 공고 + 기간 미설정(상시 채용) 공고 수 합산
+  - "채용된 직원" 카드 추가 — `drafts` 테이블 `labor_contract` 타입 건수로 집계
+- **상시 채용 처리** — `posting_start` / `posting_end` 미설정 공고를 상시 채용으로 간주, 진행 중인 공고에 포함
+- **저장된 공고 목록에 공고 기간 표시** — 기간 있으면 "YYYY-MM-DD ~ YYYY-MM-DD", 없으면 "상시 채용" 배지
+
+#### Fixed
+
+- **채용공고 텍스트 초안 마크다운 미렌더링** (`frontend/app/dashboard/hire/page.tsx`)
+  - `<pre>` 태그 → `<InsightMarkdown>` 컴포넌트로 교체 (react-markdown + remark-gfm)
+  - 굵은 글씨·목록·소제목 등 마크다운 서식이 자연스럽게 렌더링됨
+- **인건비 시뮬레이션 카드 위치 오류** — 텍스트 초안 결과 영역에 표시되던 인건비 카드 제거
+
+---
+
+## [v0.15.4] — 2026-04-16
+
+### 기능 — 챗봇 내부 링크 버튼 렌더링 + 대화 세션 유지
+
+#### Added
+
+- **챗봇 BOSS 내부 링크 → 클릭 가능한 버튼으로 렌더링** (`frontend/components/chat/ChatWindow.tsx`)
+  - ReactMarkdown 커스텀 `a` 컴포넌트 추가
+  - `/` 로 시작하는 내부 경로: Next.js `<Link>`로 렌더링 — brand 스타일 버튼 (bg-brand-50, border-brand-200, 화살표 아이콘)
+  - 외부 URL: `target="_blank" rel="noopener noreferrer"` 처리
+- **시스템 프롬프트 링크 형식 지시 추가** (`frontend/app/api/chat/route.ts`)
+  - Claude가 BOSS 내부 경로를 마크다운 링크 `[label](/path)` 형식으로 출력하도록 명시
+  - 서비스 10개 경로 예시 포함 (서류 초안 4종, 대시보드 메뉴 6종)
+
+#### Fixed
+
+- **페이지 이동 후 복귀 시 대화 내용 소실 문제** (`frontend/components/chat/ChatWindow.tsx`)
+  - `sessionStorage` 기반 세션 유지 추가 — 페이지 이동·뒤로가기 후에도 대화 복원
+  - 컴포넌트 마운트 시 저장된 세션 복원 (진행 중 스트리밍 상태는 완료로 초기화)
+  - messages·userTurns 변경 시 자동 저장
+  - "새 대화 시작" 버튼 클릭 시 sessionStorage 명시적 삭제
+  - 탭 종료 시 자동 소거 (DB 저장 없음)
+
+- **입지 분석 링크 404 수정** (`frontend/app/api/chat/route.ts`)
+  - 시스템 프롬프트 내 `/location` → `/dashboard/location` 경로 수정
+
+- **도구 재호출 시 챗봇 응답 멈춤 현상** (`frontend/app/api/chat/route.ts`)
+  - 고정 2단계 호출 → while 루프 최대 4라운드로 교체
+  - Claude가 검색 결과 없음 후 재검색을 시도할 때 루프가 계속 돌아 정상 완료
+
+- **검색 실패 시 할루시네이션 ("데이터베이스 업데이트 중" 등)** (`frontend/app/api/chat/route.ts`)
+  - 시스템 프롬프트에 검색 과정 노출 금지 규칙 추가
+  - 결과 없을 때 거짓 이유 생성 금지 — 자연스럽게 일반 지식으로 바로 답변
+
+---
+
+## [v0.15.3] — 2026-04-16
+
+### 기능 — 온보딩 분기형 플로우
+
+#### Added
+
+- **창업 단계별 온보딩 스텝 수 동적 결정** (`frontend/app/onboarding/page.tsx`, `frontend/components/onboarding/StepIndicator.tsx`)
+  - `planning` 단계: Step 1(기본 정보) + Step 2(사업 계획) = 2스텝
+  - `contracted` / `preparing` 단계: 전체 4스텝 (사업장 정보 + 서류 선택 포함)
+  - Step 2에서 창업 단계 선택 즉시 총 스텝 수 동적 반영
+  - `planning` 완료 화면: 프로필 보완 유도 앰버 배너 추가
+- **StepIndicator `total` prop** — 기본값 4, 동적 스텝 수 지원
 
 ---
 

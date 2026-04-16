@@ -102,6 +102,51 @@ async def fire_tax_deadline_triggers() -> None:
                 _mark_notified(uid, deadline_id, d_day)
 
 
+async def fire_job_posting_deadline_triggers() -> None:
+    """
+    채용공고 마감 D-3, D-1, D-0(당일) 알림.
+    drafts 테이블에서 type='job_posting' + metadata.posting_end 기준으로 판단.
+    """
+    supabase = get_supabase()
+    today = date.today()
+    channels = _get_channels()
+
+    # posting_end가 설정된 모든 채용공고 초안 조회
+    rows = (
+        supabase.table("drafts")
+        .select("id, user_id, metadata")
+        .eq("type", "job_posting")
+        .execute()
+        .data or []
+    )
+
+    for row in rows:
+        meta = row.get("metadata") or {}
+        posting_end_str = meta.get("posting_end", "")
+        if not posting_end_str:
+            continue
+
+        try:
+            end_date = date.fromisoformat(posting_end_str)
+        except ValueError:
+            continue
+
+        d_day = (end_date - today).days
+        if d_day not in (3, 1, 0):
+            continue
+
+        uid = row["user_id"]
+        title = meta.get("title", "채용공고")
+
+        if d_day == 0:
+            msg = f"[채용공고 마감 D-DAY] 「{title}」 지원 접수가 오늘({posting_end_str}) 마감됩니다. 지원자를 확인해 보세요."
+        else:
+            msg = f"[채용공고 마감 D-{d_day}] 「{title}」 지원 접수 마감이 {d_day}일 남았습니다. (마감일: {posting_end_str})"
+
+        for ch in channels:
+            await ch.send(user_id=uid, message=msg)
+
+
 async def fire_subsidy_deadline_triggers() -> None:
     """지원사업 마감 D-7 알림"""
     supabase = get_supabase()

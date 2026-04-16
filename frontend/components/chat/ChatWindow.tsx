@@ -12,6 +12,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -38,12 +39,36 @@ export interface ChatMessage {
 
 // ── 빠른 카테고리 버튼 (PDF 관련 제외) ───────────────────────────────────────
 const QUICK_CATEGORIES = [
-  { label: "사업자등록", icon: "📋", q: "사업자등록 신청 절차와 필요 서류를 알려주세요" },
-  { label: "식품위생신고", icon: "🍽", q: "카페 식품위생 영업신고 절차를 알려주세요" },
-  { label: "지원사업", icon: "📢", q: "카페 창업자가 받을 수 있는 지원사업은 무엇인가요?" },
-  { label: "세금 일정", icon: "💰", q: "카페 운영 시 납부해야 할 세금 종류와 기한을 알려주세요" },
-  { label: "입지분석", icon: "📍", q: "마포구에서 카페 창업에 유리한 상권을 알려주세요" },
-  { label: "근로계약", icon: "📝", q: "카페 아르바이트 근로계약 시 주의사항을 알려주세요" },
+  {
+    label: "사업자등록",
+    icon: "📋",
+    q: "사업자등록 신청 절차와 필요 서류를 알려주세요",
+  },
+  {
+    label: "식품위생신고",
+    icon: "🍽",
+    q: "카페 식품위생 영업신고 절차를 알려주세요",
+  },
+  {
+    label: "지원사업",
+    icon: "📢",
+    q: "카페 창업자가 받을 수 있는 지원사업은 무엇인가요?",
+  },
+  {
+    label: "세금 일정",
+    icon: "💰",
+    q: "카페 운영 시 납부해야 할 세금 종류와 기한을 알려주세요",
+  },
+  {
+    label: "입지분석",
+    icon: "📍",
+    q: "마포구에서 카페 창업에 유리한 상권을 알려주세요",
+  },
+  {
+    label: "근로계약",
+    icon: "📝",
+    q: "카페 아르바이트 근로계약 시 주의사항을 알려주세요",
+  },
 ];
 
 const SUGGESTED_QUESTIONS = [
@@ -72,9 +97,10 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
 
       <div
         className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed
-          ${isUser
-            ? "bg-brand-500 text-white rounded-tr-sm"
-            : "bg-white border border-surface-300 text-gray-800 rounded-tl-sm shadow-sm"
+          ${
+            isUser
+              ? "bg-brand-500 text-white rounded-tr-sm"
+              : "bg-white border border-surface-300 text-gray-800 rounded-tl-sm shadow-sm"
           }`}
       >
         {isUser ? (
@@ -88,7 +114,34 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
           </div>
         ) : (
           <div className="prose prose-sm max-w-none prose-p:my-1 prose-li:my-0.5 prose-headings:text-gray-900">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                a: ({ href, children }) => {
+                  if (href?.startsWith("/")) {
+                    return (
+                      <Link
+                        href={href}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 my-0.5 bg-brand-50 border border-brand-200 text-brand-600 rounded-lg text-xs font-semibold no-underline hover:bg-brand-100 hover:border-brand-400 transition-colors"
+                      >
+                        {children}
+                        <span className="text-brand-400">→</span>
+                      </Link>
+                    );
+                  }
+                  return (
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-brand-500 underline hover:text-brand-700"
+                    >
+                      {children}
+                    </a>
+                  );
+                },
+              }}
+            >
               {msg.content}
             </ReactMarkdown>
             {msg.isStreaming && (
@@ -114,8 +167,8 @@ function TurnBadge({ turns }: { turns: number }) {
         isMax
           ? "bg-red-100 text-red-600"
           : isWarn
-          ? "bg-yellow-100 text-yellow-700"
-          : "bg-surface-200 text-gray-400"
+            ? "bg-yellow-100 text-yellow-700"
+            : "bg-surface-200 text-gray-400"
       }`}
     >
       {turns}/{MAX_TURNS} 턴
@@ -123,14 +176,47 @@ function TurnBadge({ turns }: { turns: number }) {
   );
 }
 
+// ── sessionStorage 키 ────────────────────────────────────────────────────────
+const SESSION_KEY = "boss_chat_session";
+
+function saveSession(messages: ChatMessage[], turns: number) {
+  try {
+    sessionStorage.setItem(
+      SESSION_KEY,
+      JSON.stringify({ messages, turns })
+    );
+  } catch {
+    // sessionStorage 접근 불가 시 무시 (SSR 등)
+  }
+}
+
+function loadSession(): { messages: ChatMessage[]; turns: number } | null {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
 // ── 메인 컴포넌트 ─────────────────────────────────────────────────────────────
 export default function ChatWindow() {
-  const [messages, setMessages] = useState<ChatMessage[]>([INITIAL_MESSAGE]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    const saved = loadSession();
+    return saved ? saved.messages.map((m) => ({ ...m, isStreaming: false })) : [INITIAL_MESSAGE];
+  });
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(true);
+  const [showSuggestions, setShowSuggestions] = useState(() => {
+    const saved = loadSession();
+    return saved ? saved.messages.length <= 1 : true;
+  });
   /** 사용자 발화 횟수 (assistant 메시지 제외) */
-  const [userTurns, setUserTurns] = useState(0);
+  const [userTurns, setUserTurns] = useState(() => {
+    const saved = loadSession();
+    return saved ? saved.turns : 0;
+  });
   /** 도구 실행 중 상태 메시지 */
   const [toolStatus, setToolStatus] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -140,8 +226,14 @@ export default function ChatWindow() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // 메시지·턴 변경 시 sessionStorage에 저장
+  useEffect(() => {
+    saveSession(messages, userTurns);
+  }, [messages, userTurns]);
+
   /** 대화 완전 초기화 — 새 세션 시작 */
   const resetChat = useCallback(() => {
+    sessionStorage.removeItem(SESSION_KEY);
     setMessages([INITIAL_MESSAGE]);
     setInput("");
     setIsLoading(false);
@@ -246,7 +338,8 @@ export default function ChatWindow() {
           const updated = [...prev];
           updated[updated.length - 1] = {
             role: "assistant",
-            content: "일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+            content:
+              "일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
             isStreaming: false,
           };
           return updated;
@@ -257,7 +350,7 @@ export default function ChatWindow() {
         inputRef.current?.focus();
       }
     },
-    [messages, isLoading, userTurns]
+    [messages, isLoading, userTurns],
   );
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -285,9 +378,18 @@ export default function ChatWindow() {
             onClick={resetChat}
             className="text-[11px] text-gray-400 hover:text-red-500 transition-colors flex items-center gap-1"
           >
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            <svg
+              className="w-3 h-3"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
             </svg>
             새 대화 시작
           </button>
@@ -335,7 +437,9 @@ export default function ChatWindow() {
         {isLoading && toolStatus && (
           <div className="flex gap-3">
             <div className="w-8 h-8 flex-shrink-0" />
-            <span className="text-xs text-gray-400 self-center">{toolStatus}</span>
+            <span className="text-xs text-gray-400 self-center">
+              {toolStatus}
+            </span>
           </div>
         )}
 
@@ -343,7 +447,9 @@ export default function ChatWindow() {
         {isAtLimit && (
           <div className="mx-2 p-3 bg-orange-50 border border-orange-200 rounded-xl text-xs text-orange-700 text-center space-y-2">
             <p className="font-medium">대화가 길어져 새 세션이 필요합니다.</p>
-            <p className="text-orange-500">컨텍스트가 길어지면 응답 품질이 저하될 수 있습니다.</p>
+            <p className="text-orange-500">
+              컨텍스트가 길어지면 응답 품질이 저하될 수 있습니다.
+            </p>
             <button
               onClick={resetChat}
               className="mt-1 px-4 py-1.5 bg-orange-500 text-white rounded-lg text-xs font-medium hover:bg-orange-600 transition-colors"
@@ -361,7 +467,8 @@ export default function ChatWindow() {
         {/* 경고 배너 (한도 임박) */}
         {userTurns >= WARN_TURNS && !isAtLimit && (
           <p className="text-[10px] text-yellow-600 mb-2 px-1">
-            ⚠️ 대화 한도까지 {MAX_TURNS - userTurns}턴 남았습니다. 핵심 질문을 우선 해주세요.
+            ⚠️ 대화 한도까지 {MAX_TURNS - userTurns}턴 남았습니다. 핵심 질문을
+            우선 해주세요.
           </p>
         )}
 
@@ -386,19 +493,45 @@ export default function ChatWindow() {
             className="flex-shrink-0 w-10 h-10 rounded-xl bg-brand-500 text-white flex items-center justify-center hover:bg-brand-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             {isLoading ? (
-              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              <svg
+                className="w-4 h-4 animate-spin"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                />
               </svg>
             ) : (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                />
               </svg>
             )}
           </button>
         </div>
         <p className="text-[10px] text-gray-400 mt-1.5 px-1">
-          ※ AI 답변은 참고용입니다. 법률·세금 관련 사항은 전문가 확인을 권장합니다.
+          ※ AI 답변은 참고용입니다. 법률·세금 관련 사항은 전문가 확인을
+          권장합니다.
         </p>
       </div>
     </div>

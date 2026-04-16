@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import StepIndicator from "@/components/onboarding/StepIndicator";
 import Step1Personal from "@/components/onboarding/Step1Personal";
@@ -10,6 +10,7 @@ import Step4Documents from "@/components/onboarding/Step4Documents";
 import { useRouter } from "next/navigation";
 import { FormData, initialFormData } from "@/components/onboarding/types";
 import { apiFetch, formDataToProfile } from "@/lib/api";
+import { supabase } from "@/lib/supabase";
 
 /**
  * 창업 단계별 총 스텝 수 결정
@@ -46,6 +47,13 @@ export default function OnboardingPage() {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [submitted, setSubmitted] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setIsLoggedIn(!!data.user);
+    });
+  }, []);
 
   // 선택한 창업단계에 따라 총 스텝 수가 동적으로 결정됨
   const totalSteps = getTotalSteps(formData.stage);
@@ -115,27 +123,6 @@ export default function OnboardingPage() {
             님, BOSS가 창업 여정을 함께합니다.
           </p>
 
-          {/* 구상 중 → 사업장 정보 보완 안내 배너 */}
-          {needsProfileCompletion && (
-            <div className="glass-card rounded-2xl p-5 mb-5 text-left border border-amber-200 bg-amber-50">
-              <div className="flex items-start gap-3">
-                <span className="text-xl">📋</span>
-                <div className="flex-1">
-                  <p className="text-sm font-bold text-amber-800">사업장 정보를 나중에 입력하세요</p>
-                  <p className="text-xs text-amber-700 mt-1">
-                    계약이 완료되면 사업장 주소·면적을 입력하면 서류 초안을 자동으로 채워드립니다.
-                  </p>
-                  <button
-                    onClick={() => router.push("/profile")}
-                    className="mt-3 px-4 py-2 rounded-lg bg-amber-500 text-white text-xs font-semibold hover:bg-amber-600 transition-colors"
-                  >
-                    프로필 보완하기 →
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* 선택한 서류 → 바로 초안 페이지 이동 (4스텝 완료한 경우) */}
           {draftDocs.length > 0 && (
             <div className="glass-card rounded-2xl p-5 mb-5 text-left space-y-2">
@@ -163,12 +150,37 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          <button
-            onClick={() => router.push("/dashboard")}
-            className="w-full px-8 py-3 rounded-xl bg-brand-500 text-white font-bold text-sm hover:bg-brand-600 transition-all mb-3"
-          >
-            대시보드로 이동
-          </button>
+          {/* 로그인 상태에 따라 버튼 분기 */}
+          {isLoggedIn ? (
+            <button
+              onClick={() => router.push("/dashboard")}
+              className="w-full px-8 py-3 rounded-xl bg-brand-500 text-white font-bold text-sm hover:bg-brand-600 transition-all"
+            >
+              대시보드로 이동
+            </button>
+          ) : (
+            <div className="space-y-3">
+              <button
+                onClick={() => router.push("/auth/signup")}
+                className="w-full px-8 py-3 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-sm transition-all glow-blue"
+              >
+                30초 가입하고 초안 받기
+              </button>
+              <p className="text-xs text-gray-400">방금 입력하신 정보가 안전하게 저장되었습니다</p>
+              <button
+                onClick={() => router.push("/auth/login")}
+                className="w-full px-8 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold text-sm hover:bg-gray-50 transition-all"
+              >
+                이미 계정이 있어요 → 로그인
+              </button>
+              <button
+                onClick={() => router.push("/")}
+                className="w-full text-xs text-gray-400 hover:text-gray-500 py-2 transition-colors"
+              >
+                나중에 하기
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
