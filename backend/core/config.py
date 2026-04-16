@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     anthropic_api_key: str
     claude_model: str = "claude-haiku-4-5-20251001"
 
+    # OpenAI (DALL-E 이미지 생성)
+    openai_api_key: str = ""
+
     # Google Gemini (레거시)
     gemini_api_key: str = ""
 
