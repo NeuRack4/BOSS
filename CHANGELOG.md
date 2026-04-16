@@ -4,6 +4,39 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
 
 ---
 
+## [v0.16.0] — 2026-04-16
+
+### 기능 — 채용공고 고도화 (공고 기간·마감 알림·인건비 시뮬레이션·현황 카드)
+
+#### Added
+
+- **채용공고 인건비 시뮬레이션 실시간 표시** (`frontend/app/dashboard/hire/page.tsx`)
+  - 근로계약서 탭과 동일한 `calcDeductions()` 로직을 채용공고 작성 탭에도 적용
+  - 시급·주간근무시간·연봉 입력 즉시 주휴수당·월 기본급·월 총액·4대보험 세전/세후 공제 내역 자동 계산
+  - useState 추가 없이 파생 변수(`jpWageSim`, `jpMonthlyGross`, `jpTaxCalc`)로 구현
+- **채용공고 지원 기간 입력** (`frontend/app/dashboard/hire/page.tsx`, `backend/api/routers/hire.py`)
+  - 시작일·마감일 date picker UI 추가 (근무 조건 섹션 내)
+  - `posting_start` / `posting_end` 필드를 `drafts.metadata`에 저장
+- **채용공고 마감 D-3/D-1/D-0 Proactive 알림** (`backend/triggers/state.py`, `backend/triggers/scheduler.py`)
+  - `fire_job_posting_deadline_triggers()` 추가 — `drafts` 테이블에서 `posting_end` 보유 공고 조회
+  - 마감 D-3, D-1, D-0 당일 `trigger_log`에 알림 삽입 (중복 방지 체크 포함)
+  - APScheduler에 매일 07:00 KST 크론 잡 등록 (`id="job_posting_deadline"`)
+- **채용 현황 카드 개편** (`frontend/app/dashboard/hire/page.tsx`, `backend/api/routers/hire.py`)
+  - "오픈 후" 카드 제거
+  - "진행 중인 공고" 카드 추가 — 기간 내 공고 + 기간 미설정(상시 채용) 공고 수 합산
+  - "채용된 직원" 카드 추가 — `drafts` 테이블 `labor_contract` 타입 건수로 집계
+- **상시 채용 처리** — `posting_start` / `posting_end` 미설정 공고를 상시 채용으로 간주, 진행 중인 공고에 포함
+- **저장된 공고 목록에 공고 기간 표시** — 기간 있으면 "YYYY-MM-DD ~ YYYY-MM-DD", 없으면 "상시 채용" 배지
+
+#### Fixed
+
+- **채용공고 텍스트 초안 마크다운 미렌더링** (`frontend/app/dashboard/hire/page.tsx`)
+  - `<pre>` 태그 → `<InsightMarkdown>` 컴포넌트로 교체 (react-markdown + remark-gfm)
+  - 굵은 글씨·목록·소제목 등 마크다운 서식이 자연스럽게 렌더링됨
+- **인건비 시뮬레이션 카드 위치 오류** — 텍스트 초안 결과 영역에 표시되던 인건비 카드 제거
+
+---
+
 ## [v0.15.4] — 2026-04-16
 
 ### 기능 — 챗봇 내부 링크 버튼 렌더링 + 대화 세션 유지
