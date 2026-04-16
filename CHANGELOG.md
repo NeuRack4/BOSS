@@ -4,6 +4,37 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
 
 ---
 
+## [v0.15.4] — 2026-04-16
+
+### 기능 — 챗봇 내부 링크 버튼 렌더링
+
+#### Added
+
+- **챗봇 BOSS 내부 링크 → 클릭 가능한 버튼으로 렌더링** (`frontend/components/chat/ChatWindow.tsx`)
+  - ReactMarkdown 커스텀 `a` 컴포넌트 추가
+  - `/` 로 시작하는 내부 경로: Next.js `<Link>`로 렌더링 — brand 스타일 버튼 (bg-brand-50, border-brand-200, 화살표 아이콘)
+  - 외부 URL: `target="_blank" rel="noopener noreferrer"` 처리
+- **시스템 프롬프트 링크 형식 지시 추가** (`frontend/app/api/chat/route.ts`)
+  - Claude가 BOSS 내부 경로를 마크다운 링크 `[label](/path)` 형식으로 출력하도록 명시
+  - 서비스 10개 경로 예시 포함 (서류 초안 4종, 대시보드 메뉴 6종)
+
+---
+
+## [v0.15.3] — 2026-04-16
+
+### 기능 — 온보딩 분기형 플로우
+
+#### Added
+
+- **창업 단계별 온보딩 스텝 수 동적 결정** (`frontend/app/onboarding/page.tsx`, `frontend/components/onboarding/StepIndicator.tsx`)
+  - `planning` 단계: Step 1(기본 정보) + Step 2(사업 계획) = 2스텝
+  - `contracted` / `preparing` 단계: 전체 4스텝 (사업장 정보 + 서류 선택 포함)
+  - Step 2에서 창업 단계 선택 즉시 총 스텝 수 동적 반영
+  - `planning` 완료 화면: 프로필 보완 유도 앰버 배너 추가
+- **StepIndicator `total` prop** — 기본값 4, 동적 스텝 수 지원
+
+---
+
 ## [v0.15.2] — 2026-04-16
 
 ### 기능 — 챗봇 실시간 도구 상태 표시 + 15턴 컨텍스트 통일

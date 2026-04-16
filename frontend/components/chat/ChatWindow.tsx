@@ -12,6 +12,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -88,7 +89,34 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
           </div>
         ) : (
           <div className="prose prose-sm max-w-none prose-p:my-1 prose-li:my-0.5 prose-headings:text-gray-900">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                a: ({ href, children }) => {
+                  if (href?.startsWith("/")) {
+                    return (
+                      <Link
+                        href={href}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 my-0.5 bg-brand-50 border border-brand-200 text-brand-600 rounded-lg text-xs font-semibold no-underline hover:bg-brand-100 hover:border-brand-400 transition-colors"
+                      >
+                        {children}
+                        <span className="text-brand-400">→</span>
+                      </Link>
+                    );
+                  }
+                  return (
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-brand-500 underline hover:text-brand-700"
+                    >
+                      {children}
+                    </a>
+                  );
+                },
+              }}
+            >
               {msg.content}
             </ReactMarkdown>
             {msg.isStreaming && (
