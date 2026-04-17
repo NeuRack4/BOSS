@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { apiFetch, formDataToProfile, profileToFormData } from "@/lib/api";
 import { FormData, initialFormData } from "@/components/onboarding/types";
+import DocBox from "@/components/profile/DocBox";
 
 const BIZ_OPTIONS = [
   { value: "cafe", label: "카페" },
@@ -78,6 +80,10 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState<"profile" | "docbox">(
+    searchParams.get("tab") === "docbox" ? "docbox" : "profile"
+  );
 
   useEffect(() => {
     const load = async () => {
@@ -158,21 +164,41 @@ export default function ProfilePage() {
             창업자 정보를 확인하고 수정할 수 있습니다
           </p>
         </div>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="px-6 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-sm transition-all glow-blue disabled:opacity-50"
-        >
-          {saving ? "저장 중..." : saved ? "저장됨 ✓" : "저장하기"}
-        </button>
+        {activeTab === "profile" && (
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="px-6 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-sm transition-all glow-blue disabled:opacity-50"
+          >
+            {saving ? "저장 중..." : saved ? "저장됨 ✓" : "저장하기"}
+          </button>
+        )}
       </div>
 
-      {error && (
+      {/* 탭 네비게이션 */}
+      <div className="flex gap-1 p-1 bg-surface-100 rounded-xl">
+        {(["profile", "docbox"] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-colors ${
+              activeTab === tab
+                ? "bg-white text-gray-900 shadow-sm"
+                : "text-gray-400 hover:text-gray-600"
+            }`}
+          >
+            {tab === "profile" ? "내 정보" : "📂 서류함"}
+          </button>
+        ))}
+      </div>
+
+      {error && activeTab === "profile" && (
         <div className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
           {error}
         </div>
       )}
 
+      {activeTab === "profile" && <>
       {/* 기본 정보 */}
       <Section title="기본 정보">
         <Field label="성명">
@@ -359,6 +385,13 @@ export default function ProfilePage() {
           {saving ? "저장 중..." : saved ? "저장됨 ✓" : "변경사항 저장"}
         </button>
       </div>
+      </>}
+
+      {activeTab === "docbox" && (
+        <div className="glass-card rounded-2xl p-6">
+          <DocBox />
+        </div>
+      )}
     </div>
   );
 }

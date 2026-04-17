@@ -15,6 +15,8 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { supabase } from "@/lib/supabase";
+import { exportMarkdownAsPdf } from "@/lib/chatbot/pdf_export";
 
 // ── 상수 ─────────────────────────────────────────────────────────────────────
 /** 사용자 발화 최대 턴 수. 초과 시 새 대화 요청. */
@@ -31,10 +33,18 @@ const INITIAL_MESSAGE = {
 };
 
 // ── 타입 ────────────────────────────────────────────────────────────────────
+export interface DocumentPayload {
+  doc_type: "job_posting" | "labor_contract" | string;
+  title: string;
+  draft_id: string | null;
+  content: string;
+}
+
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   isStreaming?: boolean;
+  docCard?: DocumentPayload;
 }
 
 // ── 빠른 카테고리 버튼 (PDF 관련 제외) ───────────────────────────────────────
@@ -62,7 +72,7 @@ const QUICK_CATEGORIES = [
   {
     label: "입지분석",
     icon: "📍",
-    q: "마포구에서 카페 창업에 유리한 상권을 알려주세요",
+    q: "카페 창업에 유리한 상권을 알려주세요",
   },
   {
     label: "근로계약",
@@ -77,10 +87,124 @@ const SUGGESTED_QUESTIONS = [
   "지원사업 매칭은 어떻게 하나요?",
   "부가세 신고 기한이 언제인가요?",
   "최저임금과 주휴수당 계산법을 알려주세요",
-  "마포구 어느 상권이 카페 창업에 유리한가요?",
+  "어느 상권이 카페 창업에 유리한가요?",
   "임대차 확정일자 받는 방법이 뭔가요?",
   "4대보험 가입 의무와 절차를 알려주세요",
 ];
+
+// ── 서류 다운로드 카드 ────────────────────────────────────────────────────────
+const JOB_TABS = [
+  { key: "karrot", label: "당근마켓" },
+  { key: "alba",   label: "알바천국" },
+  { key: "saramin", label: "사람인" },
+] as const;
+
+function DocumentCard({ doc }: { doc: DocumentPayload }) {
+  const [downloading, setDownloading] = useState(false);
+  const [activeTab, setActiveTab] = useState(0);
+
+  const isJobPosting = doc.doc_type === "job_posting";
+
+  // 채용공고: "## 플랫폼명" 헤더 위치 기준으로 3개 섹션 분리
+  const sections: string[] = isJobPosting
+    ? (() => {
+        const markers = ["## 당근마켓", "## 알바천국", "## 사람인"];
+        return markers.map((marker, i) => {
+          const start = doc.content.indexOf(marker);
+          if (start === -1) return "";
+          const lineEnd = doc.content.indexOf("\n", start);
+          const contentStart = lineEnd === -1 ? start + marker.length : lineEnd + 1;
+          const nextMarker = markers[i + 1];
+          const end = nextMarker ? doc.content.indexOf(nextMarker, contentStart) : doc.content.length;
+          return doc.content.slice(contentStart, end === -1 ? undefined : end).trim();
+        });
+      })()
+    : [];
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      await exportMarkdownAsPdf(doc.content, doc.title);
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const icon = doc.doc_type === "labor_contract" ? "📄" : "📝";
+  const typeLabel = doc.doc_type === "labor_contract" ? "근로계약서" : "채용공고";
+
+  return (
+    <div className="mt-2 bg-brand-50 border border-brand-200 rounded-xl overflow-hidden">
+      {/* 헤더 */}
+      <div className="flex items-center gap-2 px-3 pt-3 pb-2 bg-white">
+        <span className="text-lg flex-shrink-0">{icon}</span>
+        <div className="min-w-0">
+          <p className="text-xs font-semibold text-gray-800 truncate">{doc.title}</p>
+          <p className="text-[10px] text-brand-500">
+            {typeLabel} 초안{doc.draft_id ? " · 서류함 저장 완료" : ""}
+          </p>
+        </div>
+      </div>
+
+      {/* 채용공고: 플랫폼 탭 */}
+      {isJobPosting && sections.length > 0 && (
+        <>
+          <div className="flex border-y border-brand-200 bg-surface-100">
+            {JOB_TABS.map((tab, i) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(i)}
+                className={`flex-1 py-1.5 text-[11px] font-semibold transition-colors ${
+                  activeTab === i
+                    ? "text-brand-600 border-b-2 border-brand-500 bg-brand-50"
+                    : "text-gray-400 hover:text-gray-600"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          <div className="px-3 py-2.5 max-h-52 overflow-y-auto bg-white">
+            {sections[activeTab] ? (
+              <div className="prose prose-xs max-w-none prose-p:my-1 prose-li:my-0.5 prose-headings:text-gray-900 text-[12px]">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {sections[activeTab]}
+                </ReactMarkdown>
+              </div>
+            ) : (
+              <p className="text-[11px] text-gray-400 py-4 text-center">
+                해당 플랫폼 초안을 생성하지 못했습니다.<br />
+                다운로드 후 전체 내용을 확인해 주세요.
+              </p>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* 근로계약서: 내용 미리보기 */}
+      {!isJobPosting && (
+        <div className="px-3 py-2.5 max-h-52 overflow-y-auto bg-white border-t border-brand-100">
+          <div className="prose prose-xs max-w-none prose-p:my-1 prose-li:my-0.5 prose-headings:text-gray-900 text-[12px]">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {doc.content.slice(0, 600) + (doc.content.length > 600 ? "\n\n..." : "")}
+            </ReactMarkdown>
+          </div>
+        </div>
+      )}
+
+      {/* 다운로드 버튼 */}
+      <div className="px-3 pb-3 pt-2">
+        <button
+          onClick={handleDownload}
+          disabled={downloading}
+          className="w-full px-3 py-1.5 bg-brand-500 text-white text-xs font-semibold rounded-lg hover:bg-brand-600 disabled:opacity-50 transition-colors"
+        >
+          {downloading ? "생성 중..." : "⬇ 다운로드"}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 // ── 메시지 버블 ──────────────────────────────────────────────────────────────
 function MessageBubble({ msg }: { msg: ChatMessage }) {
@@ -114,6 +238,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
           </div>
         ) : (
           <div className="prose prose-sm max-w-none prose-p:my-1 prose-li:my-0.5 prose-headings:text-gray-900">
+            {msg.docCard && <DocumentCard doc={msg.docCard} />}
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{
@@ -179,8 +304,12 @@ function TurnBadge({ turns }: { turns: number }) {
 // ── sessionStorage 키 ────────────────────────────────────────────────────────
 const SESSION_KEY = "boss_chat_session";
 
+const ERROR_MSG = "일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.";
+
 function saveSession(messages: ChatMessage[], turns: number) {
   try {
+    const last = messages[messages.length - 1];
+    if (last?.role === "assistant" && last.content === ERROR_MSG) return;
     sessionStorage.setItem(
       SESSION_KEY,
       JSON.stringify({ messages, turns })
@@ -219,7 +348,15 @@ export default function ChatWindow() {
   });
   /** 도구 실행 중 상태 메시지 */
   const [toolStatus, setToolStatus] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | undefined>(undefined);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const pendingDocRef = useRef<DocumentPayload | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) setUserId(data.user.id);
+    });
+  }, []);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -275,7 +412,7 @@ export default function ChatWindow() {
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: trimmed, history }),
+          body: JSON.stringify({ message: trimmed, history, userId }),
         });
 
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -304,6 +441,9 @@ export default function ChatWindow() {
               if (parsed.type === "status") {
                 // 서버에서 오는 실시간 도구 상태 메시지
                 setToolStatus(parsed.text);
+              } else if (parsed.type === "document") {
+                // 서류 생성 완료 → ref에 즉시 저장 (스트림 종료 시 텍스트 메시지에 합침)
+                pendingDocRef.current = parsed as DocumentPayload;
               } else if (parsed.type === "text" || parsed.text) {
                 // 첫 텍스트 수신 시 status 숨김
                 setToolStatus(null);
@@ -324,12 +464,15 @@ export default function ChatWindow() {
           }
         }
 
+        const capturedDoc = pendingDocRef.current;
+        pendingDocRef.current = null;
         setMessages((prev) => {
           const updated = [...prev];
           updated[updated.length - 1] = {
             role: "assistant",
             content: accumulated || "응답을 받지 못했습니다.",
             isStreaming: false,
+            ...(capturedDoc ? { docCard: capturedDoc } : {}),
           };
           return updated;
         });
