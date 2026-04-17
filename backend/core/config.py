@@ -37,6 +37,10 @@ class Settings(BaseSettings):
     # 공공데이터포털 API
     public_data_api_key: str = ""
 
+    # 네이버 블로그 자동화
+    naver_blog_id: str = ""
+    naver_blog_pw: str = ""
+
     # SMTP — Resend (smtp.resend.com)
     smtp_host: str = "smtp.resend.com"
     smtp_port: int = 465

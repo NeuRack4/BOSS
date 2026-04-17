@@ -2,7 +2,7 @@ const timeline = [
   {
     time: "창업 결심",
     label: "Day 0",
-    message: '"성수동에서 카페 창업할 거야"',
+    message: '"마포구 연남동에서 카페 창업할 거야"',
     response: null,
     accent: "brand",
   },
@@ -11,9 +11,9 @@ const timeline = [
     label: "Day 1",
     message: null,
     response: [
+      "마포구 연남동 상권 입지 분석 완료",
       "사업자등록 서류 초안 준비완료",
       "식품위생교육 신청 일정 패키지",
-      "네이버·카카오·구글 등록 가이드",
     ],
     accent: "green",
   },
@@ -32,8 +32,8 @@ const timeline = [
     label: "D+90",
     message: null,
     response: [
-      "주말 피크타임 알바 필요하지 않으세요?",
-      "채용공고 초안 만들어드릴까요?",
+      "이번 달 인스타 마케팅 전략 3가지 추천드려요",
+      "시그니처 메뉴 인스타 콘텐츠 초안 작성했어요",
     ],
     accent: "purple",
   },
@@ -87,6 +87,7 @@ export default function ScenarioSection() {
       <div className="max-w-3xl mx-auto">
         {/* Header */}
         <div className="text-center mb-16">
+          <p className="text-gray-300 text-xs font-black tracking-[0.4em] mb-2">01</p>
           <p className="text-brand-500 text-sm font-semibold uppercase tracking-widest mb-3">
             Scenario
           </p>

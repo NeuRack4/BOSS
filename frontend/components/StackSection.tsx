@@ -16,13 +16,17 @@ const stackGroups = [
     category: "RAG / 임베딩",
     icon: "🔍",
     items: [
-      { name: "ChromaDB", desc: "벡터 DB (로컬)" },
+      {
+        name: "BAAI/bge-m3",
+        desc: "기본 임베딩 · 로컬 GPU/CPU",
+        badge: "1024차원",
+      },
       {
         name: "OpenAI Embeddings",
-        desc: "문서 임베딩",
+        desc: "폴백 임베딩",
         badge: "text-embedding-3-small",
       },
-      { name: "LlamaIndex", desc: "문서 파싱 + 인덱싱" },
+      { name: "Supabase pgvector", desc: "벡터 DB · 3-way RRF 하이브리드 검색" },
     ],
   },
   {
@@ -51,6 +55,7 @@ export default function StackSection() {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="text-center mb-16">
+          <p className="text-gray-300 text-xs font-black tracking-[0.4em] mb-2">04</p>
           <p className="text-brand-500 text-sm font-semibold uppercase tracking-widest mb-3">
             Tech Stack
           </p>
