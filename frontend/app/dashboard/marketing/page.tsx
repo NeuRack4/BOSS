@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import InstagramPreview from "./InstagramPreview";
+import BlogPreview from "./BlogPreview";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -524,32 +525,44 @@ export default function MarketingPage() {
                 <span className="text-xs text-gray-400">{year}년 {month}월 기준</span>
               </div>
 
-              <div className="bg-surface-50 border border-surface-200 rounded-xl p-5">
-                <div className="prose prose-sm max-w-none text-gray-800 leading-relaxed
-                  prose-p:my-1.5 prose-strong:text-gray-900 prose-headings:text-gray-900
-                  prose-headings:font-bold prose-headings:mt-3 prose-headings:mb-1
-                  prose-ul:my-1 prose-li:my-0.5 prose-ol:my-1">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {result.content}
-                  </ReactMarkdown>
+              {contentType === "blog" ? (
+                <BlogPreview
+                  content={result.content}
+                  cafeName={cafeName}
+                  menuUsed={result.menu_used}
+                  year={year}
+                  month={month}
+                />
+              ) : (
+                <div className="bg-surface-50 border border-surface-200 rounded-xl p-5">
+                  <div className="prose prose-sm max-w-none text-gray-800 leading-relaxed
+                    prose-p:my-1.5 prose-strong:text-gray-900 prose-headings:text-gray-900
+                    prose-headings:font-bold prose-headings:mt-3 prose-headings:mb-1
+                    prose-ul:my-1 prose-li:my-0.5 prose-ol:my-1">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {result.content}
+                    </ReactMarkdown>
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="flex gap-3">
-                <button
-                  onClick={handleCopy}
-                  className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-all ${
-                    copied
-                      ? "bg-green-500 text-white border-green-500"
-                      : "border-brand-500/40 text-brand-600 bg-brand-50 hover:bg-brand-100"
-                  }`}
-                >
-                  {copied ? "✓ 복사 완료" : "복사하기"}
-                </button>
+                {contentType !== "blog" && (
+                  <button
+                    onClick={handleCopy}
+                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-all ${
+                      copied
+                        ? "bg-green-500 text-white border-green-500"
+                        : "border-brand-500/40 text-brand-600 bg-brand-50 hover:bg-brand-100"
+                    }`}
+                  >
+                    {copied ? "✓ 복사 완료" : "복사하기"}
+                  </button>
+                )}
                 <button
                   onClick={() => { setResult(null); generateContent(); }}
                   disabled={loading}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-bold border border-surface-300 text-gray-600 bg-white hover:bg-surface-100 transition-all disabled:opacity-50"
+                  className={`${contentType === "blog" ? "w-full" : "flex-1"} py-2.5 rounded-xl text-sm font-bold border border-surface-300 text-gray-600 bg-white hover:bg-surface-100 transition-all disabled:opacity-50`}
                 >
                   {loading ? "생성 중..." : "다시 생성"}
                 </button>
