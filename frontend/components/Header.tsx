@@ -56,8 +56,8 @@ export default function Header() {
 
         <nav className="hidden md:flex items-center gap-8">
           {[
-            { label: "기능", href: "#features" },
             { label: "시나리오", href: "#scenario" },
+            { label: "기능", href: "#features" },
             { label: "트리거", href: "#triggers" },
             { label: "기술 스택", href: "#stack" },
           ].map(({ label, href }) => (

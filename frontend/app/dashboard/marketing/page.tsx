@@ -113,6 +113,11 @@ export default function MarketingPage() {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
+  // 네이버 블로그 업로드
+  const [uploadLoading, setUploadLoading] = useState(false);
+  const [uploadResult, setUploadResult] = useState<{ post_url: string } | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
   useEffect(() => {
@@ -257,6 +262,26 @@ export default function MarketingPage() {
       );
     }
     setImageLoading(false);
+  };
+
+  const handleNaverUpload = async () => {
+    if (!result) return;
+    setUploadLoading(true);
+    setUploadError(null);
+    setUploadResult(null);
+    try {
+      const res = await fetch(`${apiUrl}/marketing/blog/upload-naver`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: result.content }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail ?? "업로드에 실패했습니다.");
+      setUploadResult(data);
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : "업로드에 실패했습니다.");
+    }
+    setUploadLoading(false);
   };
 
   const handleCopy = async () => {
@@ -693,16 +718,51 @@ export default function MarketingPage() {
                   </button>
                 )}
                 <button
-                  onClick={() => {
-                    setResult(null);
-                    generateContent();
-                  }}
+                  onClick={() => { setResult(null); setUploadResult(null); setUploadError(null); generateContent(); }}
                   disabled={loading}
-                  className={`${contentType === "blog" ? "w-full" : "flex-1"} py-2.5 rounded-xl text-sm font-bold border border-surface-300 text-gray-600 bg-white hover:bg-surface-100 transition-all disabled:opacity-50`}
+                  className={`${contentType === "blog" ? "flex-1" : "flex-1"} py-2.5 rounded-xl text-sm font-bold border border-surface-300 text-gray-600 bg-white hover:bg-surface-100 transition-all disabled:opacity-50`}
                 >
                   {loading ? "생성 중..." : "다시 생성"}
                 </button>
+                {contentType === "blog" && (
+                  <button
+                    onClick={handleNaverUpload}
+                    disabled={uploadLoading}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-[#03C75A] hover:bg-[#02a84c] text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {uploadLoading ? (
+                      <span className="flex items-center gap-2 justify-center">
+                        <span className="animate-spin inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full" />
+                        업로드 중...
+                      </span>
+                    ) : (
+                      "N 네이버 블로그 업로드"
+                    )}
+                  </button>
+                )}
               </div>
+
+              {uploadError && (
+                <p className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                  {uploadError}
+                </p>
+              )}
+
+              {uploadResult && (
+                <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-600 text-sm font-bold">✓ 네이버 블로그에 발행됐습니다</span>
+                  </div>
+                  <a
+                    href={uploadResult.post_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-green-700 underline underline-offset-2 hover:text-green-900"
+                  >
+                    포스트 보기 →
+                  </a>
+                </div>
+              )}
 
               <p className="text-xs text-gray-400 text-center">
                 AI가 생성한 초안입니다. 게시 전 내용을 검토하고 수정하세요.

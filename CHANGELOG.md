@@ -4,6 +4,38 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
 
 ---
 
+## [v0.20.1] — 2026-04-17
+
+### Added — 네이버 블로그 자동 업로드
+
+- **네이버 블로그 자동 업로드** (`backend/automation/`)
+  - `naver_login_setup.py` — 쿠키 기반 로그인 (최초 1회 수동 실행)
+  - `naver_blog_runner.py` — Playwright headless=False로 SE One 에디터 자동 입력
+    - Windows 클립보드(Base64 UTF-16LE) 경유 붙여넣기로 한글 인코딩 문제 완전 해결
+    - 소제목 `Ctrl+B` bold 적용
+    - 발행 버튼 다중 폴백 (`data-click-area` → exact-text → includes-text)
+    - SE One 태그 입력 필드 탐색 후 해시태그 별도 입력
+  - `naver_blog.py` — `subprocess.run()` + `asyncio.to_thread()` 조합으로 Windows uvicorn asyncio 충돌 완전 우회
+- **API 라우터** `backend/api/routers/blog_upload.py`
+  - `POST /marketing/blog/upload-naver` — 생성된 블로그 콘텐츠를 네이버 블로그에 자동 발행
+- **설정** `backend/core/config.py`에 `NAVER_BLOG_ID`, `NAVER_BLOG_PW` 환경변수 추가
+
+### Changed — 블로그 콘텐츠 생성 품질 개선
+
+- **LLM 프롬프트 개선** (`_BLOG_PROMPT`)
+  - 출력 형식 명확화: `# 제목`, `### 이모지 소제목`, 본문 단락, 해시태그 순
+  - 소제목마다 이모지 포함, 단락당 2~3문장으로 간결하게 제한
+  - "제목", "본문", "태그 추천" 레이블 없이 내용만 출력하도록 지시
+- **마크다운 파서** (`parse_content`)
+  - LLM 메타 레이블("제목", "본문", "태그 추천" 등) 자동 스킵
+  - 마크다운 문법(bold, heading, list, link 등) → 평문 변환 후 에디터 입력
+  - 해시태그를 본문과 분리해 SE One 태그 필드에 별도 삽입
+- **프론트엔드** `marketing/page.tsx`
+  - 블로그 탭에 "N 네이버 블로그 업로드" 버튼 추가
+  - 업로드 성공 시 "포스트 보기 →" 링크 표시
+
+---
+
 ## [v0.20.0] — 2026-04-17
 
 ### Added — 서류 검토 기능
