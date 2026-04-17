@@ -111,8 +111,18 @@ export default function OnboardingPage() {
       <div className="min-h-screen bg-surface-100 flex items-center justify-center px-6 py-16">
         <div className="max-w-md w-full text-center">
           <div className="w-20 h-20 rounded-full bg-brand-50 border-2 border-brand-500 flex items-center justify-center mx-auto mb-6 glow-blue">
-            <svg className="w-10 h-10 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+            <svg
+              className="w-10 h-10 text-brand-500"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2.5}
+                d="M5 13l4 4L19 7"
+              />
             </svg>
           </div>
           <h1 className="text-3xl font-black text-gray-900 mb-3">
@@ -139,7 +149,9 @@ export default function OnboardingPage() {
                   >
                     <div className="flex items-center gap-3">
                       <span className="text-xl">{meta.icon}</span>
-                      <span className="text-sm font-semibold text-gray-800">{meta.label}</span>
+                      <span className="text-sm font-semibold text-gray-800">
+                        {meta.label}
+                      </span>
                     </div>
                     <span className="text-xs text-brand-500 group-hover:translate-x-1 transition-transform">
                       초안 보기 →
@@ -166,7 +178,9 @@ export default function OnboardingPage() {
               >
                 30초 가입하고 초안 받기
               </button>
-              <p className="text-xs text-gray-400">방금 입력하신 정보가 안전하게 저장되었습니다</p>
+              <p className="text-xs text-gray-400">
+                방금 입력하신 정보가 안전하게 저장되었습니다
+              </p>
               <button
                 onClick={() => router.push("/auth/login")}
                 className="w-full px-8 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold text-sm hover:bg-gray-50 transition-all"

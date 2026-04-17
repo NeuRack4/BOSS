@@ -27,9 +27,9 @@ interface Scenario {
   id: number;
   name: string;
   question: string;
-  toolEvidencePatterns: RegExp[];  // 도구 호출 간접 증거 (응답 텍스트 내 패턴)
-  toolEvidenceDesc: string;        // 로그용 설명
-  expectedKeywords: string[];      // 응답 텍스트에서 확인할 키워드
+  toolEvidencePatterns: RegExp[]; // 도구 호출 간접 증거 (응답 텍스트 내 패턴)
+  toolEvidenceDesc: string; // 로그용 설명
+  expectedKeywords: string[]; // 응답 텍스트에서 확인할 키워드
   maxTimeMs: number;
 }
 
@@ -59,8 +59,14 @@ const SCENARIOS: Scenario[] = [
     name: "부가세 신고 기한",
     question: "부가세 신고 언제야?",
     // get_tax_deadlines 호출 시 구체적 날짜(월/일)가 응답에 등장
-    toolEvidencePatterns: [/\d{4}년 \d+월 \d+일/, /예정신고/, /확정신고/, /납부기한/],
-    toolEvidenceDesc: "구체적 날짜(YYYY년 N월 N일) 또는 '예정신고'/'확정신고' 언급",
+    toolEvidencePatterns: [
+      /\d{4}년 \d+월 \d+일/,
+      /예정신고/,
+      /확정신고/,
+      /납부기한/,
+    ],
+    toolEvidenceDesc:
+      "구체적 날짜(YYYY년 N월 N일) 또는 '예정신고'/'확정신고' 언급",
     expectedKeywords: ["부가세", "신고", "2026"],
     maxTimeMs: 12000,
   },
@@ -89,7 +95,7 @@ const SCENARIOS: Scenario[] = [
 // ── SSE 스트림 수집 ─────────────────────────────────────────────────────────
 async function collectSSEResponse(
   endpoint: string,
-  question: string
+  question: string,
 ): Promise<{ text: string; elapsedMs: number; error?: string }> {
   const start = Date.now();
 
@@ -147,10 +153,10 @@ async function collectSSEResponse(
 
 // ── 채점 로직 ────────────────────────────────────────────────────────────────
 interface ScoreResult {
-  toolScore: number;       // 40점 만점
-  keywordScore: number;    // 40점 만점
-  timeScore: number;       // 20점 만점
-  total: number;           // 100점 만점
+  toolScore: number; // 40점 만점
+  keywordScore: number; // 40점 만점
+  timeScore: number; // 20점 만점
+  total: number; // 100점 만점
   toolHit: boolean;
   foundKeywords: string[];
   missingKeywords: string[];
@@ -163,28 +169,35 @@ function scoreResponse(
   scenario: Scenario,
   text: string,
   elapsedMs: number,
-  error?: string
+  error?: string,
 ): ScoreResult {
   if (error || !text) {
     return {
-      toolScore: 0, keywordScore: 0, timeScore: 0, total: 0,
-      toolHit: false, foundKeywords: [], missingKeywords: scenario.expectedKeywords,
-      elapsedMs, responsePreview: "", error: error ?? "응답 없음",
+      toolScore: 0,
+      keywordScore: 0,
+      timeScore: 0,
+      total: 0,
+      toolHit: false,
+      foundKeywords: [],
+      missingKeywords: scenario.expectedKeywords,
+      elapsedMs,
+      responsePreview: "",
+      error: error ?? "응답 없음",
     };
   }
 
   // 도구 호출 간접 증거 확인 (Claude 최종 응답에서 패턴 탐지)
   const toolHit = scenario.toolEvidencePatterns.some((pattern) =>
-    pattern.test(text)
+    pattern.test(text),
   );
   const toolScore = toolHit ? 40 : 0;
 
   // 키워드 확인
   const foundKeywords = scenario.expectedKeywords.filter((kw) =>
-    text.includes(kw)
+    text.includes(kw),
   );
   const missingKeywords = scenario.expectedKeywords.filter(
-    (kw) => !text.includes(kw)
+    (kw) => !text.includes(kw),
   );
   const keywordRatio = foundKeywords.length / scenario.expectedKeywords.length;
   const keywordScore = Math.round(keywordRatio * 40);
@@ -197,8 +210,14 @@ function scoreResponse(
   const total = toolScore + keywordScore + timeScore;
 
   return {
-    toolScore, keywordScore, timeScore, total,
-    toolHit, foundKeywords, missingKeywords, elapsedMs,
+    toolScore,
+    keywordScore,
+    timeScore,
+    total,
+    toolHit,
+    foundKeywords,
+    missingKeywords,
+    elapsedMs,
     responsePreview: text.slice(0, 200).replace(/\n/g, " "),
   };
 }
@@ -207,13 +226,13 @@ function scoreResponse(
 function buildMarkdownReport(
   label: string,
   endpoint: string,
-  results: Array<{ scenario: Scenario; score: ScoreResult }>
+  results: Array<{ scenario: Scenario; score: ScoreResult }>,
 ): string {
   const now = new Date().toISOString().replace("T", " ").slice(0, 19);
   const totalScore = results.reduce((s, r) => s + r.score.total, 0);
   const maxScore = results.length * 100;
   const avgMs = Math.round(
-    results.reduce((s, r) => s + r.score.elapsedMs, 0) / results.length
+    results.reduce((s, r) => s + r.score.elapsedMs, 0) / results.length,
   );
   const passed = totalScore >= maxScore * 0.8;
 
@@ -228,8 +247,8 @@ function buildMarkdownReport(
     const toolCell = score.error
       ? `❌ 오류`
       : score.toolHit
-      ? `✅ ${score.toolScore}`
-      : `❌ 0`;
+        ? `✅ ${score.toolScore}`
+        : `❌ 0`;
     const kwCell = `${score.foundKeywords.length}/${scenario.expectedKeywords.length} → ${score.keywordScore}점`;
     const timeCell = `${(score.elapsedMs / 1000).toFixed(1)}s → ${score.timeScore}점`;
     md += `| ${scenario.id} | ${scenario.name} | ${toolCell} | ${kwCell} | ${timeCell} | **${score.total}** | ${(score.elapsedMs / 1000).toFixed(1)}s |\n`;
@@ -269,7 +288,7 @@ async function runTests(endpoint: string, label: string) {
     process.stdout.write(`[Q${scenario.id}] ${scenario.name} ... `);
     const { text, elapsedMs, error } = await collectSSEResponse(
       endpoint,
-      scenario.question
+      scenario.question,
     );
     const score = scoreResponse(scenario, text, elapsedMs, error);
     results.push({ scenario, score });
@@ -298,14 +317,15 @@ async function main() {
     process.cwd(),
     "..",
     "docs",
-    `chatbot-test-results-${dateTimeStr}.md`
+    `chatbot-test-results-${dateTimeStr}.md`,
   );
 
   // v1 테스트
   const v1Results = await runTests(CHAT_ENDPOINT, "chat v1 (raw fetch)");
 
   // v2 테스트 (서버에 endpoint 없으면 스킵)
-  let v2Results: Array<{ scenario: Scenario; score: ScoreResult }> | null = null;
+  let v2Results: Array<{ scenario: Scenario; score: ScoreResult }> | null =
+    null;
   try {
     const probe = await fetch(CHAT_V2_ENDPOINT, {
       method: "POST",
@@ -323,18 +343,28 @@ async function main() {
   // MD 리포트 생성
   const now = new Date().toISOString().replace("T", " ").slice(0, 19);
   let report = `# BOSS 챗봇 테스트 결과\n\n테스트 일시: ${now}\n\n`;
-  report += buildMarkdownReport("chat v1 (raw fetch)", CHAT_ENDPOINT, v1Results);
+  report += buildMarkdownReport(
+    "chat v1 (raw fetch)",
+    CHAT_ENDPOINT,
+    v1Results,
+  );
   if (v2Results) {
     report += "\n---\n\n";
-    report += buildMarkdownReport("chat v2 (LangChain)", CHAT_V2_ENDPOINT, v2Results);
+    report += buildMarkdownReport(
+      "chat v2 (LangChain)",
+      CHAT_V2_ENDPOINT,
+      v2Results,
+    );
 
     // v1 vs v2 비교표
     const v1Total = v1Results.reduce((s, r) => s + r.score.total, 0);
     const v2Total = v2Results.reduce((s, r) => s + r.score.total, 0);
     report += `\n---\n\n## v1 vs v2 비교\n\n`;
     report += `| 버전 | 총점 | 평균 응답시간 |\n|------|------|-------------|\n`;
-    const v1Avg = v1Results.reduce((s, r) => s + r.score.elapsedMs, 0) / v1Results.length;
-    const v2Avg = v2Results.reduce((s, r) => s + r.score.elapsedMs, 0) / v2Results.length;
+    const v1Avg =
+      v1Results.reduce((s, r) => s + r.score.elapsedMs, 0) / v1Results.length;
+    const v2Avg =
+      v2Results.reduce((s, r) => s + r.score.elapsedMs, 0) / v2Results.length;
     report += `| v1 (raw fetch) | ${v1Total}/500 | ${(v1Avg / 1000).toFixed(1)}s |\n`;
     report += `| v2 (LangChain) | ${v2Total}/500 | ${(v2Avg / 1000).toFixed(1)}s |\n`;
   }

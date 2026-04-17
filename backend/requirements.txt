@@ -48,6 +48,10 @@ reportlab==4.2.5
 pypdf==4.3.1
 pymupdf==1.27.2
 
+# 서류 검토 — 파싱
+easyocr>=1.7.0          # 이미지·스캔 PDF OCR (로컬 모델)
+python-docx>=1.1.0      # DOCX 텍스트 추출
+
 # HWP Parsing (OLE2 직접 파싱 — pyhwp는 Python 3.12 미지원)
 olefile==0.47
 

@@ -95,7 +95,7 @@ const SUGGESTED_QUESTIONS = [
 // ── 서류 다운로드 카드 ────────────────────────────────────────────────────────
 const JOB_TABS = [
   { key: "karrot", label: "당근마켓" },
-  { key: "alba",   label: "알바천국" },
+  { key: "alba", label: "알바천국" },
   { key: "saramin", label: "사람인" },
 ] as const;
 
@@ -113,10 +113,15 @@ function DocumentCard({ doc }: { doc: DocumentPayload }) {
           const start = doc.content.indexOf(marker);
           if (start === -1) return "";
           const lineEnd = doc.content.indexOf("\n", start);
-          const contentStart = lineEnd === -1 ? start + marker.length : lineEnd + 1;
+          const contentStart =
+            lineEnd === -1 ? start + marker.length : lineEnd + 1;
           const nextMarker = markers[i + 1];
-          const end = nextMarker ? doc.content.indexOf(nextMarker, contentStart) : doc.content.length;
-          return doc.content.slice(contentStart, end === -1 ? undefined : end).trim();
+          const end = nextMarker
+            ? doc.content.indexOf(nextMarker, contentStart)
+            : doc.content.length;
+          return doc.content
+            .slice(contentStart, end === -1 ? undefined : end)
+            .trim();
         });
       })()
     : [];
@@ -131,7 +136,8 @@ function DocumentCard({ doc }: { doc: DocumentPayload }) {
   };
 
   const icon = doc.doc_type === "labor_contract" ? "📄" : "📝";
-  const typeLabel = doc.doc_type === "labor_contract" ? "근로계약서" : "채용공고";
+  const typeLabel =
+    doc.doc_type === "labor_contract" ? "근로계약서" : "채용공고";
 
   return (
     <div className="mt-2 bg-brand-50 border border-brand-200 rounded-xl overflow-hidden">
@@ -139,7 +145,9 @@ function DocumentCard({ doc }: { doc: DocumentPayload }) {
       <div className="flex items-center gap-2 px-3 pt-3 pb-2 bg-white">
         <span className="text-lg flex-shrink-0">{icon}</span>
         <div className="min-w-0">
-          <p className="text-xs font-semibold text-gray-800 truncate">{doc.title}</p>
+          <p className="text-xs font-semibold text-gray-800 truncate">
+            {doc.title}
+          </p>
           <p className="text-[10px] text-brand-500">
             {typeLabel} 초안{doc.draft_id ? " · 서류함 저장 완료" : ""}
           </p>
@@ -173,7 +181,8 @@ function DocumentCard({ doc }: { doc: DocumentPayload }) {
               </div>
             ) : (
               <p className="text-[11px] text-gray-400 py-4 text-center">
-                해당 플랫폼 초안을 생성하지 못했습니다.<br />
+                해당 플랫폼 초안을 생성하지 못했습니다.
+                <br />
                 다운로드 후 전체 내용을 확인해 주세요.
               </p>
             )}
@@ -186,7 +195,8 @@ function DocumentCard({ doc }: { doc: DocumentPayload }) {
         <div className="px-3 py-2.5 max-h-52 overflow-y-auto bg-white border-t border-brand-100">
           <div className="prose prose-xs max-w-none prose-p:my-1 prose-li:my-0.5 prose-headings:text-gray-900 text-[12px]">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {doc.content.slice(0, 600) + (doc.content.length > 600 ? "\n\n..." : "")}
+              {doc.content.slice(0, 600) +
+                (doc.content.length > 600 ? "\n\n..." : "")}
             </ReactMarkdown>
           </div>
         </div>
@@ -310,10 +320,7 @@ function saveSession(messages: ChatMessage[], turns: number) {
   try {
     const last = messages[messages.length - 1];
     if (last?.role === "assistant" && last.content === ERROR_MSG) return;
-    sessionStorage.setItem(
-      SESSION_KEY,
-      JSON.stringify({ messages, turns })
-    );
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ messages, turns }));
   } catch {
     // sessionStorage 접근 불가 시 무시 (SSR 등)
   }
@@ -333,7 +340,9 @@ function loadSession(): { messages: ChatMessage[]; turns: number } | null {
 export default function ChatWindow() {
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     const saved = loadSession();
-    return saved ? saved.messages.map((m) => ({ ...m, isStreaming: false })) : [INITIAL_MESSAGE];
+    return saved
+      ? saved.messages.map((m) => ({ ...m, isStreaming: false }))
+      : [INITIAL_MESSAGE];
   });
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
