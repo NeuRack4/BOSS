@@ -4,11 +4,31 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
 
 ---
 
+## [v0.20.0] — 2026-04-17
+
+### Added — 서류 검토 기능
+
+- **서류 검토 탭** (`dashboard/doc-review`) — 계약서·제안서·기타 문서 AI 분석
+  - 파일 업로드(PDF·DOCX·이미지) + 직접 입력 토글 (HWP 포함)
+  - 제목 선택 입력 — 미입력 시 파일명 또는 텍스트 첫 줄 자동 사용
+  - 갑/을 입장 선택 → 입장별 유불리 분석 (동일 계약 갑·을 반전 반영)
+  - 계약 유불리 평가 바 (갑 N : N 을, blue/orange)
+  - 문서 유형별 시스템 프롬프트 차별화
+    - 계약서: 페널티·해지 조건·책임 소재·법령 위반 중심
+    - 제안서: 범위 모호성·납기 리스크·IP 귀속·책임 한계 중심
+  - RAG 3-way 컨텍스트 보강 (법령 조문·위험 조항 패턴·관행 허용 조항)
+  - 검토 이력 조회 — 인라인 펼치기, 삭제, 갑:을 미니 바 표시
+- **백엔드** `doc_review_agent.py` — GPT-4o-mini + 비즈니스 문서 사전 검증
+- **DB 마이그레이션** `022~024` — doc_reviews 테이블, contract_knowledge 3종 분리
+
+---
+
 ## [v0.19.2] — 2026-04-17
 
 ### 수정 — 챗봇 채용공고 중복 생성 처리
 
 #### Changed
+
 - **두 번째 채용공고 요청 시 채용 메뉴로 유도** (`system_prompt.ts`)
   - 동일 세션에서 채용공고 생성 후 추가 요청 시 `/dashboard/hire` 링크로 안내
   - 챗봇 내 document 이벤트 미캡처 이슈 우회
@@ -20,6 +40,7 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
 ### 수정 — 챗봇 DocumentCard UI 개선 + 시스템 프롬프트 정비
 
 #### Added
+
 - **챗봇 시스템 프롬프트 모듈** (`lib/chatbot/system_prompt.ts`)
   - `buildSystemPrompt(FounderContext)` 함수로 창업자 컨텍스트 동적 주입
   - 서류 생성 후 서류함 링크 자동 포함 규칙 추가
@@ -29,6 +50,7 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
   - ChatWindow DocumentCard + DocBox 공용 사용
 
 #### Changed
+
 - **DocumentCard 채용공고 탭형 미리보기**
   - 당근마켓 / 알바천국 / 사람인 탭 전환 UI 추가
   - `## 헤더` 위치 기준 섹션 파싱 (기존 `---` 구분자 방식 → 알바천국 빈값 버그 수정)

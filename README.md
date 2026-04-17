@@ -4,7 +4,7 @@
 
 > 서울 F&B 소상공인을 위한 Proactive AI 비서
 
-[![version](https://img.shields.io/badge/version-0.16.0-blue.svg)](https://semver.org)
+[![version](https://img.shields.io/badge/version-0.20.0-blue.svg)](https://semver.org)
 [![license](https://img.shields.io/badge/license-MIT-green.svg)]()
 
 창업자가 요청하지 않아도 에이전트가 먼저 챙깁니다.
