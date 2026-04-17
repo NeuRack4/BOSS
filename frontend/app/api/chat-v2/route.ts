@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
   if (!process.env.ANTHROPIC_API_KEY) {
     return new Response(
       JSON.stringify({ error: "ANTHROPIC_API_KEY가 설정되지 않았습니다." }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
+      { status: 500, headers: { "Content-Type": "application/json" } },
     );
   }
 
@@ -66,18 +66,18 @@ export async function POST(req: NextRequest) {
   try {
     body = await req.json();
   } catch {
-    return new Response(
-      JSON.stringify({ error: "잘못된 요청 형식입니다." }),
-      { status: 400, headers: { "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: "잘못된 요청 형식입니다." }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   const { message, history = [] } = body;
   if (!message?.trim()) {
-    return new Response(
-      JSON.stringify({ error: "메시지를 입력해주세요." }),
-      { status: 400, headers: { "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: "메시지를 입력해주세요." }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   const stream = await runBossAgent({

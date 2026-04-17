@@ -1,10 +1,11 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from backend.core.config import get_settings
-from backend.api.routers import health, founders, triggers, drafts, subsidies, tax, location, sales, insights, rag, pdf_forms, expenses, marketing, ocr, menus, sales_items, map as map_router, recommend, hire, menu_analysis
+from backend.api.routers import health, founders, triggers, drafts, subsidies, tax, location, sales, insights, rag, pdf_forms, expenses, marketing, ocr, menus, sales_items, map as map_router, recommend, hire, menu_analysis, doc_review
 from backend.triggers.scheduler import start_scheduler, stop_scheduler
 
 
@@ -36,6 +37,17 @@ def create_app() -> FastAPI:
     # 미처리 예외(500)도 CORS 헤더를 포함하도록 글로벌 핸들러 등록
     # FastAPI CORSMiddleware가 500 응답에 헤더를 누락하는 경우 방어
     origins_set = set(settings.cors_origins)
+
+    @app.exception_handler(RequestValidationError)
+    async def _validation_exc_handler(request: Request, exc: RequestValidationError):
+        """파일 업로드 시 binary bytes가 validation 에러에 포함돼 UnicodeDecodeError 발생하는 FastAPI 버그 방어"""
+        sanitized = []
+        for err in exc.errors():
+            e = dict(err)
+            if isinstance(e.get("input"), bytes):
+                e["input"] = f"<binary {len(e['input'])} bytes>"
+            sanitized.append(e)
+        return JSONResponse(status_code=422, content={"detail": sanitized})
 
     @app.exception_handler(Exception)
     async def _global_exc_handler(request: Request, exc: Exception):
@@ -69,6 +81,7 @@ def create_app() -> FastAPI:
     app.include_router(rag.router, prefix="/rag", tags=["rag"])
     app.include_router(hire.router, prefix="/hire", tags=["hire"])
     app.include_router(menu_analysis.router, prefix="/menu-analysis", tags=["menu-analysis"])
+    app.include_router(doc_review.router, prefix="/doc-review", tags=["doc-review"])
     app.include_router(pdf_forms.router)  # prefix="/drafts" 내부 정의
 
     return app

@@ -48,7 +48,7 @@ export default function SignupPage() {
           await apiFetch("/founders/me", {
             method: "PUT",
             body: JSON.stringify(
-              formDataToProfile(parsed as Record<string, unknown>)
+              formDataToProfile(parsed as Record<string, unknown>),
             ),
           });
           localStorage.removeItem("boss_profile");

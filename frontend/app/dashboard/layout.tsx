@@ -29,6 +29,7 @@ import {
   Bell,
   User,
   MessageCircle,
+  FileSearch2,
 } from "lucide-react";
 
 const navItems = [
@@ -46,6 +47,7 @@ const navItems = [
   { label: "지원사업", href: "/dashboard/subsidies", icon: Handshake },
   { label: "AI 챗봇", href: "/dashboard/chat", icon: MessageCircle },
   { label: "채용 공고", href: "/dashboard/hire", icon: Users },
+  { label: "서류 검토", href: "/dashboard/doc-review", icon: FileSearch2 },
 ];
 
 export default function DashboardLayout({

@@ -17,13 +17,34 @@ const CONTENT_TYPES: {
   icon: string;
   desc: string;
 }[] = [
-  { value: "instagram", label: "인스타그램", icon: "📸", desc: "캡션 + 해시태그 30개" },
+  {
+    value: "instagram",
+    label: "인스타그램",
+    icon: "📸",
+    desc: "캡션 + 해시태그 30개",
+  },
   { value: "blog", label: "블로그", icon: "✍️", desc: "네이버 블로그 포스팅" },
-  { value: "naver_place", label: "네이버 플레이스", icon: "🗺️", desc: "리뷰 답글 · 공지사항" },
-  { value: "menu_highlight", label: "메뉴 소개", icon: "☕", desc: "메뉴 상세 소개 게시글" },
+  {
+    value: "naver_place",
+    label: "네이버 플레이스",
+    icon: "🗺️",
+    desc: "리뷰 답글 · 공지사항",
+  },
+  {
+    value: "menu_highlight",
+    label: "메뉴 소개",
+    icon: "☕",
+    desc: "메뉴 상세 소개 게시글",
+  },
 ];
 
-const NOTICE_TYPES = ["임시 휴무", "영업시간 변경", "이벤트·할인", "신메뉴 출시", "기타 공지"];
+const NOTICE_TYPES = [
+  "임시 휴무",
+  "영업시간 변경",
+  "이벤트·할인",
+  "신메뉴 출시",
+  "기타 공지",
+];
 
 const URGENCY_STYLE: Record<string, string> = {
   high: "bg-red-100 text-red-700 border-red-200",
@@ -61,7 +82,8 @@ export default function MarketingPage() {
   const [targetMenu, setTargetMenu] = useState("");
   const [promotion, setPromotion] = useState("");
   // 네이버 플레이스 전용
-  const [naverPlaceType, setNaverPlaceType] = useState<NaverPlaceType>("review_reply");
+  const [naverPlaceType, setNaverPlaceType] =
+    useState<NaverPlaceType>("review_reply");
   const [starRating, setStarRating] = useState(5);
   const [reviewContent, setReviewContent] = useState("");
   const [noticeType, setNoticeType] = useState(NOTICE_TYPES[0]);
@@ -76,13 +98,18 @@ export default function MarketingPage() {
   const [imageError, setImageError] = useState<string | null>(null);
 
   // 전략 추천
-  const [strategyResult, setStrategyResult] = useState<StrategyResult | null>(null);
+  const [strategyResult, setStrategyResult] = useState<StrategyResult | null>(
+    null,
+  );
   const [strategyLoading, setStrategyLoading] = useState(false);
   const [strategyError, setStrategyError] = useState<string | null>(null);
 
   // 콘텐츠 생성
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ content: string; menu_used: string | null } | null>(null);
+  const [result, setResult] = useState<{
+    content: string;
+    menu_used: string | null;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -93,12 +120,16 @@ export default function MarketingPage() {
       if (!user) return;
       fetch(`${apiUrl}/menus/`, { headers: { "X-User-Id": user.id } })
         .then((r) => (r.ok ? r.json() : []))
-        .then((data: Menu[]) => setMenus(data.filter((m) => m.is_active !== false)))
+        .then((data: Menu[]) =>
+          setMenus(data.filter((m) => m.is_active !== false)),
+        )
         .catch(() => {});
       // 카페 이름 조회
       fetch(`${apiUrl}/founders/${user.id}/business-info`)
         .then((r) => (r.ok ? r.json() : null))
-        .then((d) => { if (d?.business_name) setCafeName(d.business_name); })
+        .then((d) => {
+          if (d?.business_name) setCafeName(d.business_name);
+        })
         .catch(() => {});
     });
   }, [apiUrl]);
@@ -107,8 +138,14 @@ export default function MarketingPage() {
   const handleStrategy = async () => {
     setStrategyLoading(true);
     setStrategyError(null);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setStrategyError("로그인이 필요합니다."); setStrategyLoading(false); return; }
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setStrategyError("로그인이 필요합니다.");
+      setStrategyLoading(false);
+      return;
+    }
     try {
       const res = await fetch(`${apiUrl}/marketing/strategy`, {
         method: "POST",
@@ -129,16 +166,28 @@ export default function MarketingPage() {
     setTargetMenu(strategy.target_menu ?? "");
     setResult(null);
     // 탭 전환 후 자동 생성
-    setTimeout(() => generateContent(strategy.content_type, strategy.target_menu ?? ""), 100);
+    setTimeout(
+      () => generateContent(strategy.content_type, strategy.target_menu ?? ""),
+      100,
+    );
   };
 
   // ── 콘텐츠 생성 ──────────────────────────────────────────────────────────
-  const generateContent = async (ct: ContentType = contentType, menu: string = targetMenu) => {
+  const generateContent = async (
+    ct: ContentType = contentType,
+    menu: string = targetMenu,
+  ) => {
     setLoading(true);
     setError(null);
     setResult(null);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setError("로그인이 필요합니다."); setLoading(false); return; }
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setError("로그인이 필요합니다.");
+      setLoading(false);
+      return;
+    }
     try {
       const res = await fetch(`${apiUrl}/marketing/content`, {
         method: "POST",
@@ -151,8 +200,10 @@ export default function MarketingPage() {
           month,
           ...(ct === "naver_place" && {
             naver_place_type: naverPlaceType,
-            star_rating: naverPlaceType === "review_reply" ? starRating : undefined,
-            review_content: naverPlaceType === "review_reply" ? reviewContent || null : null,
+            star_rating:
+              naverPlaceType === "review_reply" ? starRating : undefined,
+            review_content:
+              naverPlaceType === "review_reply" ? reviewContent || null : null,
             notice_type: naverPlaceType === "notice" ? noticeType : undefined,
           }),
         }),
@@ -176,13 +227,23 @@ export default function MarketingPage() {
     setImageLoading(true);
     setImageError(null);
     setImageUrl(null);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setImageError("로그인이 필요합니다."); setImageLoading(false); return; }
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setImageError("로그인이 필요합니다.");
+      setImageLoading(false);
+      return;
+    }
     try {
       const res = await fetch(`${apiUrl}/marketing/image`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-User-Id": user.id },
-        body: JSON.stringify({ target_menu: targetMenu || null, promotion: promotion || null, content_type: contentType }),
+        body: JSON.stringify({
+          target_menu: targetMenu || null,
+          promotion: promotion || null,
+          content_type: contentType,
+        }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -191,7 +252,9 @@ export default function MarketingPage() {
       const data = await res.json();
       setImageUrl(data.image_url);
     } catch (e) {
-      setImageError(e instanceof Error ? e.message : "이미지 생성에 실패했습니다.");
+      setImageError(
+        e instanceof Error ? e.message : "이미지 생성에 실패했습니다.",
+      );
     }
     setImageLoading(false);
   };
@@ -211,7 +274,8 @@ export default function MarketingPage() {
       <div>
         <h1 className="text-2xl font-black text-gray-900">마케팅</h1>
         <p className="text-sm text-gray-500 mt-1">
-          매출·메뉴·상권 데이터를 기반으로 AI가 마케팅 전략을 추천하고 콘텐츠 초안을 작성합니다
+          매출·메뉴·상권 데이터를 기반으로 AI가 마케팅 전략을 추천하고 콘텐츠
+          초안을 작성합니다
         </p>
       </div>
 
@@ -237,7 +301,8 @@ export default function MarketingPage() {
         <div className="space-y-6">
           <div className="glass-card rounded-xl p-6 text-center space-y-3">
             <p className="text-sm text-gray-500">
-              내 매출·메뉴·공휴일 데이터를 분석해 지금 실행해야 할 마케팅 전략을 추천합니다
+              내 매출·메뉴·공휴일 데이터를 분석해 지금 실행해야 할 마케팅 전략을
+              추천합니다
             </p>
             <button
               onClick={handleStrategy}
@@ -264,8 +329,12 @@ export default function MarketingPage() {
             <>
               {/* 전체 방향 */}
               <div className="glass-card rounded-xl p-5 bg-brand-50/30 border-brand-500/20">
-                <p className="text-xs font-bold text-brand-600 mb-2">이번달 마케팅 방향</p>
-                <p className="text-sm text-gray-700 leading-relaxed">{strategyResult.overall_tip}</p>
+                <p className="text-xs font-bold text-brand-600 mb-2">
+                  이번달 마케팅 방향
+                </p>
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  {strategyResult.overall_tip}
+                </p>
               </div>
 
               {/* 전략 카드들 */}
@@ -274,8 +343,12 @@ export default function MarketingPage() {
                   <div key={i} className="glass-card rounded-xl p-5 space-y-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-bold text-gray-900">{s.title}</span>
-                        <span className={`text-xs border px-2 py-0.5 rounded-full font-medium ${URGENCY_STYLE[s.urgency]}`}>
+                        <span className="text-sm font-bold text-gray-900">
+                          {s.title}
+                        </span>
+                        <span
+                          className={`text-xs border px-2 py-0.5 rounded-full font-medium ${URGENCY_STYLE[s.urgency]}`}
+                        >
                           {URGENCY_LABEL[s.urgency]}
                         </span>
                         {s.target_menu && (
@@ -284,17 +357,27 @@ export default function MarketingPage() {
                           </span>
                         )}
                       </div>
-                      <span className="text-xs text-gray-400 shrink-0">{s.timing}</span>
+                      <span className="text-xs text-gray-400 shrink-0">
+                        {s.timing}
+                      </span>
                     </div>
 
                     <div className="space-y-2">
                       <div className="bg-surface-50 border border-surface-200 rounded-lg p-3">
-                        <p className="text-xs font-bold text-gray-500 mb-1">추천 이유</p>
-                        <p className="text-xs text-gray-700 leading-relaxed">{s.reason}</p>
+                        <p className="text-xs font-bold text-gray-500 mb-1">
+                          추천 이유
+                        </p>
+                        <p className="text-xs text-gray-700 leading-relaxed">
+                          {s.reason}
+                        </p>
                       </div>
                       <div className="bg-brand-50 border border-brand-200 rounded-lg p-3">
-                        <p className="text-xs font-bold text-brand-600 mb-1">지금 해야 할 것</p>
-                        <p className="text-xs text-gray-700 leading-relaxed">{s.action}</p>
+                        <p className="text-xs font-bold text-brand-600 mb-1">
+                          지금 해야 할 것
+                        </p>
+                        <p className="text-xs text-gray-700 leading-relaxed">
+                          {s.action}
+                        </p>
                       </div>
                     </div>
 
@@ -302,8 +385,15 @@ export default function MarketingPage() {
                       onClick={() => handleStrategyClick(s)}
                       className="w-full py-2.5 rounded-xl text-sm font-bold bg-brand-500 hover:bg-brand-600 text-white transition-all"
                     >
-                      {CONTENT_TYPES.find((c) => c.value === s.content_type)?.icon}{" "}
-                      {CONTENT_TYPES.find((c) => c.value === s.content_type)?.label} 콘텐츠 바로 생성
+                      {
+                        CONTENT_TYPES.find((c) => c.value === s.content_type)
+                          ?.icon
+                      }{" "}
+                      {
+                        CONTENT_TYPES.find((c) => c.value === s.content_type)
+                          ?.label
+                      }{" "}
+                      콘텐츠 바로 생성
                     </button>
                   </div>
                 ))}
@@ -313,7 +403,9 @@ export default function MarketingPage() {
 
           {!strategyResult && !strategyLoading && (
             <div className="glass-card rounded-xl p-5 space-y-3">
-              <h3 className="text-sm font-bold text-gray-700">이런 것들을 추천해드립니다</h3>
+              <h3 className="text-sm font-bold text-gray-700">
+                이런 것들을 추천해드립니다
+              </h3>
               <ul className="space-y-2">
                 {[
                   "이번달 공휴일·기념일에 맞는 이벤트 타이밍",
@@ -321,7 +413,10 @@ export default function MarketingPage() {
                   "계절에 맞는 신메뉴 파생 및 마케팅 방향",
                   "지금 당장 인스타·블로그에 올려야 할 콘텐츠",
                 ].map((tip, i) => (
-                  <li key={i} className="flex items-start gap-2 text-xs text-gray-500">
+                  <li
+                    key={i}
+                    className="flex items-start gap-2 text-xs text-gray-500"
+                  >
                     <span className="text-brand-400 shrink-0 mt-0.5">•</span>
                     {tip}
                   </li>
@@ -341,7 +436,10 @@ export default function MarketingPage() {
               {CONTENT_TYPES.map((ct) => (
                 <button
                   key={ct.value}
-                  onClick={() => { setContentType(ct.value); setResult(null); }}
+                  onClick={() => {
+                    setContentType(ct.value);
+                    setResult(null);
+                  }}
                   className={`flex items-start gap-3 p-4 rounded-xl border text-left transition-all ${
                     contentType === ct.value
                       ? "bg-brand-50 border-brand-500/40 glow-blue"
@@ -350,7 +448,9 @@ export default function MarketingPage() {
                 >
                   <span className="text-2xl flex-shrink-0">{ct.icon}</span>
                   <div>
-                    <p className={`text-sm font-bold ${contentType === ct.value ? "text-brand-600" : "text-gray-800"}`}>
+                    <p
+                      className={`text-sm font-bold ${contentType === ct.value ? "text-brand-600" : "text-gray-800"}`}
+                    >
                       {ct.label}
                     </p>
                     <p className="text-xs text-gray-400 mt-0.5">{ct.desc}</p>
@@ -364,15 +464,22 @@ export default function MarketingPage() {
                 <>
                   {/* 서브타입 선택 */}
                   <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1.5">종류</label>
+                    <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                      종류
+                    </label>
                     <div className="flex gap-2">
-                      {([
-                        { value: "review_reply", label: "💬 리뷰 답글" },
-                        { value: "notice", label: "📢 공지사항" },
-                      ] as { value: NaverPlaceType; label: string }[]).map((t) => (
+                      {(
+                        [
+                          { value: "review_reply", label: "💬 리뷰 답글" },
+                          { value: "notice", label: "📢 공지사항" },
+                        ] as { value: NaverPlaceType; label: string }[]
+                      ).map((t) => (
                         <button
                           key={t.value}
-                          onClick={() => { setNaverPlaceType(t.value); setResult(null); }}
+                          onClick={() => {
+                            setNaverPlaceType(t.value);
+                            setResult(null);
+                          }}
                           className={`flex-1 py-2 rounded-lg text-sm font-semibold border transition-all ${
                             naverPlaceType === t.value
                               ? "bg-brand-50 border-brand-500/40 text-brand-600"
@@ -389,7 +496,9 @@ export default function MarketingPage() {
                     <>
                       {/* 별점 */}
                       <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1.5">별점</label>
+                        <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                          별점
+                        </label>
                         <div className="flex gap-1">
                           {[1, 2, 3, 4, 5].map((s) => (
                             <button
@@ -400,14 +509,18 @@ export default function MarketingPage() {
                               {s <= starRating ? "⭐" : "☆"}
                             </button>
                           ))}
-                          <span className="ml-2 text-sm text-gray-500 self-center">{starRating}점</span>
+                          <span className="ml-2 text-sm text-gray-500 self-center">
+                            {starRating}점
+                          </span>
                         </div>
                       </div>
                       {/* 리뷰 내용 */}
                       <div>
                         <label className="block text-xs font-medium text-gray-500 mb-1.5">
                           고객 리뷰 내용{" "}
-                          <span className="text-gray-400 font-normal">(선택 — 비우면 별점만 반영)</span>
+                          <span className="text-gray-400 font-normal">
+                            (선택 — 비우면 별점만 반영)
+                          </span>
                         </label>
                         <textarea
                           value={reviewContent}
@@ -422,14 +535,18 @@ export default function MarketingPage() {
                     <>
                       {/* 공지 종류 */}
                       <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1.5">공지 종류</label>
+                        <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                          공지 종류
+                        </label>
                         <select
                           value={noticeType}
                           onChange={(e) => setNoticeType(e.target.value)}
                           className="w-full px-3 py-2.5 rounded-lg border border-surface-300 bg-white text-sm text-gray-800 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/30"
                         >
                           {NOTICE_TYPES.map((n) => (
-                            <option key={n} value={n}>{n}</option>
+                            <option key={n} value={n}>
+                              {n}
+                            </option>
                           ))}
                         </select>
                       </div>
@@ -437,7 +554,9 @@ export default function MarketingPage() {
                       <div>
                         <label className="block text-xs font-medium text-gray-500 mb-1.5">
                           공지 내용{" "}
-                          <span className="text-gray-400 font-normal">(날짜·시간·혜택 등 구체적으로)</span>
+                          <span className="text-gray-400 font-normal">
+                            (날짜·시간·혜택 등 구체적으로)
+                          </span>
                         </label>
                         <input
                           type="text"
@@ -455,7 +574,9 @@ export default function MarketingPage() {
                   <div>
                     <label className="block text-xs font-medium text-gray-500 mb-1.5">
                       강조할 메뉴{" "}
-                      <span className="text-gray-400 font-normal">(선택 — 비우면 이번달 인기 메뉴 자동 사용)</span>
+                      <span className="text-gray-400 font-normal">
+                        (선택 — 비우면 이번달 인기 메뉴 자동 사용)
+                      </span>
                     </label>
                     {menus.length > 0 ? (
                       <select
@@ -465,7 +586,9 @@ export default function MarketingPage() {
                       >
                         <option value="">이번달 인기 메뉴 자동 선택</option>
                         {menus.map((m) => (
-                          <option key={m.id} value={m.name}>{m.name}</option>
+                          <option key={m.id} value={m.name}>
+                            {m.name}
+                          </option>
                         ))}
                       </select>
                     ) : (
@@ -481,7 +604,9 @@ export default function MarketingPage() {
                   <div>
                     <label className="block text-xs font-medium text-gray-500 mb-1.5">
                       특별 내용{" "}
-                      <span className="text-gray-400 font-normal">(선택 — 할인·이벤트·신메뉴 등)</span>
+                      <span className="text-gray-400 font-normal">
+                        (선택 — 할인·이벤트·신메뉴 등)
+                      </span>
                     </label>
                     <input
                       type="text"
@@ -496,7 +621,9 @@ export default function MarketingPage() {
             </div>
 
             {error && (
-              <p className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
+              <p className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                {error}
+              </p>
             )}
 
             <button
@@ -515,14 +642,18 @@ export default function MarketingPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-lg">{selected.icon}</span>
-                  <h2 className="text-base font-bold text-gray-900">{selected.label} 초안</h2>
+                  <h2 className="text-base font-bold text-gray-900">
+                    {selected.label} 초안
+                  </h2>
                   {result.menu_used && (
                     <span className="text-xs bg-brand-50 text-brand-600 border border-brand-200 px-2 py-0.5 rounded-full">
                       {result.menu_used} 기반
                     </span>
                   )}
                 </div>
-                <span className="text-xs text-gray-400">{year}년 {month}월 기준</span>
+                <span className="text-xs text-gray-400">
+                  {year}년 {month}월 기준
+                </span>
               </div>
 
               {contentType === "blog" ? (
@@ -535,10 +666,12 @@ export default function MarketingPage() {
                 />
               ) : (
                 <div className="bg-surface-50 border border-surface-200 rounded-xl p-5">
-                  <div className="prose prose-sm max-w-none text-gray-800 leading-relaxed
+                  <div
+                    className="prose prose-sm max-w-none text-gray-800 leading-relaxed
                     prose-p:my-1.5 prose-strong:text-gray-900 prose-headings:text-gray-900
                     prose-headings:font-bold prose-headings:mt-3 prose-headings:mb-1
-                    prose-ul:my-1 prose-li:my-0.5 prose-ol:my-1">
+                    prose-ul:my-1 prose-li:my-0.5 prose-ol:my-1"
+                  >
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                       {result.content}
                     </ReactMarkdown>
@@ -560,7 +693,10 @@ export default function MarketingPage() {
                   </button>
                 )}
                 <button
-                  onClick={() => { setResult(null); generateContent(); }}
+                  onClick={() => {
+                    setResult(null);
+                    generateContent();
+                  }}
                   disabled={loading}
                   className={`${contentType === "blog" ? "w-full" : "flex-1"} py-2.5 rounded-xl text-sm font-bold border border-surface-300 text-gray-600 bg-white hover:bg-surface-100 transition-all disabled:opacity-50`}
                 >
@@ -575,74 +711,84 @@ export default function MarketingPage() {
           )}
 
           {/* 이미지 생성 — 인스타그램·메뉴소개 콘텐츠 생성 후에만 표시 */}
-          {result && (contentType === "instagram" || contentType === "menu_highlight") && (
-            <div className="glass-card rounded-xl p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-base font-bold text-gray-900">인스타그램 이미지 생성</h2>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    DALL-E 3가 메뉴·계절·카페 분위기를 반영한 사진을 생성합니다
-                  </p>
-                </div>
-                <span className="text-xs bg-surface-100 border border-surface-300 text-gray-500 px-2 py-1 rounded-lg">
-                  약 55원/장
-                </span>
-              </div>
-
-              {!imageUrl && (
-                <button
-                  onClick={handleGenerateImage}
-                  disabled={imageLoading}
-                  className="w-full py-3 rounded-xl font-bold text-sm border-2 border-brand-500 text-brand-600 hover:bg-brand-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {imageLoading ? (
-                    <span className="flex items-center gap-2 justify-center">
-                      <span className="animate-spin inline-block w-4 h-4 border-2 border-brand-500 border-t-transparent rounded-full" />
-                      DALL-E 3 이미지 생성 중... (10~20초)
-                    </span>
-                  ) : (
-                    "📸 이미지 생성"
-                  )}
-                </button>
-              )}
-
-              {imageError && (
-                <p className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                  {imageError}
-                </p>
-              )}
-
-              {imageUrl && result && (
-                <div className="space-y-4">
-                  <InstagramPreview
-                    imageUrl={imageUrl}
-                    content={result.content}
-                    cafeName={cafeName}
-                  />
-                  <div className="flex justify-end">
-                    <button
-                      onClick={handleGenerateImage}
-                      disabled={imageLoading}
-                      className="px-4 py-2 rounded-xl text-sm font-bold border border-surface-300 text-gray-600 bg-white hover:bg-surface-100 transition-all disabled:opacity-50"
-                    >
-                      {imageLoading ? "생성 중..." : "이미지 다시 생성"}
-                    </button>
+          {result &&
+            (contentType === "instagram" ||
+              contentType === "menu_highlight") && (
+              <div className="glass-card rounded-xl p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-base font-bold text-gray-900">
+                      인스타그램 이미지 생성
+                    </h2>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      DALL-E 3가 메뉴·계절·카페 분위기를 반영한 사진을
+                      생성합니다
+                    </p>
                   </div>
-                  <p className="text-xs text-gray-400 text-center">
-                    이미지 URL은 1시간 후 만료됩니다. 게시물 이미지로 저장 후 사용하세요.
-                  </p>
+                  <span className="text-xs bg-surface-100 border border-surface-300 text-gray-500 px-2 py-1 rounded-lg">
+                    약 55원/장
+                  </span>
                 </div>
-              )}
-            </div>
-          )}
+
+                {!imageUrl && (
+                  <button
+                    onClick={handleGenerateImage}
+                    disabled={imageLoading}
+                    className="w-full py-3 rounded-xl font-bold text-sm border-2 border-brand-500 text-brand-600 hover:bg-brand-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {imageLoading ? (
+                      <span className="flex items-center gap-2 justify-center">
+                        <span className="animate-spin inline-block w-4 h-4 border-2 border-brand-500 border-t-transparent rounded-full" />
+                        DALL-E 3 이미지 생성 중... (10~20초)
+                      </span>
+                    ) : (
+                      "📸 이미지 생성"
+                    )}
+                  </button>
+                )}
+
+                {imageError && (
+                  <p className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                    {imageError}
+                  </p>
+                )}
+
+                {imageUrl && result && (
+                  <div className="space-y-4">
+                    <InstagramPreview
+                      imageUrl={imageUrl}
+                      content={result.content}
+                      cafeName={cafeName}
+                    />
+                    <div className="flex justify-end">
+                      <button
+                        onClick={handleGenerateImage}
+                        disabled={imageLoading}
+                        className="px-4 py-2 rounded-xl text-sm font-bold border border-surface-300 text-gray-600 bg-white hover:bg-surface-100 transition-all disabled:opacity-50"
+                      >
+                        {imageLoading ? "생성 중..." : "이미지 다시 생성"}
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-400 text-center">
+                      이미지 URL은 1시간 후 만료됩니다. 게시물 이미지로 저장 후
+                      사용하세요.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
           {!result && !loading && contentType === "naver_place" && (
             <div className="glass-card rounded-xl p-5 space-y-4">
-              <h3 className="text-sm font-bold text-gray-700">이렇게 사용하세요</h3>
+              <h3 className="text-sm font-bold text-gray-700">
+                이렇게 사용하세요
+              </h3>
 
               <div className="space-y-3">
                 <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-2">
-                  <p className="text-xs font-bold text-blue-700">💬 리뷰 답글</p>
+                  <p className="text-xs font-bold text-blue-700">
+                    💬 리뷰 답글
+                  </p>
                   <ol className="space-y-1.5">
                     {[
                       "네이버 플레이스에서 받은 리뷰를 복사합니다",
@@ -650,7 +796,10 @@ export default function MarketingPage() {
                       "생성 버튼을 누르면 별점에 맞는 톤으로 답글이 작성됩니다",
                       "생성된 답글을 복사해 네이버 플레이스에 그대로 붙여넣으세요",
                     ].map((step, i) => (
-                      <li key={i} className="flex items-start gap-2 text-xs text-gray-600">
+                      <li
+                        key={i}
+                        className="flex items-start gap-2 text-xs text-gray-600"
+                      >
                         <span className="bg-blue-200 text-blue-700 rounded-full w-4 h-4 flex items-center justify-center font-bold shrink-0 mt-0.5 text-[10px]">
                           {i + 1}
                         </span>
@@ -659,19 +808,25 @@ export default function MarketingPage() {
                     ))}
                   </ol>
                   <p className="text-[11px] text-blue-500 mt-1">
-                    ⭐⭐⭐⭐⭐ 감사 / ⭐⭐⭐ 개선의지 / ⭐⭐ 이하 정중한 사과로 톤이 자동 조절됩니다
+                    ⭐⭐⭐⭐⭐ 감사 / ⭐⭐⭐ 개선의지 / ⭐⭐ 이하 정중한 사과로
+                    톤이 자동 조절됩니다
                   </p>
                 </div>
 
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2">
-                  <p className="text-xs font-bold text-amber-700">📢 공지사항</p>
+                  <p className="text-xs font-bold text-amber-700">
+                    📢 공지사항
+                  </p>
                   <ol className="space-y-1.5">
                     {[
                       "공지 종류를 선택합니다 (임시휴무 / 영업시간변경 / 이벤트 등)",
                       "날짜·시간·혜택 등 구체적인 내용을 입력합니다",
                       "생성된 공지를 네이버 플레이스 공지사항에 등록하세요",
                     ].map((step, i) => (
-                      <li key={i} className="flex items-start gap-2 text-xs text-gray-600">
+                      <li
+                        key={i}
+                        className="flex items-start gap-2 text-xs text-gray-600"
+                      >
                         <span className="bg-amber-200 text-amber-700 rounded-full w-4 h-4 flex items-center justify-center font-bold shrink-0 mt-0.5 text-[10px]">
                           {i + 1}
                         </span>
@@ -694,8 +849,13 @@ export default function MarketingPage() {
                   "생성된 초안은 자유롭게 수정해 사용하세요",
                   "마음에 들지 않으면 '다시 생성'으로 새로운 버전을 받아보세요",
                 ].map((tip, i) => (
-                  <li key={i} className="flex items-start gap-2 text-xs text-gray-500">
-                    <span className="text-brand-400 flex-shrink-0 mt-0.5">•</span>
+                  <li
+                    key={i}
+                    className="flex items-start gap-2 text-xs text-gray-500"
+                  >
+                    <span className="text-brand-400 flex-shrink-0 mt-0.5">
+                      •
+                    </span>
                     {tip}
                   </li>
                 ))}

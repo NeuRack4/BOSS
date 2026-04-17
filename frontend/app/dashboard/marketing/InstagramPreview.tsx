@@ -9,10 +9,16 @@ type Props = {
 };
 
 function parseContent(content: string) {
-  const lines = content.split("\n").map((l) => l.trim()).filter(Boolean);
+  const lines = content
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
 
   const hashtagIdx = lines.findIndex((l) => /^#/.test(l));
-  const tipIdx = lines.findIndex((l) => l.includes("💡") || l.includes("게시 추천") || l.includes("게시 최적"));
+  const tipIdx = lines.findIndex(
+    (l) =>
+      l.includes("💡") || l.includes("게시 추천") || l.includes("게시 최적"),
+  );
 
   let captionLines: string[];
   let hashtagText = "";
@@ -32,13 +38,20 @@ function parseContent(content: string) {
   }
 
   return {
-    caption: captionLines.join("\n").replace(/^\d+\.\s*/, "").trim(),
+    caption: captionLines
+      .join("\n")
+      .replace(/^\d+\.\s*/, "")
+      .trim(),
     hashtags: hashtagText,
     tip,
   };
 }
 
-export default function InstagramPreview({ imageUrl, content, cafeName }: Props) {
+export default function InstagramPreview({
+  imageUrl,
+  content,
+  cafeName,
+}: Props) {
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
   const [likeCount] = useState(() => Math.floor(Math.random() * 480) + 72);
@@ -77,7 +90,7 @@ export default function InstagramPreview({ imageUrl, content, cafeName }: Props)
 
   const handleCopyCaption = async () => {
     await navigator.clipboard.writeText(
-      [caption, "", hashtags, tip ? `\n${tip}` : ""].filter(Boolean).join("\n")
+      [caption, "", hashtags, tip ? `\n${tip}` : ""].filter(Boolean).join("\n"),
     );
     setCopyDone(true);
     setTimeout(() => setCopyDone(false), 2000);
@@ -95,7 +108,10 @@ export default function InstagramPreview({ imageUrl, content, cafeName }: Props)
       <div
         ref={previewRef}
         className="bg-white border border-[#dbdbdb] rounded-xl overflow-hidden max-w-[400px] mx-auto"
-        style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}
+        style={{
+          fontFamily:
+            "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        }}
       >
         {/* 헤더 */}
         <div className="flex items-center justify-between px-3 py-2.5">
@@ -105,14 +121,20 @@ export default function InstagramPreview({ imageUrl, content, cafeName }: Props)
               {cafeName?.[0]?.toUpperCase() || "C"}
             </div>
             <div>
-              <p className="text-[13px] font-semibold text-[#262626] leading-tight">{username}</p>
-              <p className="text-[11px] text-[#8e8e8e] leading-tight">마포구 · 서울</p>
+              <p className="text-[13px] font-semibold text-[#262626] leading-tight">
+                {username}
+              </p>
+              <p className="text-[11px] text-[#8e8e8e] leading-tight">
+                마포구 · 서울
+              </p>
             </div>
           </div>
           {/* 더보기 */}
           <button className="text-[#262626] px-1">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" />
+              <circle cx="12" cy="5" r="1.5" />
+              <circle cx="12" cy="12" r="1.5" />
+              <circle cx="12" cy="19" r="1.5" />
             </svg>
           </button>
         </div>
@@ -131,27 +153,57 @@ export default function InstagramPreview({ imageUrl, content, cafeName }: Props)
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3.5">
               {/* 좋아요 */}
-              <button onClick={() => setLiked((v) => !v)} className="transition-transform active:scale-125">
+              <button
+                onClick={() => setLiked((v) => !v)}
+                className="transition-transform active:scale-125"
+              >
                 {liked ? (
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="#ed4956">
-                    <path d="M12 21.593c-.525-.437-8.582-6.436-8.582-12.097C3.418 5.411 7.01 3 9.957 3c1.65 0 3.332.678 4.557 1.98C15.735 3.678 17.417 3 19.067 3 22.014 3 25.5 5.411 25.5 9.496c0 5.66-8.057 11.66-8.582 12.097L12 21.593z"/>
+                  <svg
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="#ed4956"
+                  >
+                    <path d="M12 21.593c-.525-.437-8.582-6.436-8.582-12.097C3.418 5.411 7.01 3 9.957 3c1.65 0 3.332.678 4.557 1.98C15.735 3.678 17.417 3 19.067 3 22.014 3 25.5 5.411 25.5 9.496c0 5.66-8.057 11.66-8.582 12.097L12 21.593z" />
                   </svg>
                 ) : (
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#262626" strokeWidth="1.8">
-                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                  <svg
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#262626"
+                    strokeWidth="1.8"
+                  >
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
                   </svg>
                 )}
               </button>
               {/* 댓글 */}
               <button>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#262626" strokeWidth="1.8">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#262626"
+                  strokeWidth="1.8"
+                >
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                 </svg>
               </button>
               {/* 공유 */}
               <button>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#262626" strokeWidth="1.8">
-                  <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#262626"
+                  strokeWidth="1.8"
+                >
+                  <line x1="22" y1="2" x2="11" y2="13" />
+                  <polygon points="22 2 15 22 11 13 2 9 22 2" />
                 </svg>
               </button>
             </div>
@@ -159,11 +211,18 @@ export default function InstagramPreview({ imageUrl, content, cafeName }: Props)
             <button onClick={() => setSaved((v) => !v)}>
               {saved ? (
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="#262626">
-                  <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                  <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
                 </svg>
               ) : (
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#262626" strokeWidth="1.8">
-                  <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#262626"
+                  strokeWidth="1.8"
+                >
+                  <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
                 </svg>
               )}
             </button>
@@ -188,10 +247,14 @@ export default function InstagramPreview({ imageUrl, content, cafeName }: Props)
           )}
 
           {/* 댓글 */}
-          <p className="text-[13px] text-[#8e8e8e] mt-1.5">댓글 0개 모두 보기</p>
+          <p className="text-[13px] text-[#8e8e8e] mt-1.5">
+            댓글 0개 모두 보기
+          </p>
 
           {/* 시간 */}
-          <p className="text-[10px] text-[#c7c7c7] mt-1 mb-2 uppercase tracking-wide">방금</p>
+          <p className="text-[10px] text-[#c7c7c7] mt-1 mb-2 uppercase tracking-wide">
+            방금
+          </p>
         </div>
       </div>
 
