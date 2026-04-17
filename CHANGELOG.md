@@ -9,6 +9,7 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
 ### 수정 — 챗봇 채용공고 중복 생성 처리
 
 #### Changed
+
 - **두 번째 채용공고 요청 시 채용 메뉴로 유도** (`system_prompt.ts`)
   - 동일 세션에서 채용공고 생성 후 추가 요청 시 `/dashboard/hire` 링크로 안내
   - 챗봇 내 document 이벤트 미캡처 이슈 우회
@@ -20,6 +21,7 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
 ### 수정 — 챗봇 DocumentCard UI 개선 + 시스템 프롬프트 정비
 
 #### Added
+
 - **챗봇 시스템 프롬프트 모듈** (`lib/chatbot/system_prompt.ts`)
   - `buildSystemPrompt(FounderContext)` 함수로 창업자 컨텍스트 동적 주입
   - 서류 생성 후 서류함 링크 자동 포함 규칙 추가
@@ -29,6 +31,7 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
   - ChatWindow DocumentCard + DocBox 공용 사용
 
 #### Changed
+
 - **DocumentCard 채용공고 탭형 미리보기**
   - 당근마켓 / 알바천국 / 사람인 탭 전환 UI 추가
   - `## 헤더` 위치 기준 섹션 파싱 (기존 `---` 구분자 방식 → 알바천국 빈값 버그 수정)

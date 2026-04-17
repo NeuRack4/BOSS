@@ -12,21 +12,28 @@ interface DraftRow {
 }
 
 const DOC_TYPE_LABEL: Record<string, { label: string; icon: string }> = {
-  job_posting:          { label: "채용공고",     icon: "📝" },
-  labor_contract:       { label: "근로계약서",   icon: "📄" },
-  employment_contract:  { label: "근로계약서",   icon: "📄" },
-  business_reg:         { label: "사업자등록",   icon: "📋" },
-  food_biz_license:     { label: "식품위생신고", icon: "🍽" },
-  lease_contract:       { label: "임대차계약서", icon: "🏠" },
+  job_posting: { label: "채용공고", icon: "📝" },
+  labor_contract: { label: "근로계약서", icon: "📄" },
+  employment_contract: { label: "근로계약서", icon: "📄" },
+  business_reg: { label: "사업자등록", icon: "📋" },
+  food_biz_license: { label: "식품위생신고", icon: "🍽" },
+  lease_contract: { label: "임대차계약서", icon: "🏠" },
 };
 
-const FILTER_TYPES = ["전체", "채용공고", "근로계약서", "사업자등록", "식품위생신고", "임대차계약서"];
+const FILTER_TYPES = [
+  "전체",
+  "채용공고",
+  "근로계약서",
+  "사업자등록",
+  "식품위생신고",
+  "임대차계약서",
+];
 const FILTER_TYPE_MAP: Record<string, string[]> = {
-  "채용공고":     ["job_posting"],
-  "근로계약서":   ["labor_contract", "employment_contract"],
-  "사업자등록":   ["business_reg"],
-  "식품위생신고": ["food_biz_license"],
-  "임대차계약서": ["lease_contract"],
+  채용공고: ["job_posting"],
+  근로계약서: ["labor_contract", "employment_contract"],
+  사업자등록: ["business_reg"],
+  식품위생신고: ["food_biz_license"],
+  임대차계약서: ["lease_contract"],
 };
 
 function formatDate(iso: string) {
@@ -45,8 +52,13 @@ export default function DocBox() {
 
   const loadDrafts = useCallback(async () => {
     setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setLoading(false); return; }
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
     const { data } = await supabase
       .from("drafts")
@@ -58,7 +70,9 @@ export default function DocBox() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { loadDrafts(); }, [loadDrafts]);
+  useEffect(() => {
+    loadDrafts();
+  }, [loadDrafts]);
 
   const handleDelete = async (id: string) => {
     if (!confirm("이 서류를 삭제하시겠습니까?")) return;
@@ -72,7 +86,10 @@ export default function DocBox() {
     const meta = draft.metadata ?? {};
     const title = (meta.title as string) ?? draft.type;
 
-    if (draft.type === "labor_contract" || draft.type === "employment_contract") {
+    if (
+      draft.type === "labor_contract" ||
+      draft.type === "employment_contract"
+    ) {
       const content = (meta.draft as string) ?? "";
       await exportMarkdownAsPdf(content, title);
     } else {
@@ -84,9 +101,10 @@ export default function DocBox() {
     }
   };
 
-  const filtered = filter === "전체"
-    ? drafts
-    : drafts.filter((d) => (FILTER_TYPE_MAP[filter] ?? []).includes(d.type));
+  const filtered =
+    filter === "전체"
+      ? drafts
+      : drafts.filter((d) => (FILTER_TYPE_MAP[filter] ?? []).includes(d.type));
 
   if (loading) {
     return (
@@ -121,7 +139,8 @@ export default function DocBox() {
           <p className="text-3xl mb-3">📂</p>
           <p>저장된 서류가 없습니다.</p>
           <p className="text-xs mt-2 text-gray-300">
-            챗봇에서 채용공고·근로계약서를 생성하거나<br />
+            챗봇에서 채용공고·근로계약서를 생성하거나
+            <br />
             채용 메뉴에서 서류를 작성하면 이곳에 저장됩니다.
           </p>
         </div>
@@ -137,7 +156,9 @@ export default function DocBox() {
               >
                 <span className="text-xl flex-shrink-0">{icon}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-800 truncate">{title}</p>
+                  <p className="text-sm font-medium text-gray-800 truncate">
+                    {title}
+                  </p>
                   <p className="text-xs text-gray-400">
                     {label} · {formatDate(draft.created_at)}
                   </p>

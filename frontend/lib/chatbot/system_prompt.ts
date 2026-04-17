@@ -173,6 +173,6 @@ export function buildSystemPrompt(ctx: FounderContext = {}): string {
   // 정체성 섹션 다음에 컨텍스트 삽입
   return BASE_PROMPT.replace(
     "---\n\n## 업무 프로세스",
-    `---\n\n${contextSection}\n\n---\n\n## 업무 프로세스`
+    `---\n\n${contextSection}\n\n---\n\n## 업무 프로세스`,
   );
 }

@@ -82,7 +82,7 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<"profile" | "docbox">(
-    searchParams.get("tab") === "docbox" ? "docbox" : "profile"
+    searchParams.get("tab") === "docbox" ? "docbox" : "profile",
   );
 
   useEffect(() => {
@@ -198,194 +198,196 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {activeTab === "profile" && <>
-      {/* 기본 정보 */}
-      <Section title="기본 정보">
-        <Field label="성명">
-          <input
-            type="text"
-            value={form.name}
-            onChange={(e) => onChange("name", e.target.value)}
-            className={inputClass}
-            placeholder="홍길동"
-          />
-        </Field>
-        <Field label="생년월일">
-          <input
-            type="date"
-            value={form.birthDate}
-            onChange={(e) => onChange("birthDate", e.target.value)}
-            className={inputClass}
-          />
-        </Field>
-        <Field label="연락처">
-          <input
-            type="tel"
-            value={form.phone}
-            onChange={(e) => onChange("phone", e.target.value)}
-            className={inputClass}
-            placeholder="010-1234-5678"
-          />
-        </Field>
-        <Field label="이메일">
-          <input
-            type="email"
-            value={form.email}
-            onChange={(e) => onChange("email", e.target.value)}
-            className={inputClass}
-            placeholder="hello@example.com"
-          />
-        </Field>
-      </Section>
+      {activeTab === "profile" && (
+        <>
+          {/* 기본 정보 */}
+          <Section title="기본 정보">
+            <Field label="성명">
+              <input
+                type="text"
+                value={form.name}
+                onChange={(e) => onChange("name", e.target.value)}
+                className={inputClass}
+                placeholder="홍길동"
+              />
+            </Field>
+            <Field label="생년월일">
+              <input
+                type="date"
+                value={form.birthDate}
+                onChange={(e) => onChange("birthDate", e.target.value)}
+                className={inputClass}
+              />
+            </Field>
+            <Field label="연락처">
+              <input
+                type="tel"
+                value={form.phone}
+                onChange={(e) => onChange("phone", e.target.value)}
+                className={inputClass}
+                placeholder="010-1234-5678"
+              />
+            </Field>
+            <Field label="이메일">
+              <input
+                type="email"
+                value={form.email}
+                onChange={(e) => onChange("email", e.target.value)}
+                className={inputClass}
+                placeholder="hello@example.com"
+              />
+            </Field>
+          </Section>
 
-      {/* 사업 정보 */}
-      <Section title="사업 정보" badge="온보딩 스텝 3">
-        <Field label="업종">
-          <select
-            value={form.businessType}
-            onChange={(e) => onChange("businessType", e.target.value)}
-            className={selectClass}
-          >
-            <option value="">선택</option>
-            {BIZ_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="상호명">
-          <input
-            type="text"
-            value={form.businessName}
-            onChange={(e) => onChange("businessName", e.target.value)}
-            className={inputClass}
-            placeholder="예: 홍길동 카페"
-          />
-        </Field>
-        <Field label="사업 지역">
-          <input
-            type="text"
-            value={form.district}
-            onChange={(e) => onChange("district", e.target.value)}
-            className={inputClass}
-            placeholder="예: 마포구"
-          />
-        </Field>
-        <Field label="창업 단계">
-          <select
-            value={form.stage}
-            onChange={(e) => onChange("stage", e.target.value)}
-            className={selectClass}
-          >
-            <option value="">선택</option>
-            {STAGE_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="개업 예정일">
-          <input
-            type="date"
-            value={form.openDate}
-            onChange={(e) => onChange("openDate", e.target.value)}
-            className={inputClass}
-          />
-        </Field>
-        <Field label="사업자 유형">
-          <select
-            value={form.entityType}
-            onChange={(e) => onChange("entityType", e.target.value)}
-            className={selectClass}
-          >
-            {ENTITY_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="공동사업자">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={form.hasCoOwner}
-              onChange={(e) => onChange("hasCoOwner", e.target.checked)}
-              className="w-4 h-4 accent-brand-500"
-            />
-            <span className="text-sm text-gray-700">있음</span>
-          </label>
-        </Field>
-      </Section>
+          {/* 사업 정보 */}
+          <Section title="사업 정보" badge="온보딩 스텝 3">
+            <Field label="업종">
+              <select
+                value={form.businessType}
+                onChange={(e) => onChange("businessType", e.target.value)}
+                className={selectClass}
+              >
+                <option value="">선택</option>
+                {BIZ_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="상호명">
+              <input
+                type="text"
+                value={form.businessName}
+                onChange={(e) => onChange("businessName", e.target.value)}
+                className={inputClass}
+                placeholder="예: 홍길동 카페"
+              />
+            </Field>
+            <Field label="사업 지역">
+              <input
+                type="text"
+                value={form.district}
+                onChange={(e) => onChange("district", e.target.value)}
+                className={inputClass}
+                placeholder="예: 마포구"
+              />
+            </Field>
+            <Field label="창업 단계">
+              <select
+                value={form.stage}
+                onChange={(e) => onChange("stage", e.target.value)}
+                className={selectClass}
+              >
+                <option value="">선택</option>
+                {STAGE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="개업 예정일">
+              <input
+                type="date"
+                value={form.openDate}
+                onChange={(e) => onChange("openDate", e.target.value)}
+                className={inputClass}
+              />
+            </Field>
+            <Field label="사업자 유형">
+              <select
+                value={form.entityType}
+                onChange={(e) => onChange("entityType", e.target.value)}
+                className={selectClass}
+              >
+                {ENTITY_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="공동사업자">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.hasCoOwner}
+                  onChange={(e) => onChange("hasCoOwner", e.target.checked)}
+                  className="w-4 h-4 accent-brand-500"
+                />
+                <span className="text-sm text-gray-700">있음</span>
+              </label>
+            </Field>
+          </Section>
 
-      {/* 사업장 정보 */}
-      <Section title="사업장 정보" badge="온보딩 스텝 4">
-        <Field label="주소">
-          <input
-            type="text"
-            value={form.address}
-            onChange={(e) => onChange("address", e.target.value)}
-            className={inputClass}
-            placeholder="도로명 주소"
-          />
-        </Field>
-        <Field label="상세주소">
-          <input
-            type="text"
-            value={form.addressDetail}
-            onChange={(e) => onChange("addressDetail", e.target.value)}
-            className={inputClass}
-            placeholder="동·호수 등"
-          />
-        </Field>
-        <Field label="영업장 면적(㎡)">
-          <input
-            type="text"
-            value={form.floorArea}
-            onChange={(e) => onChange("floorArea", e.target.value)}
-            className={inputClass}
-            placeholder="예: 33"
-          />
-        </Field>
-        <Field label="과세 유형">
-          <select
-            value={form.taxType}
-            onChange={(e) => onChange("taxType", e.target.value)}
-            className={selectClass}
-          >
-            {TAX_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="식품위생교육">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={form.hasHygieneEdu}
-              onChange={(e) => onChange("hasHygieneEdu", e.target.checked)}
-              className="w-4 h-4 accent-brand-500"
-            />
-            <span className="text-sm text-gray-700">이수 완료</span>
-          </label>
-        </Field>
-      </Section>
+          {/* 사업장 정보 */}
+          <Section title="사업장 정보" badge="온보딩 스텝 4">
+            <Field label="주소">
+              <input
+                type="text"
+                value={form.address}
+                onChange={(e) => onChange("address", e.target.value)}
+                className={inputClass}
+                placeholder="도로명 주소"
+              />
+            </Field>
+            <Field label="상세주소">
+              <input
+                type="text"
+                value={form.addressDetail}
+                onChange={(e) => onChange("addressDetail", e.target.value)}
+                className={inputClass}
+                placeholder="동·호수 등"
+              />
+            </Field>
+            <Field label="영업장 면적(㎡)">
+              <input
+                type="text"
+                value={form.floorArea}
+                onChange={(e) => onChange("floorArea", e.target.value)}
+                className={inputClass}
+                placeholder="예: 33"
+              />
+            </Field>
+            <Field label="과세 유형">
+              <select
+                value={form.taxType}
+                onChange={(e) => onChange("taxType", e.target.value)}
+                className={selectClass}
+              >
+                {TAX_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="식품위생교육">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.hasHygieneEdu}
+                  onChange={(e) => onChange("hasHygieneEdu", e.target.checked)}
+                  className="w-4 h-4 accent-brand-500"
+                />
+                <span className="text-sm text-gray-700">이수 완료</span>
+              </label>
+            </Field>
+          </Section>
 
-      {/* 하단 저장 버튼 */}
-      <div className="flex justify-end pb-8">
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="px-8 py-3 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-sm transition-all glow-blue disabled:opacity-50"
-        >
-          {saving ? "저장 중..." : saved ? "저장됨 ✓" : "변경사항 저장"}
-        </button>
-      </div>
-      </>}
+          {/* 하단 저장 버튼 */}
+          <div className="flex justify-end pb-8">
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="px-8 py-3 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-sm transition-all glow-blue disabled:opacity-50"
+            >
+              {saving ? "저장 중..." : saved ? "저장됨 ✓" : "변경사항 저장"}
+            </button>
+          </div>
+        </>
+      )}
 
       {activeTab === "docbox" && (
         <div className="glass-card rounded-2xl p-6">

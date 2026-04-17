@@ -22,13 +22,19 @@ function parseBlogContent(content: string) {
     // Tags: lines that are only hashtags
     if (trimmed && trimmed.match(/^(#\S+(\s+|$))+$/)) {
       const found = trimmed.match(/#\S+/g);
-      if (found) { tags.push(...found); continue; }
+      if (found) {
+        tags.push(...found);
+        continue;
+      }
     }
 
     // Tags with prefix like "태그:" or "**태그**:"
     if (trimmed.match(/^(\*\*)?태그(\*\*)?[:：]/)) {
       const found = trimmed.match(/#\S+/g);
-      if (found) { tags.push(...found); continue; }
+      if (found) {
+        tags.push(...found);
+        continue;
+      }
     }
 
     bodyLines.push(line);
@@ -77,13 +83,23 @@ export default function BlogPreview({
   return (
     <div className="rounded-2xl overflow-hidden border border-surface-200 shadow-sm bg-white">
       {/* Naver Blog top bar */}
-      <div className="flex items-center gap-2.5 px-5 py-3" style={{ backgroundColor: "#03C75A" }}>
+      <div
+        className="flex items-center gap-2.5 px-5 py-3"
+        style={{ backgroundColor: "#03C75A" }}
+      >
         <div className="w-6 h-6 bg-white rounded-sm flex items-center justify-center shrink-0">
-          <span className="font-black text-sm leading-none" style={{ color: "#03C75A" }}>N</span>
+          <span
+            className="font-black text-sm leading-none"
+            style={{ color: "#03C75A" }}
+          >
+            N
+          </span>
         </div>
         <span className="text-white font-bold text-sm">블로그</span>
         <span className="text-white/60 text-xs">미리보기</span>
-        <span className="ml-auto text-white/90 text-xs font-medium truncate max-w-[120px]">{displayName}</span>
+        <span className="ml-auto text-white/90 text-xs font-medium truncate max-w-[120px]">
+          {displayName}
+        </span>
       </div>
 
       {/* Blog post body */}
@@ -105,7 +121,9 @@ export default function BlogPreview({
           {menuUsed && (
             <>
               <span>·</span>
-              <span className="font-medium" style={{ color: "#03C75A" }}>{menuUsed}</span>
+              <span className="font-medium" style={{ color: "#03C75A" }}>
+                {menuUsed}
+              </span>
             </>
           )}
         </div>
