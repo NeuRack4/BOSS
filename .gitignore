@@ -62,3 +62,6 @@ frontend/public/pdf.worker.min.mjs
 # Script temp output (캘리브레이션 이미지, 테스트 PDF)
 scripts/test_output/
 scripts/calibrate/
+
+# 네이버 로그인 쿠키 (민감 정보)
+backend/automation/naver_cookies.json
