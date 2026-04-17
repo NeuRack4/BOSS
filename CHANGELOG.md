@@ -4,6 +4,73 @@ BOSS 버전 이력입니다. 형식은 [Keep a Changelog](https://keepachangelog
 
 ---
 
+## [v0.19.2] — 2026-04-17
+
+### 수정 — 챗봇 채용공고 중복 생성 처리
+
+#### Changed
+- **두 번째 채용공고 요청 시 채용 메뉴로 유도** (`system_prompt.ts`)
+  - 동일 세션에서 채용공고 생성 후 추가 요청 시 `/dashboard/hire` 링크로 안내
+  - 챗봇 내 document 이벤트 미캡처 이슈 우회
+
+---
+
+## [v0.19.1] — 2026-04-17
+
+### 수정 — 챗봇 DocumentCard UI 개선 + 시스템 프롬프트 정비
+
+#### Added
+- **챗봇 시스템 프롬프트 모듈** (`lib/chatbot/system_prompt.ts`)
+  - `buildSystemPrompt(FounderContext)` 함수로 창업자 컨텍스트 동적 주입
+  - 서류 생성 후 서류함 링크 자동 포함 규칙 추가
+  - 다음 스텝 번호 목록 줄바꿈 출력 지시 추가
+- **PDF 마크다운 익스포터** (`lib/chatbot/pdf_export.ts`)
+  - `marked` + `html2pdf.js` 기반 스타일드 PDF 생성 (마크다운 미리보기 형태)
+  - ChatWindow DocumentCard + DocBox 공용 사용
+
+#### Changed
+- **DocumentCard 채용공고 탭형 미리보기**
+  - 당근마켓 / 알바천국 / 사람인 탭 전환 UI 추가
+  - `## 헤더` 위치 기준 섹션 파싱 (기존 `---` 구분자 방식 → 알바천국 빈값 버그 수정)
+  - 서류함 보기 버튼 제거, 다운로드 버튼만 유지
+  - 헤더 영역 / 탭 영역 배경색 분리 (동일 색상 혼동 수정)
+- **sessionStorage 에러 메시지 저장 방지** (`ChatWindow.tsx`)
+  - 오류 응답이 마지막 메시지일 때 세션 저장 생략 → 재방문 시 에러 노출 방지
+- **마포구 하드코딩 제거**
+  - `ChatWindow.tsx` 빠른질문 버튼 / 추천질문에서 "마포구" 제거
+  - `route.ts` 상태 메시지 "마포구 상권 분석 중" → "상권 분석 중"
+  - `route.ts` `neighborhood` 기본값 `"마포구"` → `""` 수정
+
+---
+
+## [v0.19.0] — 2026-04-17
+
+### 기능 — 챗봇 채용 tool 연동 + 마이페이지 서류함
+
+#### Added
+
+- **챗봇 채용공고 생성 tool** (`create_job_posting_draft`)
+  - 챗봇에서 상호명·시급·근무조건 수집 후 채용공고 초안 3종(당근마켓·알바천국·사람인) 생성
+  - 생성 즉시 Supabase `drafts` 테이블 자동 저장
+  - 챗봇 메시지 내 `DocumentCard` 인라인 다운로드 버튼 (.txt)
+
+- **챗봇 근로계약서 생성 tool** (`create_labor_contract_draft`)
+  - 챗봇에서 근로자명·근무조건 수집 후 표준 근로계약서 초안 생성
+  - 생성 즉시 Supabase `drafts` 테이블 자동 저장
+  - 챗봇 메시지 내 `DocumentCard` 인라인 다운로드 버튼 (PDF via html2pdf.js)
+
+- **챗봇 document SSE 이벤트** (`route.ts`)
+  - 서류 생성 완료 시 `{ type: "document" }` SSE 이벤트 발신
+  - `__DOCUMENT__` 마커 파싱 → Claude에게는 미리보기만 전달, 클라이언트에 전체 content 전달
+
+- **마이페이지 서류함 탭** (`profile/page.tsx` + `DocBox.tsx`)
+  - "내 정보" / "📂 서류함" 2탭 구조로 개편
+  - `DocBox` 컴포넌트: drafts 테이블 전체 서류 조회 (채용공고·근로계약서·사업자등록 등 종류별 필터)
+  - 서류함에서 직접 다운로드·삭제 가능
+  - 챗봇·채용 메뉴 양쪽에서 저장된 서류 통합 관리
+
+---
+
 ## [v0.18.0] — 2026-04-16
 
 ### 기능 — 마케팅 탭 전면 개편 (전략 추천 · 콘텐츠 생성 · 인스타그램 프리뷰 · 네이버 플레이스)

@@ -16,6 +16,7 @@ import { NextRequest } from "next/server";
 import fs from "fs";
 import path from "path";
 import { createClient } from "@supabase/supabase-js";
+import { buildSystemPrompt } from "@/lib/chatbot/system_prompt";
 
 // ── 파일 로그 (logs/chatbot.log) ─────────────────────────────────────────────
 const LOG_DIR = path.join(process.cwd(), "logs");
@@ -39,98 +40,6 @@ const ANTHROPIC_VERSION = "2023-06-01";
 // 테스트: CLAUDE_MODEL=claude-haiku-4-5 (약 25배 저렴)
 const MODEL = process.env.CLAUDE_MODEL ?? "claude-sonnet-4-6";
 
-// ── 시스템 프롬프트 ──────────────────────────────────────────────────────────
-const SYSTEM_PROMPT = `당신은 BOSS의 카페 창업 전담 AI 비서입니다.
-서울 마포구에서 카페를 창업하거나 운영 중인 사장님 옆에서 실질적인 문제를 해결해주는 역할입니다.
-
-## 핵심 역할 정의
-
-당신은 단순히 정보를 알려주는 챗봇이 아닙니다.
-**사장님의 상황을 파악하고 → 전문 지식을 근거로 판단하고 → 사장님이 지금 당장 해야 할 행동을 제시하는 AI**입니다.
-
-모든 대화의 끝은 반드시 다음 중 하나로 마무리해야 합니다:
-1. **사장님이 다음에 해야 할 구체적인 행동 1~3가지** (번호 목록으로)
-2. 또는 **BOSS 서비스에서 직접 처리할 수 있는 메뉴 안내** (서류 초안, 지원사업, 세금 등)
-
-"정보를 드렸으니 알아서 하세요"는 절대 금지입니다.
-
-## 도구 사용 — 반드시 지켜야 할 규칙
-
-**법령·절차·신고 관련 질문은 항상 search_laws를 먼저 호출합니다.**
-당신의 훈련 데이터가 아닌, Supabase에 임베딩된 실제 법령 원문을 근거로 답변해야 합니다.
-이것이 일반 챗봇과 당신의 가장 큰 차이입니다.
-
-도구 사용 기준:
-- 사업자등록, 식품위생신고, 인허가 → search_laws("사업자등록 절차") 필수 호출
-- 근로계약, 임대차 계약 → search_laws("근로계약 최저임금"), search_laws("임대차 확정일자") 필수 호출
-- 지원사업, 보조금 → search_subsidies + get_ongoing_subsidies 호출
-- 세금 신고 기한 → get_tax_deadlines 필수 호출 (기억으로 날짜 답변 금지)
-- 마포구 상권, 입지 → get_location_districts 호출
-- 두 가지 이상 복합 질문 → 병렬로 여러 도구 동시 호출
-
-도구 없이 답변해도 되는 경우:
-- 창업 절차 흐름에 대한 매우 일반적인 설명 (예: "카페 창업 순서를 대략 알려줘")
-- 최저임금·주휴수당 계산 등 단순 수치 계산
-
-## 답변 구조 (항상 이 순서로)
-
-1. **상황 파악** — 사장님이 어떤 단계인지, 무엇이 필요한지 한 줄로 확인
-2. **전문가 판단** — 도구로 가져온 법령·데이터 근거를 명시하며 핵심 내용 설명
-3. **다음 행동 안내** — 사장님이 지금 당장 해야 할 행동 1~3가지 번호 목록
-
-예시:
-> 사장님, 식품위생 영업신고를 아직 안 하셨군요.
-> 식품위생법 제37조에 따르면 영업 시작 전 관할 구청에 신고를 완료해야 합니다.
->
-> **지금 바로 해야 할 행동:**
-> 1. BOSS [서류 초안] 메뉴에서 식품영업 신고서 자동 작성 → /drafts/food-business-license
-> 2. 마포구청 위생과 방문 예약 (☎ 02-3153-9000)
-> 3. 시설 기준 체크리스트 사전 확인
-
-## BOSS 서비스 전체 범위
-
-| 영역 | 메뉴 경로 | 도구 |
-|------|-----------|------|
-| 사업자등록 신청서 | /drafts/business-registration | search_laws |
-| 식품위생 신고서 | /drafts/food-business-license | search_laws |
-| 근로계약서 | /drafts/employment-contract | search_laws |
-| 임대차계약서 | /drafts/lease-contract | search_laws |
-| 지원사업 매칭 | /dashboard/subsidies | search_subsidies |
-| 세금 기한·신고 | /dashboard/tax | get_tax_deadlines |
-| 법령 검색 | /dashboard/rag | search_laws |
-| 입지 분석 | /dashboard/location | get_location_districts |
-| 매출 관리 | /dashboard/sales | — |
-| AI 인사이트 | /dashboard/insights | — |
-
-## 절대 하지 말아야 할 것
-
-- 도구 없이 법령 조항이나 세금 기한을 기억으로 말하기 (반드시 도구로 확인)
-- 챗봇에서 PDF 직접 생성 (서류 초안 메뉴로 안내만)
-- "전문가에게 문의하세요"로만 마무리하기 (안내 + 다음 행동 필수)
-- 정보만 나열하고 행동 지침 없이 끝내기
-- 검색 결과가 없을 때 "데이터베이스 업데이트 중", "서버 점검 중", "검색 결과 없음" 등 검색 과정을 언급하기 — 결과가 없으면 조용히 다른 키워드로 재시도하거나, 일반 지식 기반으로 자연스럽게 바로 답변할 것. 도구 호출 여부나 검색 결과 유무는 절대 사용자에게 노출하지 않는다
-
-## BOSS 내부 링크 형식 (필수 준수)
-
-BOSS 서비스 내 페이지로 안내할 때는 반드시 마크다운 링크 형식을 사용하세요.
-텍스트에 경로만 적지 말고, 아래처럼 클릭 가능한 링크로 작성합니다:
-
-- 사업자등록 신청서 → [사업자등록 신청서 작성하기](/drafts/business-registration)
-- 식품영업 신고서 → [식품영업 신고서 작성하기](/drafts/food-business-license)
-- 근로계약서 → [표준 근로계약서 작성하기](/drafts/employment-contract)
-- 임대차계약서 → [상가 임대차계약서 작성하기](/drafts/lease-contract)
-- 지원사업 → [지원사업 매칭 보기](/dashboard/subsidies)
-- 세금 기한·신고 → [세금 관리 메뉴](/dashboard/tax)
-- 법령 검색 → [법령 검색 메뉴](/dashboard/rag)
-- 입지 분석 → [마포구 입지 분석](/dashboard/location)
-- 매출 관리 → [매출 관리 메뉴](/dashboard/sales)
-- AI 인사이트 → [AI 인사이트 보기](/dashboard/insights)
-
-예시: "지금 바로 [식품영업 신고서 작성하기](/drafts/food-business-license)를 시작하세요."
-
-## 면책 고지
-세금·법률·계약 관련 답변 말미에 반드시 포함:
-"※ 본 내용은 참고용이며 실제 신고·계약 전 전문가 확인을 권장합니다."`;
 
 // ── Tool 정의 (Anthropic Tool Use 스펙) ──────────────────────────────────────
 const BOSS_TOOLS = [
@@ -213,12 +122,67 @@ const BOSS_TOOLS = [
       required: [],
     },
   },
+  {
+    name: "create_job_posting_draft",
+    description:
+      "채용공고 초안을 생성하고 서류함에 저장합니다. " +
+      "당근마켓·알바천국·사람인 3개 플랫폼용 공고를 동시에 생성합니다. " +
+      "사용자가 채용공고 작성을 요청하면 상호명·시급·근무시간 등을 대화로 먼저 수집한 뒤 호출하세요. " +
+      "생성된 공고는 서류함에 자동 저장되며 즉시 다운로드 가능합니다.",
+    input_schema: {
+      type: "object",
+      properties: {
+        business_name: { type: "string", description: "카페 상호명" },
+        neighborhood: { type: "string", description: "근무 상권 (예: 홍대입구, 합정, 연남동)" },
+        weekly_hours: { type: "number", description: "주 근무 시간 (예: 20)" },
+        hourly_wage: { type: "number", description: "시급 (원, 최저 10030원 이상)" },
+        work_days: {
+          type: "array",
+          items: { type: "string" },
+          description: "근무 요일 (예: ['월','화','수','목','금'])",
+        },
+        work_start: { type: "string", description: "근무 시작 시간 (예: 09:00)" },
+        work_end: { type: "string", description: "근무 종료 시간 (예: 14:00)" },
+        headcount: { type: "number", description: "모집 인원 (기본 1명)" },
+      },
+      required: ["business_name"],
+    },
+  },
+  {
+    name: "create_labor_contract_draft",
+    description:
+      "표준 근로계약서 초안을 생성하고 서류함에 저장합니다. " +
+      "고용노동부 표준 양식 기반으로 작성됩니다. " +
+      "사용자가 근로계약서 작성을 요청하면 근로자 이름·시급·근무일정 등을 대화로 수집한 뒤 호출하세요. " +
+      "생성된 계약서는 서류함에 자동 저장되며 즉시 다운로드 가능합니다.",
+    input_schema: {
+      type: "object",
+      properties: {
+        worker_name: { type: "string", description: "근로자 이름" },
+        business_name: { type: "string", description: "사업장명(카페 상호명)" },
+        employer_name: { type: "string", description: "고용주(사장님) 이름" },
+        weekly_hours: { type: "number", description: "주 근무 시간 (예: 20)" },
+        hourly_wage: { type: "number", description: "시급 (원, 최저 10030원 이상)" },
+        contract_start: { type: "string", description: "계약 시작일 (YYYY-MM-DD)" },
+        work_days: {
+          type: "array",
+          items: { type: "string" },
+          description: "근무 요일 (예: ['월','화'])",
+        },
+        work_start: { type: "string", description: "근무 시작 시간 (예: 09:00)" },
+        work_end: { type: "string", description: "근무 종료 시간 (예: 14:00)" },
+        pay_date: { type: "number", description: "급여 지급일 (매월 N일, 기본 25)" },
+      },
+      required: ["worker_name", "business_name"],
+    },
+  },
 ];
 
 // ── 도구 실행 (팀원 API 호출 — 소스 수정 없음) ───────────────────────────────
 async function executeTool(
   name: string,
-  input: Record<string, unknown>
+  input: Record<string, unknown>,
+  userId?: string
 ): Promise<string> {
   try {
     switch (name) {
@@ -310,6 +274,160 @@ async function executeTool(
         return `【마포구 상권 정보】\n${JSON.stringify(data).slice(0, 800)}`;
       }
 
+      case "create_job_posting_draft": {
+        const postingRes = await fetch(`${API_BASE}/hire/job-posting`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(userId ? { "x-user-id": userId } : {}),
+          },
+          body: JSON.stringify({
+            business_name: input.business_name ?? "",
+            neighborhood: input.neighborhood ?? "",
+            weekly_hours: input.weekly_hours ?? 20,
+            hourly_wage: input.hourly_wage ?? 10030,
+            work_days: input.work_days ?? [],
+            work_start: input.work_start ?? "",
+            work_end: input.work_end ?? "",
+            headcount: input.headcount ?? 1,
+          }),
+          signal: AbortSignal.timeout(20000),
+        });
+        if (!postingRes.ok)
+          return `[채용공고 생성 실패] 백엔드 응답 오류 (${postingRes.status})`;
+
+        const postingData = (await postingRes.json()) as {
+          platforms?: { karrot?: string; alba?: string; saramin?: string };
+          raw_draft?: string;
+        };
+        const platforms = {
+          karrot:  postingData.platforms?.karrot  ?? "",
+          alba:    postingData.platforms?.alba    ?? "",
+          saramin: postingData.platforms?.saramin ?? "",
+        };
+        const content =
+          `## 당근마켓\n${platforms.karrot}` +
+          `\n\n---\n\n## 알바천국\n${platforms.alba}` +
+          `\n\n---\n\n## 사람인\n${platforms.saramin}`;
+        const title = `채용공고_${input.business_name ?? "카페"}`;
+
+        let draftId: string | null = null;
+        if (userId) {
+          try {
+            const saveRes = await fetch(`${API_BASE}/hire/job-posting/save`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-user-id": userId,
+              },
+              body: JSON.stringify({
+                title,
+                platforms: { karrot: platforms.karrot, alba: platforms.alba, saramin: platforms.saramin },
+                html: "",
+                wage_simulation: {},
+                inputs: { ...input },
+                calculated_at: new Date().toISOString().slice(0, 10),
+              }),
+              signal: AbortSignal.timeout(8000),
+            });
+            if (saveRes.ok) {
+              const saveData = (await saveRes.json()) as { id?: string };
+              draftId = saveData.id ?? null;
+            }
+          } catch { /* 저장 실패해도 초안 반환 */ }
+        }
+
+        const docPayload = JSON.stringify({
+          doc_type: "job_posting",
+          title,
+          draft_id: draftId,
+          content,
+        });
+        return (
+          `__DOCUMENT__:${docPayload}\n\n` +
+          `채용공고 3종(당근마켓·알바천국·사람인) 초안을 생성했습니다.` +
+          (draftId ? " 서류함에 저장되었습니다." : "") +
+          `\n\n[당근마켓 미리보기]\n${platforms.karrot.slice(0, 200)}...`
+        );
+      }
+
+      case "create_labor_contract_draft": {
+        const contractRes = await fetch(`${API_BASE}/hire/labor-contract`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(userId ? { "x-user-id": userId } : {}),
+          },
+          body: JSON.stringify({
+            worker_name:    input.worker_name    ?? "",
+            business_name:  input.business_name  ?? "",
+            employer_name:  input.employer_name  ?? "",
+            weekly_hours:   input.weekly_hours   ?? 20,
+            hourly_wage:    input.hourly_wage     ?? 10030,
+            contract_start: input.contract_start ?? new Date().toISOString().slice(0, 10),
+            contract_end:   input.contract_end   ?? "",
+            work_days:      input.work_days       ?? [],
+            work_start:     input.work_start      ?? "",
+            work_end:       input.work_end        ?? "",
+            break_time:     60,
+            weekly_holiday: "일요일",
+            job_duties:     [],
+            wage_conditions:[],
+            pay_date:       input.pay_date        ?? 25,
+            pay_method:     "계좌이체",
+            wage_mode:      "hourly",
+            annual_salary:  0,
+          }),
+          signal: AbortSignal.timeout(20000),
+        });
+        if (!contractRes.ok)
+          return `[근로계약서 생성 실패] 백엔드 응답 오류 (${contractRes.status})`;
+
+        const contractData = (await contractRes.json()) as {
+          draft?: string;
+          [key: string]: unknown;
+        };
+        const draft = contractData.draft ?? JSON.stringify(contractData, null, 2);
+        const title = `근로계약서_${input.worker_name ?? "계약서"}`;
+
+        let draftId: string | null = null;
+        if (userId) {
+          try {
+            const saveRes = await fetch(`${API_BASE}/hire/labor-contract/save`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-user-id": userId,
+              },
+              body: JSON.stringify({
+                title,
+                draft,
+                inputs: { ...input },
+                wage_simulation: {},
+              }),
+              signal: AbortSignal.timeout(8000),
+            });
+            if (saveRes.ok) {
+              const saveData = (await saveRes.json()) as { id?: string };
+              draftId = saveData.id ?? null;
+            }
+          } catch { /* 저장 실패해도 초안 반환 */ }
+        }
+
+        const docPayload = JSON.stringify({
+          doc_type: "labor_contract",
+          title,
+          draft_id: draftId,
+          content: draft,
+        });
+        return (
+          `__DOCUMENT__:${docPayload}\n\n` +
+          `근로계약서 초안을 생성했습니다.` +
+          (draftId ? " 서류함에 저장되었습니다." : "") +
+          `\n\n[계약서 미리보기]\n${draft.slice(0, 200)}...`
+        );
+      }
+
       default:
         return `[알 수 없는 도구] ${name}`;
     }
@@ -374,16 +492,6 @@ async function fetchFounderProfile(
   }
 }
 
-function buildProfileContext(profile: FounderProfile | null): string {
-  if (!profile) return "";
-  const lines: string[] = ["\n\n## 현재 사용자 프로필"];
-  if (profile.business_name) lines.push(`- 상호명: ${profile.business_name}`);
-  if (profile.business_type) lines.push(`- 업종: ${profile.business_type}`);
-  if (profile.region) lines.push(`- 지역: ${profile.region}`);
-  if (profile.stage) lines.push(`- 창업 단계: ${profile.stage}`);
-  if (profile.tax_type) lines.push(`- 사업자 유형: ${profile.tax_type}`);
-  return lines.join("\n");
-}
 
 // ── 타입 ────────────────────────────────────────────────────────────────────
 interface ChatMessage {
@@ -463,19 +571,23 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 프로필 컨텍스트 주입 (userId 있을 때만)
-  let systemText = SYSTEM_PROMPT;
-  if (userId) {
-    const profile = await fetchFounderProfile(userId);
-    const profileCtx = buildProfileContext(profile);
-    if (profileCtx) {
-      systemText = SYSTEM_PROMPT + profileCtx;
-      writeLog(`[CHATBOT] 프로필 주입: userId=${userId}, stage=${profile?.stage ?? "미상"}, region=${profile?.region ?? "미상"}`);
-    }
-  }
-
   // 15턴 = 메시지 30개 (발표자료 기준 통일)
   const recentHistory = history.slice(-30);
+
+  // 프로필 컨텍스트 주입 (userId 있을 때만)
+  let profile: FounderProfile | null = null;
+  if (userId) {
+    profile = await fetchFounderProfile(userId);
+    if (profile) {
+      writeLog(`[CHATBOT] 프로필 주입: userId=${userId}, stage=${profile.stage ?? "미상"}, region=${profile.region ?? "미상"}`);
+    }
+  }
+  const systemText = buildSystemPrompt({
+    founder_stage: profile?.stage,
+    region:        profile?.region,
+    business_type: profile?.business_type,
+    current_turn:  Math.floor(recentHistory.length / 2),
+  });
   const commonHeaders = {
     "Content-Type": "application/json",
     "x-api-key": ANTHROPIC_KEY,
@@ -488,18 +600,22 @@ export async function POST(req: NextRequest) {
 
   // ── UI에 표시할 도구별 상태 메시지 ──────────────────────────────────────
   const TOOL_STATUS_LABELS: Record<string, string> = {
-    search_laws:            "📚 법령 DB 검색 중...",
-    search_subsidies:       "📢 지원사업 조회 중...",
-    get_tax_deadlines:      "🗓 세금 신고 기한 확인 중...",
-    get_ongoing_subsidies:  "📢 상시 지원사업 조회 중...",
-    get_location_districts: "📍 마포구 상권 분석 중...",
+    search_laws:                 "📚 법령 DB 검색 중...",
+    search_subsidies:            "📢 지원사업 조회 중...",
+    get_tax_deadlines:           "🗓 세금 신고 기한 확인 중...",
+    get_ongoing_subsidies:       "📢 상시 지원사업 조회 중...",
+    get_location_districts:      "📍 상권 분석 중...",
+    create_job_posting_draft:    "📝 채용공고 초안 작성 중...",
+    create_labor_contract_draft: "📄 근로계약서 초안 작성 중...",
   };
   const TOOL_LOG_LABELS: Record<string, string> = {
-    search_laws:            "법령 검색        → POST /rag/search",
-    search_subsidies:       "지원사업 검색     → POST /subsidies/search",
-    get_tax_deadlines:      "세금 신고 기한    → GET  /tax/deadlines",
-    get_ongoing_subsidies:  "상시 지원사업     → GET  /subsidies/ongoing",
-    get_location_districts: "마포구 상권 정보  → GET  /location/districts",
+    search_laws:                 "법령 검색        → POST /rag/search",
+    search_subsidies:            "지원사업 검색     → POST /subsidies/search",
+    get_tax_deadlines:           "세금 신고 기한    → GET  /tax/deadlines",
+    get_ongoing_subsidies:       "상시 지원사업     → GET  /subsidies/ongoing",
+    get_location_districts:      "마포구 상권 정보  → GET  /location/districts",
+    create_job_posting_draft:    "채용공고 초안 생성  → POST /hire/job-posting",
+    create_labor_contract_draft: "근로계약서 초안 생성 → POST /hire/labor-contract",
   };
 
   // ── 즉시 SSE 스트림 시작 — 클라이언트에 실시간 상태 전달 ─────────────────
@@ -583,8 +699,23 @@ export async function POST(req: NextRequest) {
               const logLabel  = TOOL_LOG_LABELS[toolName] ?? toolName;
               writeLog(`[CHATBOT] ▶ ${logLabel}`);
               writeLog(`[CHATBOT]   입력값: ${JSON.stringify(toolInput)}`);
-              const result = await executeTool(toolName, toolInput);
+              let result = await executeTool(toolName, toolInput, userId);
               writeLog(`[CHATBOT] ✓ 완료: ${logLabel}`);
+
+              // __DOCUMENT__ 마커 파싱 → SSE document 이벤트 발신
+              const DOC_MARKER = "__DOCUMENT__:";
+              if (result.startsWith(DOC_MARKER)) {
+                const newlineIdx = result.indexOf("\n\n");
+                const jsonPart = newlineIdx > -1
+                  ? result.slice(DOC_MARKER.length, newlineIdx)
+                  : result.slice(DOC_MARKER.length);
+                try {
+                  const docPayload = JSON.parse(jsonPart);
+                  enqueue({ type: "document", ...docPayload });
+                } catch { /* JSON 파싱 실패 무시 */ }
+                result = newlineIdx > -1 ? result.slice(newlineIdx + 2) : "";
+              }
+
               return { type: "tool_result", tool_use_id: block.id, content: JSON.stringify(result) };
             })
           );
